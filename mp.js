@@ -112,7 +112,7 @@ export function createMultiplayer(game, THREE) {
   async function open(p) {
     show(`<div class="mp-c"><div class="mp-spin"></div><h2 style="font-size:22px">Connecting...</h2></div>`);
     try { await Promise.race([ACC.ensure(), new Promise((r) => setTimeout(r, 5000))]); } catch (e) {}
-    const url = WS + '?room=' + encodeURIComponent(p.room) + '&name=' + encodeURIComponent(p.name) + (p.room === 'new' || p.room === 'MATCH' ? '&mode=' + mode : '') + (ACC.hasAccount() ? '&acct=' + encodeURIComponent(ACC.token()) : '');
+    const url = WS + '?room=' + encodeURIComponent(p.room) + '&name=' + encodeURIComponent(p.name) + (p.solo ? '&mode=solo&bots=4&diff=' + encodeURIComponent(game.diff || 'hard') : p.room === 'new' || p.room === 'MATCH' ? '&mode=' + mode : '') + (ACC.hasAccount() ? '&acct=' + encodeURIComponent(ACC.token()) : '');
     const net = new NetClient({ createController, colliders: game.phys, url });
     mp.net = net; let welcomed = false, tries = 0;
     net.on('welcome', (w) => { welcomed = true; if (!mp.active) begin(w); else banner('Reconnected', 1.5); try { history.replaceState(0, '', '?room=' + w.room); } catch (e) {} });
@@ -236,6 +236,7 @@ export function createMultiplayer(game, THREE) {
   }
   try { const V = (new URL(import.meta.url).searchParams.get('v') || 'dev').slice(0, 7), vd = document.createElement('div'); vd.textContent = 'v' + V; vd.style.cssText = 'position:fixed;right:10px;bottom:6px;z-index:5;font:600 11px Fredoka,system-ui,sans-serif;letter-spacing:.08em;color:#fff;opacity:.4;pointer-events:none;text-shadow:0 1px 3px #000'; document.body.appendChild(vd); setInterval(() => { vd.style.display = game.state === 'menu' ? '' : 'none'; }, 700); } catch (e) {}
   mp.stop = stop; mp.open = lobby;
+  mp.solo = () => { let n = 'Player'; try { n = localStorage.getItem('sc_name') || 'Player'; } catch (e) {} connect({ room: 'new', name: n, solo: true }); };
   mp.autoJoin = () => { const m = /[?&]room=([A-Za-z0-9]+)/.exec(location.search); if (m) { lobby(m[1].toUpperCase()); return true; } return false; };
   return mp;
-}
+          }
