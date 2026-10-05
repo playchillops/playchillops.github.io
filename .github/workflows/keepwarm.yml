@@ -1,0 +1,10 @@
+name: keepwarm
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl -sS -m 60 https://sniper-chill-mp.onrender.com/healthz || true
