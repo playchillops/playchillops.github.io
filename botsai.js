@@ -547,7 +547,7 @@ function tickBot(bot, bots, world, dt, now, brain) {
     if (mem && mem.src === 'heard' && !attack && !planted && world.sites && world.sites.length) {
       // defenders hold their site: they face a noise but do not chase it far from their post
       const st = siteById(world, bot.assigned) || world.sites[0];
-      if (Math.hypot(mem.x - st.x, mem.z - st.z) > st.r + 10) { turnTo(bot, yawTo(mem.x - bot.x, mem.z - bot.z), d.turn * 0.5, dt); bot.memory = mem = null; }
+      if (Math.hypot(mem.x - st.x, mem.z - st.z) > st.r + 6 || (bot._hrd !== mem && ((bot._hrd = mem), bot.rng() < 0.5))) { turnTo(bot, yawTo(mem.x - bot.x, mem.z - bot.z), d.turn * 0.5, dt); bot.memory = mem = null; }
     }
     if (mem && (mem.src === 'seen' || bot.rng() < 1) && !(bot.planting > 0 && mem.src === 'heard')) {
       // investigate

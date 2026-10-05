@@ -225,7 +225,7 @@ function decide(bot, mem, world, X, now, bots) {
   if (mem.src === 'heard') {
     if (d > P.soundRange) return rng() < 0.5 ? { a: 'glance', yaw } : { a: 'ignore' }; // too far to investigate: maybe turn the head
     if (P.sound === 'look') return d < 12 && rng() < 0.4 ? { a: 'goto', x: mem.x, z: mem.z, short: true } : { a: 'glance', yaw };
-    if (P.sound === 'push') return rng() < 0.8 ? { a: 'goto', x: mem.x, z: mem.z } : { a: 'glance', yaw };
+    if (P.sound === 'push') return rng() < 0.4 ? { a: 'goto', x: mem.x, z: mem.z } : { a: 'glance', yaw };
     if (P.sound === 'rotate') {
       const ns = nearestSite(world, mem.x, mem.z);
       if (ns && ns.id !== H.zoneSite && Math.hypot(ns.x - mem.x, ns.z - mem.z) < 28) return { a: 'rotate', site: ns.id, delay: 0.2 + rng() * 1.0 };

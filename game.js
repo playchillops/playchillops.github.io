@@ -453,7 +453,7 @@ export class Game {
     this.rng = mulberry(Number(new Date().toISOString().slice(0, 10).replace(/-/g, '')));
     if (mode === 'bomb') {
       const ct = this.map.spawnPoints.filter((s) => s.team === 'CT');
-      ct.slice(0, 5).forEach((s, i) => { const w = this.botBuy(i); this.bots.spawn(s.position, { defuser: i === 0, pro: true, difficulty: this.diff, weapons: w.weapons, weapon: w.weapon, slot: i }); });
+      ct.slice(0, 4).forEach((s, i) => { const w = this.botBuy(i); this.bots.spawn(s.position, { defuser: i === 0, pro: true, difficulty: this.diff, weapons: w.weapons, weapon: w.weapon, slot: i }); });
     }
     this.hud.setHealth(100); this.hud.root.style.display = ''; this.ov.style.display = 'none'; this.state = 'play'; this.renderSB();
     this.ctrl.setEnabled(true); if (!this.eco.getState().menuOpen) this.ctrl.requestPointerLock(); play('ui_click'); startAmbient();
@@ -497,7 +497,7 @@ export class Game {
   fireShots(shots) {
     const st = this.ctrl.state, o = { x: st.eye.x, y: st.eye.y, z: st.eye.z }, muzzle = new THREE.Vector3();
     this.vm.muzzleWorldPosition(muzzle);
-    if (shots.length && this.bots.noise) this.bots.noise(o.x, o.z, 55);
+    if (shots.length && this.bots.noise) this.bots.noise(o.x, o.z, 34);
     for (const s of shots) {
       const yaw = st.yaw + s.dir.x, pit = st.pitch + s.dir.y, cp = Math.cos(pit);
       const dir = { x: -Math.sin(yaw) * cp, y: Math.sin(pit), z: -Math.cos(yaw) * cp };
