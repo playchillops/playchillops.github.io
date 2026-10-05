@@ -143,6 +143,7 @@ export function createMultiplayer(game, THREE) {
     net.connect();
   }
 
+  let isHostNow = () => false;
   function banner(t, secs) { lastMsg = t; msgT = secs; }
 
   function begin(w) {
@@ -166,15 +167,19 @@ export function createMultiplayer(game, THREE) {
     const canBot = () => isHost() && (mp.net.phase === 'waiting' || mp.net.phase === 'freeze');
     on(window, 'keydown', (e) => { if (!mp.net || !canBot() || e.repeat) return; if (e.code === 'KeyK') { mp.net.sendRaw({ t: 'addbot', team: mp.net.team === 'T' ? 'CT' : 'T' }); banner('Enemy bot added', 1.5); } else if (e.code === 'KeyL') { mp.net.sendRaw({ t: 'addbot', team: mp.net.team }); banner('Ally bot added', 1.5); } else if (e.code === 'KeyU') { mp.net.sendRaw({ t: 'rmbots' }); banner('Bots removed', 1.5); } });
     mp._canBot = canBot;
+    isHostNow = isHost;
+    on(window, 'keydown', (e) => { if (e.code !== 'Enter' || e.repeat || !mp.net || !mp.net.lobby || !isHost()) return; const sh = document.querySelector('.eco-shade'); if (sh && !sh.hidden) return; mp.net.sendRaw({ t: 'start' }); });
+    mp.net.on('startr', (m) => { if (m && !m.ok) banner(m.reason || 'Cannot start yet', 3); });
     { const box = document.createElement('div'); box.style.cssText = 'position:fixed;left:50%;top:116px;transform:translateX(-50%);z-index:6;display:none;gap:8px;align-items:center;padding:8px 12px;border-radius:14px;background:rgba(10,24,40,.72);color:#fff;font:600 13px Fredoka,system-ui,sans-serif;backdrop-filter:blur(4px)';
       const lab = document.createElement('span'); lab.textContent = 'Host bots:'; lab.style.opacity = '.8'; box.appendChild(lab);
-      const mk = (txt, key, fn) => { const b = document.createElement('button'); b.textContent = txt + ' (' + key + ')'; b.style.cssText = 'font:inherit;color:#fff;background:rgba(255,255,255,.16);border:0;border-radius:10px;padding:5px 10px;cursor:pointer'; b.onclick = (e) => { e.stopPropagation(); if (mp.net && canBot()) fn(); }; box.appendChild(b); };
+      const mk = (txt, key, fn) => { const b = document.createElement('button'); b.textContent = txt + ' (' + key + ')'; b.style.cssText = 'font:inherit;color:#fff;background:rgba(255,255,255,.16);border:0;border-radius:10px;padding:5px 10px;cursor:pointer'; b.onclick = (e) => { e.stopPropagation(); if (mp.net && canBot()) fn(); }; box.appendChild(b); return b; };
       mk('+ Enemy bot', 'K', () => { mp.net.sendRaw({ t: 'addbot', team: mp.net.team === 'T' ? 'CT' : 'T' }); banner('Enemy bot added', 1.5); });
       mk('+ Ally bot', 'L', () => { mp.net.sendRaw({ t: 'addbot', team: mp.net.team }); banner('Ally bot added', 1.5); });
+      const sbtn = mk('START MATCH', 'Enter', () => { if (mp.net && mp.net.lobby) mp.net.sendRaw({ t: 'start' }); });
       mk('Remove bots', 'U', () => { mp.net.sendRaw({ t: 'rmbots' }); banner('Bots removed', 1.5); });
       document.body.appendChild(box); let hinted = false;
       binds.push([{ removeEventListener() { box.remove(); clearInterval(bt); } }, 'x', null, null]);
-      const bt = setInterval(() => { let show = false; try { show = !!(mp.active && mp.net && mp.net.connected && canBot()); } catch (e) {} box.style.display = show ? 'flex' : 'none'; if (show && !hinted) { hinted = true; banner('Host: K enemy bot, L ally bot, U remove bots', 4); } if (!show && mp.net && mp.net.phase === 'live') hinted = true; }, 500); }
+      const bt = setInterval(() => { let show = false; try { show = !!(mp.active && mp.net && mp.net.connected && canBot()); } catch (e) {} box.style.display = show ? 'flex' : 'none'; sbtn.style.display = mp.net && mp.net.lobby ? '' : 'none'; if (show && !hinted) { hinted = true; banner('Host: K enemy bot, L ally bot, U remove bots', 4); } if (!show && mp.net && mp.net.phase === 'live') hinted = true; }, 500); }
     on(document, 'keydown', (e) => { if (!mp.active) return; if (e.code === 'Escape') return; if (e.code === 'KeyL') { game.showMenu(); return; } keys[e.code] = true; if (['Space', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault(); });
     on(document, 'keyup', (e) => { keys[e.code] = false; });
     on(game.canvas, 'mousedown', (e) => { if (!mp.active) return; if (document.pointerLockElement !== game.canvas) { game.canvas.requestPointerLock(); return; } if (game.eco && game.eco.getState().menuOpen) return; if (e.button === 0) { if (!(mp.net.me.pp > 0 || mp.net.me.dp > 0)) { mp.net.setInput({ fire: true }); mp.net.tap(); } } });
@@ -201,7 +206,7 @@ export function createMultiplayer(game, THREE) {
     try { const sw = WEAPON_ORDER[net.me.weapon]; if (sw && mp._sw !== net.me.weapon) { mp._sw = net.me.weapon; if (g.ws.current !== sw && !g.knifeOn) { g.owned.add(sw); g.ws.select(sw); } } const ca = g.ws.ammo[g.ws.current]; if (ca && net.me.mag != null && g.ws.current === sw) { ca.mag = net.me.mag; ca.reserve = net.me.res; } } catch (er) {}
     g.player.hp = Math.max(0, net.me.hp || 0); g.player.alive = net.alive;
     g.bots.syncRemote(net.remotes());
-    const ph = net.phase === 'freeze' ? 'freeze' : (net.phase === 'live' || net.phase === 'planted') ? 'live' : 'ended', inv = net.me.inv || [];
+    const ph = net.phase === 'freeze' ? 'freeze' : (net.phase === 'live' || net.phase === 'planted' || (net.phase === 'waiting' && net.lobby)) ? 'live' : 'ended', inv = net.me.inv || [];
     g.eco.remote({ grenades: net.me.gr, armor: net.me.ar, helmet: net.me.he, money: net.me.m, primary: inv[0], secondary: inv[1], team: net.team, alive: net.alive, phase: ph, freezeRemaining: ph === 'freeze' ? net.phaseLeft : 0 });
     if (net.bomb && net.bomb.x != null) { g.bomb.planted = true; g.bomb.t = net.bomb.t; g.bomb.pos.set(net.bomb.x, net.bomb.y, net.bomb.z); g.bombMesh.position.set(net.bomb.x, net.bomb.y + 0.13, net.bomb.z); g.bombMesh.visible = true; }
     else { g.bomb.planted = false; g.bombMesh.visible = false; }
@@ -224,7 +229,7 @@ export function createMultiplayer(game, THREE) {
     const bt = net.bomb && net.bomb.t != null && net.phase === 'planted' ? 'BOMB ' + Math.ceil(net.bomb.t) + 's' : '';
     g.info.textContent = net.phase === 'freeze' ? `BUY PHASE · ${Math.ceil(net.phaseLeft)} s · B = shop` : `${bt || hint || ''}${bt ? '' : (hint ? ' · ' : '') + (net.phase || '').toUpperCase() + ' ' + Math.ceil(net.phaseLeft || 0) + 's'}`;
     q('net').textContent = Math.round(net.rttMs) + ' ms';
-    if (mp._canBot && mp._canBot() && !(msgT > 0)) lastMsg = 'Host: K = add enemy bot · L = add ally bot · U = remove bots'; else if (lastMsg.indexOf('Host: K') === 0) lastMsg = '';
+    { const LH = 'PRESS ENTER TO START  -  K / L add bots', LW = 'Waiting for the host to start the match'; if (net.lobby) { let h = false; try { h = isHostNow(); } catch (e) {} lastMsg = h ? LH : LW; msgT = 0.5; } else if (lastMsg === LH || lastMsg === LW || lastMsg.indexOf('Host: K') === 0) { lastMsg = ''; msgT = 0; } }
     if (net.alive && net.phase === 'live') { /* room hint fades after the round starts */ }
     const cam = g.camera;
     for (const b of g.bots.list) {
