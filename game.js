@@ -5,6 +5,7 @@ import { createController } from './movement.js';
 import { raycast, wallBlocked } from './hitscan.js';
 import { createViewmodels, createWeaponSystem, createHUD, createPlayerState, applyDamage, WEAPON_ORDER } from './player.js';
 import { initAudio, play, setListener, startAmbient, setVolume } from './audio.js';
+import { startMusic, stopMusic, setMusicMode, setMusicLevel } from './music.js';
 import { createBots } from './bots.js';
 import { createKillCam } from './killcam.js';
 import { applyLook } from './graphics.js';
@@ -153,6 +154,7 @@ export class Game {
     this.bombMesh.visible = false; this.scene.add(this.bombMesh);
     this.eDown = false; this.plantT = 0; this.stepT = 0; this.score = 0; this.kills = 0; this.heads = 0;
     initAudio({ volume: 0.7, ambient: true }); this.loadSettings(); this.applySettings();
+    { const kick = () => { ['pointerdown', 'keydown'].forEach((ev) => window.removeEventListener(ev, kick, true)); setTimeout(() => { try { startMusic(this.musicMode || 'menu'); this.applySettings(); } catch (e) {} }, 80); }; ['pointerdown', 'keydown'].forEach((ev) => window.addEventListener(ev, kick, true)); }
     this.bindEvents(); this.resize();
     this.ro = new ResizeObserver(() => this.resize()); this.ro.observe(root);
     this.last = performance.now(); this.running = true; this.loop = this.loop.bind(this); requestAnimationFrame(this.loop);
@@ -330,12 +332,13 @@ export class Game {
     const f = (n) => '$' + Math.round(n).toLocaleString('en-US');
     this.sbm.innerHTML = `<span style="color:#7dffb0">${f(mine)}</span><span class="l">AVG $ / PLAYER</span><span style="color:#ffb35c">${f(avg)}</span>`;
   }
-  loadSettings() { let s = {}; try { s = JSON.parse(localStorage.getItem('sc_settings') || '{}'); if (!localStorage.getItem('sc_diff_hard')) { delete s.diff; localStorage.setItem('sc_diff_hard', '1'); localStorage.setItem('sc_settings', JSON.stringify(s)); } } catch (e) {} this.set = Object.assign({ fps: false, sens: 1, vol: 0.7, diff: this.diff }, s); }
+  setMusicMode(m) { this.musicMode = m; try { setMusicMode(m); } catch (e) {} }
+  loadSettings() { let s = {}; try { s = JSON.parse(localStorage.getItem('sc_settings') || '{}'); if (!localStorage.getItem('sc_diff_hard')) { delete s.diff; localStorage.setItem('sc_diff_hard', '1'); localStorage.setItem('sc_settings', JSON.stringify(s)); } } catch (e) {} this.set = Object.assign({ fps: false, sens: 1, vol: 0.7, fx: 1, music: 0.5, sfxOn: true, musicOn: true, diff: this.diff }, s); }
   saveSettings() { try { localStorage.setItem('sc_settings', JSON.stringify(this.set)); } catch (e) {} }
   applySettings() {
     const s = this.set; this.perf.style.display = s.fps ? '' : 'none';
     if (this.ctrl.setSensitivity) this.ctrl.setSensitivity(0.0022 * s.sens);
-    try { setVolume(s.vol); } catch (e) {}
+    try { setVolume(s.sfxOn === false ? 0 : s.vol * s.fx); setMusicLevel(s.music, s.vol, s.musicOn !== false); } catch (e) {}
     this.diff = s.diff;
   }
   openSettings() {
@@ -343,11 +346,15 @@ export class Game {
     o.innerHTML = `<div class="setp"><h2>Settings</h2>
 <label class="sr"><span>FPS / ms counter</span><input type="checkbox" data-k="fps" ${s.fps ? 'checked' : ''}></label>
 <label class="sr"><span>Sensitivity <em data-v="sens">${s.sens.toFixed(2)}x</em></span><input type="range" min="0.3" max="2.5" step="0.05" value="${s.sens}" data-k="sens"></label>
-<label class="sr"><span>Volume <em data-v="vol">${Math.round(s.vol * 100)}%</em></span><input type="range" min="0" max="1" step="0.05" value="${s.vol}" data-k="vol"></label>
+<label class="sr"><span>Master volume <em data-v="vol">${Math.round(s.vol * 100)}%</em></span><input type="range" min="0" max="1" step="0.05" value="${s.vol}" data-k="vol"></label>
+<label class="sr"><span>Effects volume <em data-v="fx">${Math.round(s.fx * 100)}%</em></span><input type="range" min="0" max="1" step="0.05" value="${s.fx}" data-k="fx"></label>
+<label class="sr"><span>Music volume <em data-v="music">${Math.round(s.music * 100)}%</em></span><input type="range" min="0" max="1" step="0.05" value="${s.music}" data-k="music"></label>
+<label class="sr"><span>Sound effects</span><input type="checkbox" data-k="sfxOn" ${s.sfxOn !== false ? 'checked' : ''}></label>
+<label class="sr"><span>Music</span><input type="checkbox" data-k="musicOn" ${s.musicOn !== false ? 'checked' : ''}></label>
 <label class="sr"><span>Bot difficulty <small>(from next round)</small></span><select data-k="diff"><option value="rookie">Rookie</option><option value="chill">Chill</option><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option><option value="veteran">Veteran</option><option value="elite">Elite</option><option value="insane">Insane</option></select></label>
 <button class="b" data-close>Back</button></div>`;
     o.querySelector('select').value = s.diff;
-    o.querySelectorAll('[data-k]').forEach((el) => { el.oninput = el.onchange = () => { const k = el.dataset.k; s[k] = el.type === 'checkbox' ? el.checked : el.tagName === 'SELECT' ? el.value : parseFloat(el.value); const v = o.querySelector(`[data-v="${k}"]`); if (v) v.textContent = k === 'sens' ? s.sens.toFixed(2) + 'x' : Math.round(s.vol * 100) + '%'; this.applySettings(); this.saveSettings(); }; });
+    o.querySelectorAll('[data-k]').forEach((el) => { el.oninput = el.onchange = () => { const k = el.dataset.k; s[k] = el.type === 'checkbox' ? el.checked : el.tagName === 'SELECT' ? el.value : parseFloat(el.value); const v = o.querySelector(`[data-v="${k}"]`); if (v) v.textContent = k === 'sens' ? s.sens.toFixed(2) + 'x' : Math.round(s[k] * 100) + '%'; this.applySettings(); this.saveSettings(); }; });
     o.querySelector('[data-close]').onclick = () => this.closeSettings();
   }
   closeSettings() { this.setOv.style.display = 'none'; this.setOv.innerHTML = ''; }
@@ -668,4 +675,4 @@ export class Game {
     this.kc.afterRender();
   }
   destroy() { this.running = false; this.ro && this.ro.disconnect(); this.ctrl.dispose(); this.renderer.dispose(); }
-}
+    }
