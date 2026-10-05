@@ -136,7 +136,9 @@ export function createMultiplayer(game, THREE) {
       if (m.id === net.id) { banner(m.rv ? 'You were killed. A teammate can revive you for ' + m.rv + 's' : '', 0.1); try { const g = game, kb = g.bots.list.find((b) => b.netId === m.by); g.streaks.registerDeath(); g.killfx.playerDied(); g.hud.setHealth(0); if (kb) g.startDeathCam(kb.group.position, 'You were eliminated.'); } catch (e) {} }
       if (m.rv) bodies.set(m.id, { x: m.x, y: m.y, z: m.z, t: performance.now() / 1000, rv: m.rv }); });
     net.on('revive', (m) => { if (!m) return; bodies.delete(m.id); banner(m.id === net.id ? 'You were revived' : 'Teammate revived', 1.6); });
-    net.on('shot', (m) => { if (!m || m.id === net.id) return; const b = game.bots.list.find((x) => x.netId === m.id); if (b) b.aimT = 0.5; try { const from = new THREE.Vector3(m.o[0], m.o[1], m.o[2]), to = new THREE.Vector3(m.e[0], m.e[1], m.e[2]); play('bot_shot', from); game.anim.onBotShot({ from, to, hit: false }); } catch (e) {} });
+    net.on('shot', (m) => { if (!m || m.id === net.id) return; const b = game.bots.list.find((x) => x.netId === m.id); if (b) b.aimT = 0.5; try { const from = new THREE.Vector3(m.o[0], m.o[1], m.o[2]), to = new THREE.Vector3(m.e[0], m.e[1], m.e[2]); play(['shot_pistol', 'shot_mg', 'shot_sniper'][m.w | 0] || 'bot_shot', from); game.anim.onBotShot({ from, to, hit: false });
+      if (net.alive) { const e = net.eye(), dx = to.x - from.x, dy = to.y - from.y, dz = to.z - from.z, L2 = dx * dx + dy * dy + dz * dz || 1; let u = ((e.x - from.x) * dx + (e.y - from.y) * dy + (e.z - from.z) * dz) / L2; u = Math.max(0, Math.min(1, u)); const px = from.x + dx * u - e.x, py = from.y + dy * u - e.y, pz = from.z + dz * u - e.z, dd = Math.hypot(px, py, pz); if (dd < 3.2 && u > 0.02) play('whiz', { x: e.x + px, y: e.y + py, z: e.z + pz }); }
+      play('impact', { x: to.x, y: to.y, z: to.z }); } catch (e) {} });
     net.on('hit', (m) => { if (!m || m.id !== net.id) return; play('hurt'); try { game.hud.damageFlash(); } catch (e) {} });
     net.connect();
   }
