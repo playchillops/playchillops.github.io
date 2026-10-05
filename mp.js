@@ -157,6 +157,10 @@ export function createMultiplayer(game, THREE) {
 
   function bind() {
     const on = (t, ev, f, o) => { t.addEventListener(ev, f, o); binds.push([t, ev, f, o]); };
+    const isHost = () => { const ids = [net.id, ...net.roster.keys()]; return net.id === Math.min(...ids); };
+    const canBot = () => isHost() && (net.phase === 'waiting' || net.phase === 'freeze');
+    on(window, 'keydown', (e) => { if (!canBot() || e.repeat) return; if (e.code === 'KeyK') { net.sendRaw({ t: 'addbot', team: net.team === 'T' ? 'CT' : 'T' }); banner('Enemy bot added', 1.5); } else if (e.code === 'KeyL') { net.sendRaw({ t: 'addbot', team: net.team }); banner('Ally bot added', 1.5); } else if (e.code === 'KeyU') { net.sendRaw({ t: 'rmbots' }); banner('Bots removed', 1.5); } });
+    mp._canBot = canBot;
     on(document, 'keydown', (e) => { if (!mp.active) return; if (e.code === 'Escape') return; if (e.code === 'KeyL') { game.showMenu(); return; } keys[e.code] = true; if (['Space', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault(); });
     on(document, 'keyup', (e) => { keys[e.code] = false; });
     on(game.canvas, 'mousedown', (e) => { if (!mp.active) return; if (document.pointerLockElement !== game.canvas) { game.canvas.requestPointerLock(); return; } if (game.eco && game.eco.getState().menuOpen) return; if (e.button === 0) { if (!(mp.net.me.pp > 0 || mp.net.me.dp > 0)) { mp.net.setInput({ fire: true }); mp.net.tap(); } } });
@@ -205,6 +209,7 @@ export function createMultiplayer(game, THREE) {
     const bt = net.bomb && net.bomb.t != null && net.phase === 'planted' ? 'BOMB ' + Math.ceil(net.bomb.t) + 's' : '';
     g.info.textContent = net.phase === 'freeze' ? `BUY PHASE · ${Math.ceil(net.phaseLeft)} s · B = shop` : `${bt || hint || ''}${bt ? '' : (hint ? ' · ' : '') + (net.phase || '').toUpperCase() + ' ' + Math.ceil(net.phaseLeft || 0) + 's'}`;
     q('net').textContent = Math.round(net.rttMs) + ' ms';
+    if (mp._canBot && mp._canBot() && !(msgT > 0)) lastMsg = 'Host: K = add enemy bot · L = add ally bot · U = remove bots'; else if (lastMsg.indexOf('Host: K') === 0) lastMsg = '';
     if (net.alive && net.phase === 'live') { /* room hint fades after the round starts */ }
     const cam = g.camera;
     for (const b of g.bots.list) {
