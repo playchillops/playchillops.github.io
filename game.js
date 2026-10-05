@@ -63,7 +63,7 @@ const CSS = `
 .sg button.b{font:inherit;font-weight:700;padding:12px 20px;border-radius:10px;border:0;background:#ffd166;color:#222;cursor:pointer;min-height:44px}
 .sg button.b.alt{background:#9ad1ff}
 .sg .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
-.sg .info{position:absolute;top:56px;left:50%;transform:translateX(-50%);z-index:21;font-weight:700;font-size:15px;text-shadow:0 2px 0 rgba(0,0,0,.5);pointer-events:none;white-space:nowrap}
+.sg .info{position:absolute;top:78px;left:50%;transform:translateX(-50%);z-index:21;font-weight:700;font-size:15px;text-shadow:0 2px 0 rgba(0,0,0,.5);pointer-events:none;white-space:nowrap}
 .sg .kf{position:absolute;right:24px;top:70px;z-index:21;font-weight:700;text-align:right;text-shadow:0 1px 3px #000;pointer-events:none}
 `;
 const mulberry = (a) => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
@@ -134,7 +134,7 @@ export class Game {
     this.info = document.createElement('div'); this.info.className = 'info'; root.appendChild(this.info);
     this.kf = document.createElement('div'); this.kf.className = 'kf'; root.appendChild(this.kf);
     this.hint = document.createElement('div'); this.hint.style.cssText = 'position:absolute;right:200px;bottom:34px;z-index:21;font-weight:800;font-size:18px;text-shadow:0 2px 4px #000;pointer-events:none'; root.appendChild(this.hint);
-    this.sb = document.createElement('div'); this.sb.className = 'scb'; this.sb.style.display = 'none'; root.appendChild(this.sb);
+    this.sb = document.createElement('div'); this.sb.className = 'scb'; this.sb.style.display = 'none'; this.sb.style.flexWrap = 'wrap'; root.appendChild(this.sb);
     this.match = { p: 0, b: 0, round: 1, over: false };
     this.perf = document.createElement('div'); this.perf.style.cssText = 'position:absolute;left:8px;top:8px;z-index:200;font:700 10px/1 ui-monospace,monospace;color:#fff;background:rgba(0,0,0,.45);padding:5px 8px;border-radius:8px;pointer-events:none'; this.perf.textContent = '-- FPS · -- ms'; root.appendChild(this.perf); this.pf = { n: 0, t: 0, worst: 0 };
     this.setOv = document.createElement('div'); this.setOv.className = 'setov'; this.setOv.style.display = 'none'; root.appendChild(this.setOv);
@@ -318,7 +318,13 @@ export class Game {
   renderSB() {
     const m = this.match, pips = (w, c) => Array.from({ length: 3 }, (_, i) => `<i class="pip${i < w ? ' on' : ''}" style="--c:${c}"></i>`).join('');
     this.sb.style.display = this.state === 'menu' ? 'none' : 'flex';
-    this.sb.innerHTML = `<span class="pips">${pips(m.p, '#7dffb0')}</span><b>${m.p}</b><span class="sep">:</span><b>${m.b}</b><span class="pips">${pips(m.b, '#ffb35c')}</span><span class="rd">R${Math.min(5, m.round)}/5</span>`;
+    this.sb.innerHTML = `<span class="pips">${pips(m.p, '#7dffb0')}</span><b>${m.p}</b><span class="sep">:</span><b>${m.b}</b><span class="pips">${pips(m.b, '#ffb35c')}</span><span class="rd">R${Math.min(5, m.round)}/5</span><span class="mny" style="flex-basis:100%;display:flex;justify-content:space-between;font-size:11px;letter-spacing:.06em;opacity:.85;margin-top:2px"><span id="sbm1" style="color:#7dffb0"></span><span style="opacity:.6">AVG $ / PLAYER</span><span id="sbm2" style="color:#ffb35c"></span></span>`;
+    this.updSBMoney();
+  }
+  updSBMoney() {
+    const a = this.sb.querySelector('#sbm1'), b = this.sb.querySelector('#sbm2'); if (!a || !b || !this.eco) return;
+    const mine = this.eco.getState().money, be = this.botEco || [], avg = be.length ? be.reduce((s, e) => s + e.money, 0) / be.length : 0;
+    const f = (n) => '$' + Math.round(n).toLocaleString('en-US'); a.textContent = f(mine); b.textContent = f(avg);
   }
   loadSettings() { let s = {}; try { s = JSON.parse(localStorage.getItem('sc_settings') || '{}'); if (!localStorage.getItem('sc_diff_hard')) { delete s.diff; localStorage.setItem('sc_diff_hard', '1'); localStorage.setItem('sc_settings', JSON.stringify(s)); } } catch (e) {} this.set = Object.assign({ fps: false, sens: 1, vol: 0.7, diff: this.diff }, s); }
   saveSettings() { try { localStorage.setItem('sc_settings', JSON.stringify(this.set)); } catch (e) {} }
@@ -593,6 +599,7 @@ export class Game {
     this.plantAnimTick(dt);
     // bots
     const self = this;
+    this._sbT = (this._sbT || 0) + dt; if (this._sbT > 0.5) { this._sbT = 0; this.updSBMoney(); }
     const events = this.bots.update(dt, {
       playerEye: st.eye, playerAlive: this.player.alive,
       bomb: { planted: this.bomb.planted, pos: this.bomb.pos, site: this.bomb.site, defuse(d) { self.bomb.defuseT += d; return self.bomb.defuseT >= 5; } },
