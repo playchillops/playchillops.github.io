@@ -147,15 +147,16 @@ export function createMultiplayer(game, THREE) {
     try { game.vm.group.visible = true; } catch (e) {}
     hud = el(`<div class="cr"></div><div class="top"><div class="sc"><b>0</b> : <b>0</b></div><div class="ph"></div></div><div class="rc"></div><div class="hp"></div><div class="am"></div><div class="net"></div><div class="msg"></div>`, 'mp-hud');
     root.appendChild(hud); try { game.hud.root.style.display = ''; game.hud.setHealth(100); } catch (e) {}
+    try { game.newEconomy(); game.eco.setRemote((id) => mp.net && mp.net.sendRaw({ t: 'buy', id })); } catch (e) {}
     mp._sk = null; hud.querySelector('.rc').textContent = 'ROOM ' + w.room + ' - share the link or code. L to leave';
     bind(); game.canvas.requestPointerLock && game.canvas.requestPointerLock();
   }
 
   function bind() {
     const on = (t, ev, f, o) => { t.addEventListener(ev, f, o); binds.push([t, ev, f, o]); };
-    on(document, 'keydown', (e) => { if (!mp.active) return; if (e.code === 'Escape') return; if (e.code === 'KeyL') { game.showMenu(); return; } keys[e.code] = true; if (e.code === 'KeyQ' && !e.repeat) mp.net.input.aim = !mp.net.input.aim; if (e.code.startsWith('Digit') && +e.code[5] >= 1 && +e.code[5] <= 3 && e.code !== 'Digit3') mp.net.setInput({ w: +e.code[5] - 1 }); if (['Space', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault(); });
+    on(document, 'keydown', (e) => { if (!mp.active) return; if (e.code === 'Escape') return; if (e.code === 'KeyL') { game.showMenu(); return; } if (e.code === 'KeyB') { try { game.eco.toggle(); if (game.eco.getState().menuOpen && document.pointerLockElement) document.exitPointerLock(); } catch (er) {} return; } keys[e.code] = true; if (e.code === 'KeyQ' && !e.repeat) mp.net.input.aim = !mp.net.input.aim; if (e.code.startsWith('Digit') && +e.code[5] >= 1 && +e.code[5] <= 3 && e.code !== 'Digit3') mp.net.setInput({ w: +e.code[5] - 1 }); if (['Space', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault(); });
     on(document, 'keyup', (e) => { keys[e.code] = false; });
-    on(game.canvas, 'mousedown', (e) => { if (!mp.active) return; if (document.pointerLockElement !== game.canvas) { game.canvas.requestPointerLock(); return; } if (e.button === 0) { if (!(mp.net.me.pp > 0 || mp.net.me.dp > 0)) { mp.net.setInput({ fire: true }); mp.net.tap(); } } if (e.button === 2) mp.net.input.aim = !mp.net.input.aim; e.preventDefault(); });
+    on(game.canvas, 'mousedown', (e) => { if (!mp.active) return; if (document.pointerLockElement !== game.canvas) { game.canvas.requestPointerLock(); return; } if (game.eco && game.eco.getState().menuOpen) return; if (e.button === 0) { if (!(mp.net.me.pp > 0 || mp.net.me.dp > 0)) { mp.net.setInput({ fire: true }); mp.net.tap(); } } if (e.button === 2) mp.net.input.aim = !mp.net.input.aim; e.preventDefault(); });
     on(document, 'mouseup', (e) => { if (mp.active && e.button === 0) mp.net.setInput({ fire: false }); });
     on(document, 'mousemove', (e) => { if (mp.active && document.pointerLockElement === game.canvas) mp.net.look(e.movementX, e.movementY); });
     on(window, 'blur', () => { keys = {}; });
@@ -206,7 +207,10 @@ export function createMultiplayer(game, THREE) {
     const q = (c) => hud.querySelector('.' + c);
     try { const my = net.team === 'T' ? 0 : 1, key = net.score[my] + ':' + net.score[1 - my] + ':' + net.round;
       if (mp._sk !== key) { mp._sk = key; game.match = { p: net.score[my], b: net.score[1 - my], round: net.round }; game.renderSB(); }
-      if (game.sbm) game.sbm.style.display = 'none'; } catch (er) {}
+      const ph = net.phase === 'freeze' ? 'freeze' : (net.phase === 'live' || net.phase === 'planted') ? 'live' : 'ended', inv = net.me.inv || [];
+      game.eco.remote({ money: net.me.m, primary: inv[0], secondary: inv[1], team: net.team, alive: net.alive, phase: ph, freezeRemaining: ph === 'freeze' ? net.phaseLeft : 0 });
+      if (game.sbm) { const av = net.avg || [0, 0], mineT = net.team === 'T', f = (n) => '$' + Math.round(n).toLocaleString('en-US'); game.sbm.style.display = 'flex';
+        game.sbm.innerHTML = `<span style="color:#7dffb0">${f(net.me.m || 0)}</span><span class="l">AVG $ / PLAYER</span><span style="color:#ffb35c">${f(mineT ? av[1] : av[0])}</span>`; } } catch (er) {}
     q('ph').textContent = (net.phase || '').toUpperCase() + (net.phaseLeft ? '  ' + Math.ceil(net.phaseLeft) + 's' : '') + (net.bomb ? '  BOMB ' + (net.bomb.t != null ? Math.ceil(net.bomb.t) + 's' : '') : '');
     q('hp').textContent = (net.alive || net.phase !== 'live') ? Math.max(0, Math.round(net.me.hp || 100)) : 'DEAD';
     q('am').innerHTML = (net.alive || net.phase !== 'live') ? `${net.me.mag} <small>/ ${net.me.res}</small>` : '';
@@ -227,6 +231,7 @@ export function createMultiplayer(game, THREE) {
     if (document.pointerLockElement) document.exitPointerLock();
     try { game.vm.group.visible = false; } catch (e) {}
   }
+  try { const V = (new URL(import.meta.url).searchParams.get('v') || 'dev').slice(0, 7), vd = document.createElement('div'); vd.textContent = 'v' + V; vd.style.cssText = 'position:fixed;right:10px;bottom:6px;z-index:5;font:600 11px Fredoka,system-ui,sans-serif;letter-spacing:.08em;color:#fff;opacity:.4;pointer-events:none;text-shadow:0 1px 3px #000'; document.body.appendChild(vd); setInterval(() => { vd.style.display = game.state === 'menu' ? '' : 'none'; }, 700); } catch (e) {}
   mp.stop = stop; mp.open = lobby;
   mp.autoJoin = () => { const m = /[?&]room=([A-Za-z0-9]+)/.exec(location.search); if (m) { lobby(m[1].toUpperCase()); return true; } return false; };
   return mp;
