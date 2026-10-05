@@ -382,10 +382,11 @@ export class Game {
   nearestDrop() { const p = this.ctrl.state.position; let best = null, bd = 1.6; for (const d of this.drops || []) { const dd = Math.hypot(p.x - d.mesh.position.x, p.z - d.mesh.position.z); if (dd < bd && Math.abs(p.y - d.mesh.position.y) < 2 && d.t > 0.6) { bd = dd; best = d; } } return best; }
   tryPickup() {
     const d = this.nearestDrop(); if (!d) return false;
-    this.syncAmmoToEco(); const r = this.eco.pickupDrop(d.drop); if (!r || r.ok === false) { this.kf.textContent = (r && r.reason) || 'No puedes recoger ahora'; this.kfT = 1.2; return false; }
+    if (this.mp && this.mp.active) { this.mp.pickup(d.drop.dropId); return true; }
+    this.syncAmmoToEco(); const r = this.eco.pickupDrop(d.drop); if (!r || r.ok === false) { this.kf.textContent = (r && r.reason) || 'Cannot pick up now'; this.kfT = 1.2; return false; }
     this.scene.remove(d.mesh); this.drops.splice(this.drops.indexOf(d), 1);
     if (d.drop.ammo && this.ws.ammo[d.drop.weapon]) { this.ws.ammo[d.drop.weapon].mag = d.drop.ammo.mag ?? this.ws.ammo[d.drop.weapon].mag; this.ws.ammo[d.drop.weapon].reserve = d.drop.ammo.reserve ?? this.ws.ammo[d.drop.weapon].reserve; }
-    this.owned.add(d.drop.weapon); this.kf.textContent = 'Arma recogida'; this.kfT = 1.2; return true;
+    this.owned.add(d.drop.weapon); this.kf.textContent = 'Weapon picked up'; this.kfT = 1.2; return true;
   }
   updateDrops(dt) {
     for (const d of this.drops || []) d.t += dt;
@@ -666,4 +667,4 @@ export class Game {
     this.kc.afterRender();
   }
   destroy() { this.running = false; this.ro && this.ro.disconnect(); this.ctrl.dispose(); this.renderer.dispose(); }
-      }
+        }
