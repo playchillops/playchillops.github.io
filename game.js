@@ -437,6 +437,7 @@ export class Game {
     if (this.mp && this.mp.active) this.mp.stop(); this.ov.style.display = 'flex';
     this.state = 'menu'; this.sb.style.display = 'none'; if (this.sbm) this.sbm.style.display = 'none'; this.streaks.cancel('menu'); this.streaks.show(false); this.hud.root.style.display = 'none'; this.info.textContent = ''; this.kf.textContent = '';
     this.ctrl.setEnabled(false); this.ctrl.exitPointerLock();
+    if (this.menuStop) { try { this.menuStop(); } catch (e) {} this.menuStop = null; }
     this.overlay('', []); this.menuStop = buildMenu(this, THREE, createCharacter, ROSTER);
   }
   pause() {
