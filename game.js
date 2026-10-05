@@ -467,9 +467,9 @@ export class Game {
       let kh = hit ? (hit.kind === 'target' ? null : { kind: 'world', normal: hit.normal }) : null;
       if (hit && hit.kind === 'target') {
         const b = hit.target, zone = hit.zone === 'legs' ? 'limb' : hit.zone;
-        const hp0 = b.health, r = applyDamage(b.health, s.weapon, zone);
+        const mpOn = !!(this.mp && this.mp.active), hp0 = b.health, r0 = applyDamage(b.health, s.weapon, zone), r = mpOn ? { ...r0, killed: false, hp: b.health } : r0;
         kh = { kind: 'target', bot: b, zone, headshot: r.headshot, killed: r.killed };
-        this.bots.damage(b, r.hp, r.headshot); 
+        if (mpOn) b.flash = 0.12; else this.bots.damage(b, r.hp, r.headshot); /* multiplayer: the server decides hits and kills */
         this.cineOK = r.killed && this.bots.aliveCount() <= 1;
         this.killfx.hit({ bot: b, point: hit.point, zone, weapon: s.weapon, damage: hp0 - r.hp, killed: r.killed, headshot: r.headshot, origin: o, dir, distance: hit.distance, scoped: this.ws.aiming, last: this.cineOK });
         play(r.killed ? 'kill' : r.headshot ? 'headshot' : 'hit');
@@ -586,4 +586,4 @@ export class Game {
     this.kc.afterRender();
   }
   destroy() { this.running = false; this.ro && this.ro.disconnect(); this.ctrl.dispose(); this.renderer.dispose(); }
-}
+  }
