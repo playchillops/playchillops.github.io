@@ -56,6 +56,7 @@ const el = (h, c) => { const d = document.createElement('div'); if (c) d.classNa
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 export function createMultiplayer(game, THREE) {
+  try { fetch(HEALTH, { mode: 'no-cors', cache: 'no-store' }).catch(() => {}); } catch (e) {}   // wake the free server as soon as the page loads
   if (!document.getElementById('mp-css')) { const s = document.createElement('style'); s.id = 'mp-css'; s.textContent = CSS; document.head.appendChild(s); }
   const root = game.root;
   const mp = { active: false, net: null };
@@ -66,10 +67,11 @@ export function createMultiplayer(game, THREE) {
   const show = (html) => { clear(); screen = el(`<div class="mp-card">${html}</div>`, 'mp'); root.appendChild(screen); return screen; };
 
   function lobby(preset) {
-    const s = show(`<h2>MULTIPLAYER</h2><p>Bomb mode. Plant or defuse, first to 5 rounds.</p>
+    const s = show(`<h2>MULTIPLAYER</h2><p>Bomb mode. Best of 5, sides swap after round 3.</p>
 <label>YOUR NAME</label><input id="mpn" maxlength="14" value="${esc(getName())}" placeholder="Player">
 <label>MODE</label><div class="mp-row" style="margin-top:0"><button class="mp-btn" id="m1">1v1</button><button class="mp-btn alt" id="m2">2v2</button></div>
 <div class="mp-row"><button class="mp-btn" id="mpf">FIND MATCH</button><button class="mp-btn alt" id="mpc">CREATE PRIVATE ROOM</button></div>
+<div id="mps" style="font-size:12px;letter-spacing:.14em;text-transform:uppercase;opacity:.8;margin:10px 0 0">Checking server...</div>
 <label>OPEN GAMES <a id="mpr" style="cursor:pointer;opacity:.8">refresh</a></label><div id="mpl" style="max-height:110px;overflow:auto;font-size:14px;opacity:.9">Loading...</div>
 <label>OR JOIN WITH A CODE</label><div class="mp-row" style="margin-top:0"><input id="mpj" maxlength="8" placeholder="CODE" style="text-transform:uppercase"><button class="mp-btn alt" id="mpg" style="flex:0 0 90px">JOIN</button></div>
 <div class="mp-row"><button class="mp-btn alt" id="mpb">BACK</button></div>`);
@@ -80,7 +82,9 @@ export function createMultiplayer(game, THREE) {
     q('m1').onclick = () => setMode('1v1'); q('m2').onclick = () => setMode('2v2');
     q('mpf').onclick = () => { setName(nm()); connect({ room: 'MATCH', name: nm() }); };
     const loadList = async () => { const l = q('mpl'); try { const c = new AbortController(); setTimeout(() => c.abort(), 4000); const r = await (await fetch(HEALTH.replace('/healthz', '/rooms'), { cache: 'no-store', signal: c.signal })).json(); l.innerHTML = r.length ? r.map((g) => `<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0"><span>${g.mode.toUpperCase()} - ${g.players}/${g.max} - ${esc(g.phase)}</span><button class="mp-btn alt" style="flex:0 0 64px;padding:4px" data-c="${esc(g.code)}" ${g.full ? 'disabled' : ''}>${g.full ? 'FULL' : 'JOIN'}</button></div>`).join('') : 'No open games right now. Hit FIND MATCH to start one.'; l.querySelectorAll('button[data-c]').forEach((b) => { b.onclick = () => { setName(nm()); connect({ room: b.dataset.c, name: nm() }); }; }); } catch (e) { l.textContent = 'Server is asleep or unreachable. FIND MATCH will wake it up.'; } };
-    q('mpr').onclick = loadList; loadList();
+    const status = async () => { const e = q('mps'); if (!e) return; const t0 = performance.now(); try { const c = new AbortController(); const to = setTimeout(() => c.abort(), 6000); const r = await (await fetch(HEALTH.replace('/healthz', '/stats'), { cache: 'no-store', signal: c.signal })).json(); clearTimeout(to); if (e.isConnected) { e.style.color = '#7dffb0'; e.textContent = '\u25CF Server online \u00B7 ' + Math.round(performance.now() - t0) + ' ms \u00B7 ' + (r.players || 0) + ' playing \u00B7 ' + (r.rooms || 0) + ' rooms'; } } catch (er) { if (e.isConnected) { e.style.color = '#ffd24a'; e.textContent = '\u25CF Waking the server up... (free server, up to a minute)'; setTimeout(status, 4000); } } };
+    status();
+    q('mpr').onclick = () => { loadList(); status(); }; loadList();
     q('mpc').onclick = () => { setName(nm()); connect({ room: 'new', name: nm() }); };
     q('mpg').onclick = () => { const c = q('mpj').value.trim().toUpperCase(); if (!c) return q('mpj').focus(); setName(nm()); connect({ room: c, name: nm() }); };
     q('mpb').onclick = () => { clear(); game.showMenu && game.showMenu(); };
