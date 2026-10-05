@@ -120,6 +120,9 @@ export function createMultiplayer(game, THREE) {
     net.on('reconnecting', () => { banner('Connection lost. Reconnecting...', 99); });
     net.on('disconnected', () => { stop(); show(`<div class="mp-c"><h2 style="font-size:22px">Disconnected</h2><p>The connection dropped.</p><div class="mp-row"><button class="mp-btn" id="mpr">BACK TO LOBBY</button></div></div>`).querySelector('#mpr').onclick = () => lobby(); });
     net.on('close', () => { if (!welcomed && !net.closing && ++tries > 3) { stop(); p._n = (p._n || 0) + 1; if (p._n >= 3) { show(`<div class="mp-c"><h2 style="font-size:22px">Can't reach the server</h2><p>The game server answered but refused the connection. Check your internet, or try again in a minute.</p><div class="mp-row"><button class="mp-btn" id="mpy">TRY AGAIN</button><button class="mp-btn alt" id="mpr">BACK</button></div></div>`).querySelector('#mpy').onclick = () => { p._n = 0; connect(p); }; screen.querySelector('#mpr').onclick = () => lobby(); } else wakeScreen(p, 0); } });
+    net.on('drop', (m) => { try { if (m && m.d && !(game.drops || []).some((x) => x.drop.dropId === m.d.dropId)) game.addDrop(m.d); } catch (e) {} });
+    net.on('dropgone', (m) => { try { const g = game, d = (g.drops || []).find((x) => x.drop.dropId === m.id); if (d) { g.scene.remove(d.mesh); g.drops.splice(g.drops.indexOf(d), 1); if (g.ws.ammo) { play('ui_click'); } } } catch (e) {} });
+    net.on('dropsclear', () => { try { const g = game; for (const d of g.drops || []) g.scene.remove(d.mesh); g.drops = []; } catch (e) {} });
     net.on('swap', () => banner('Switching sides', 3));
     net.on('round_start', () => { bodies.clear(); play('round_start'); banner('Round start', 1.6); try { const g = game; if (g.deathCam) { g.deathCam.banner.remove(); g.deathCam = null; g.hud.root.style.display = ''; g.vm.group.visible = true; g.camera.fov = 75; g.camera.updateProjectionMatrix(); } g.killfx.reset(); g.kc.clear(); g.streaks.cancel('round'); g.player.reset(); g.ws.refill(); g.pick('secondary'); g.hud.setHealth(100); } catch (e) {} });
     net.on('round_end', (m) => { banner('Round over', 2.5); try { play(m && m.winner === net.team ? 'round_win' : 'round_lose'); } catch (e) {} });
@@ -167,6 +170,7 @@ export function createMultiplayer(game, THREE) {
   mp.drive = (dt) => {
     const net = mp.net; if (!net) return;
     const g = game, st = g.ctrl.state, k = keys;
+    if (!net.cur) return;
     if (mp._re !== net.respawns) { mp._re = net.respawns; g.ctrl.teleport({ x: net.cur.x, y: net.cur.y, z: net.cur.z }, { yaw: net.yaw, pitch: net.pitch }); } else { net.yaw = st.yaw; net.pitch = st.pitch; }
     net.setInput({ f: (k.KeyW ? 1 : 0) - (k.KeyS ? 1 : 0), r: (k.KeyD ? 1 : 0) - (k.KeyA ? 1 : 0), j: !!k.Space, c: !!(k.ShiftLeft || k.ShiftRight), rl: !!k.KeyR, use: !!k.KeyE, aim: !!g.ws.aiming, w: Math.max(0, WEAPON_ORDER.indexOf(g.ws.current)) });
     const busy = (net.me.pp > 0 || net.me.dp > 0) && net.alive; if (busy || !net.alive) net.setInput({ fire: false });
@@ -175,6 +179,7 @@ export function createMultiplayer(game, THREE) {
     const e = net.eye();
     g.ctrl.teleport({ x: e.feet.x, y: e.feet.y, z: e.feet.z }, { yaw: st.yaw, pitch: st.pitch });
     try { st.velocity.x = net.me.v ? net.me.v[0] : 0; st.velocity.y = net.me.v ? net.me.v[1] : 0; st.velocity.z = net.me.v ? net.me.v[2] : 0; st.grounded = e.grounded !== false; st.crouched = !!e.crouched; st.speed = Math.hypot(st.velocity.x, st.velocity.z); } catch (er) {}
+    try { const sw = WEAPON_ORDER[net.me.weapon]; if (sw && mp._sw !== net.me.weapon) { mp._sw = net.me.weapon; if (g.ws.current !== sw && !g.knifeOn) { g.owned.add(sw); g.ws.select(sw); } } const ca = g.ws.ammo[g.ws.current]; if (ca && net.me.mag != null && g.ws.current === sw) { ca.mag = net.me.mag; ca.reserve = net.me.res; } } catch (er) {}
     g.player.hp = Math.max(0, net.me.hp || 0); g.player.alive = net.alive;
     g.bots.syncRemote(net.remotes());
     const ph = net.phase === 'freeze' ? 'freeze' : (net.phase === 'live' || net.phase === 'planted') ? 'live' : 'ended', inv = net.me.inv || [];
@@ -184,6 +189,7 @@ export function createMultiplayer(game, THREE) {
     g.plantT = busy ? 1 : 0;
   };
   mp.xdmg = (b, amt) => { if (mp.net && b && b.netId != null) mp.net.sendRaw({ t: 'xdmg', id: b.netId, amt: Math.round(amt) }); };
+  mp.pickup = (id) => { if (mp.net) mp.net.sendRaw({ t: 'pickup', id }); };
   mp.fixCam = (cam) => {
     const net = mp.net; if (!net) return;
     const e = net.eye(); cam.position.set(e.x, e.y, e.z);
