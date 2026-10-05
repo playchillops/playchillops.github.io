@@ -381,9 +381,11 @@ export function applyLook(THREE, renderer, scene, map, opts = {}) {
     for (let i = 0; i < 3; i++) { const n = new THREE.Mesh(nutGeo, nutMat); n.position.set(Math.cos(i * 2.1) * 0.22, -0.18, Math.sin(i * 2.1) * 0.22); crown.add(n); }
     group.add(g); palms.push({ crown, ph: rnd() * 6 });
   };
+  if (map.palmSpots) map.palmSpots.forEach((p) => palm(p.x, p.z, p.s, p.y0)); else {
   palmCones.forEach((c, i) => { if (i % 2 === 0) palm(c.position.x, c.position.z, 1.05); });
   // beach palms beyond the arena walls
   for (let i = 0; i < 14; i++) { const a = (i / 14) * 6.2832 + rr(-0.15, 0.15), rad = rr(55, 61); palm(Math.cos(a) * rad, Math.sin(a) * rad, rr(0.9, 1.5), -0.35); }
+  }
 
   // ---------------------------------------------------------------- floating pollen / petals
   const pn = 140, ppos = new Float32Array(pn * 3), pseed = new Float32Array(pn);
