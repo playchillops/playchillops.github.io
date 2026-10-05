@@ -116,6 +116,7 @@ export function createMultiplayer(game, THREE) {
     net.on('reconnecting', () => { banner('Connection lost. Reconnecting...', 99); });
     net.on('disconnected', () => { stop(); show(`<div class="mp-c"><h2 style="font-size:22px">Disconnected</h2><p>The connection dropped.</p><div class="mp-row"><button class="mp-btn" id="mpr">BACK TO LOBBY</button></div></div>`).querySelector('#mpr').onclick = () => lobby(); });
     net.on('close', () => { if (!welcomed && !net.closing && ++tries > 3) { stop(); p._n = (p._n || 0) + 1; if (p._n >= 3) { show(`<div class="mp-c"><h2 style="font-size:22px">Can't reach the server</h2><p>The game server answered but refused the connection. Check your internet, or try again in a minute.</p><div class="mp-row"><button class="mp-btn" id="mpy">TRY AGAIN</button><button class="mp-btn alt" id="mpr">BACK</button></div></div>`).querySelector('#mpy').onclick = () => { p._n = 0; connect(p); }; screen.querySelector('#mpr').onclick = () => lobby(); } else wakeScreen(p, 0); } });
+    net.on('swap', () => banner('Switching sides', 3));
     net.on('round_start', () => banner('Round start', 1.6));
     net.on('round_end', (m) => banner(m && m.winner != null ? 'Round over' : 'Round over', 2.5));
     net.on('planted', () => banner('Bomb planted', 2));

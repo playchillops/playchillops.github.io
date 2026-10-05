@@ -132,6 +132,7 @@ export class NetClient {
         this.emit('welcome', m); break;
       case 'roster': this.roster.clear(); for (const r of m.list) this.roster.set(r.id, r); this.emit('roster', m); break;
       case 'join': this.roster.set(m.id, { id: m.id, name: m.name, team: m.team, k: 0, d: 0 }); this.emit('join', m); break;
+      case 'swap': if (m.teams) { if (m.teams[this.id]) this.team = m.teams[this.id]; for (const [id, t] of Object.entries(m.teams)) { const r = this.roster.get(+id); if (r) r.team = t; } } this.emit('swap', m); break;
       case 'leave': this.roster.delete(m.id); this.emit('leave', m); break;
       case 'pong': this.rttMs = (this.o.now() - m.c) * 1000; break;
       case 's': this.onSnapshot(m); break;

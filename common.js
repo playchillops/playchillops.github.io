@@ -11,7 +11,7 @@ export const PROTOCOL = 1;
 
 export const R = { // rules (all server side, tweak freely)
   FREEZE: 4, ROUND: 120, END: 5, PLANT: 3.2, FUSE: 40, DEFUSE: 5, BLAST: 14, DEFUSE_RADIUS: 2.5,
-  WIN_ROUNDS: 5, MATCH_END: 8, RECONNECT_GRACE: 30, VOID_Y: -8,
+  WIN_ROUNDS: 3, SWAP_AFTER: 3, MATCH_END: 8, RECONNECT_GRACE: 30, VOID_Y: -8,
 };
 
 export const q = (n, d = 2) => { const m = 10 ** d; return Math.round(n * m) / m; };
