@@ -129,7 +129,8 @@ export class Game {
       raycast, destruction: this.destruction, getTargets: () => this.bots.list,
       onDamage: (b, amount) => { if (this.mp && this.mp.active) { this.mp.xdmg(b, amount); return; } const alive = b.alive; this.bots.damage(b, Math.max(0, b.health - amount), false);
         if (alive && !b.alive) { this.eco.recordKill({ id: b.id, weapon: 'frag' }); this.streaks.registerKill({ headshot: false }); this.kills++; this.score += 100; } },
-      onFlash: (b, seconds) => { b.grenadeFlash = Math.max(b.grenadeFlash || 0, seconds); }
+      onFlash: (b, seconds) => { b.grenadeFlash = Math.max(b.grenadeFlash || 0, seconds); },
+      onEvent: (e) => { try { if (e && e.type === 'detonate' && e.position) { const p = { x: e.position.x, y: e.position.y, z: e.position.z }; play(e.grenade === 'frag' ? 'bomb_explode' : 'impact', p); } } catch (er) {} }
     });
     this.bots.smokeLOS = (a, b) => this.grenades.blocksSight(a, b);
     this.bots.refreshNavigation?.();
@@ -300,7 +301,7 @@ export class Game {
     if (this.eco) { try { this.eco.dispose(); } catch (e) {} }
     this.owned = new Set(['pistol']);
     this.grenades?.clearRound();
-    this.eco = createEconomy({ container: this.root, team: 'T', freezeTime: 10, autoOpen: false, inZone: () => this.inBuyZone(), onEvent: (n, d) => this.onEco(n, d) });
+    this.eco = createEconomy({ container: this.root, team: 'T', freezeTime: 10, autoOpen: false, inZone: () => true, onEvent: (n, d) => this.onEco(n, d) });
     if (this.grenades) this.grenades.setEconomy(this.eco);
   }
   syncAmmoToEco() { if (!this.eco) return; for (const id of ['pistol', 'machinegun', 'sniper']) { const a = this.ws.ammo[id]; if (a && this.eco.getState().inventory.ammo[id]) this.eco.setAmmo(id, { mag: a.mag, reserve: a.reserve }); } }
@@ -480,7 +481,7 @@ export class Game {
     }
   }
   updateBarrier(dt) {
-    if (!this.barrier) return; const fr = this.eco.getState().phase === 'freeze'; this.barA += ((fr ? 1 : 0) - this.barA) * Math.min(1, dt * 2.2);
+    if (!this.barrier) return; const fr = this.eco.getState().phase === 'freeze'; { const nw = performance.now(), rd = this._barT ? Math.min(2, (nw - this._barT) / 1000) : dt; this._barT = nw; this.barA += ((fr ? 1 : 0) - this.barA) * Math.min(1, rd * 2.6); }
     const pulse = 0.82 + Math.sin(performance.now() / 350) * 0.18; this.barMat.opacity = 0.6 * this.barA * pulse; this.barRail.material.opacity = this.barA; this.barrier.visible = this.barA > 0.02;
     if (this.barMat.map) this.barMat.map.offset.y = (performance.now() / 4000) % 1;
   }
@@ -584,4 +585,4 @@ export class Game {
     this.kc.afterRender();
   }
   destroy() { this.running = false; this.ro && this.ro.disconnect(); this.ctrl.dispose(); this.renderer.dispose(); }
-}
+                                                                                                                           }
