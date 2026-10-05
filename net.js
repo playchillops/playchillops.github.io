@@ -136,7 +136,7 @@ export class NetClient {
       case 'leave': this.roster.delete(m.id); this.emit('leave', m); break;
       case 'pong': this.rttMs = (this.o.now() - m.c) * 1000; break;
       case 's': this.onSnapshot(m); break;
-      case 'error': this.closing = m.code !== 'x'; this.emit('error', m); break;
+      case 'error': if (m.code === 'room_not_found' && this.token && this.dropAt) break;   /* server may still be restoring the room: onclose retries */ this.closing = m.code !== 'x'; this.emit('error', m); break;
       default: this.emit(m.t, m);
     }
   }
