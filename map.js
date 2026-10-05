@@ -257,9 +257,14 @@ export function buildMap(THREE, layout = scaleLayout(KITE_GARDEN_V4)) {
   };
   // site discs, decor and callouts need heights
   const Av = V3(A.x, A.y, A.z), Bv = V3(B.x, B.y, B.z); discLabel('A', Av, 'coral'); discLabel('B', Bv, 'cyan');
-  const physicsColliders = [...colliders, ...rampColliders];
   const bombsites = {}; for (const [k, v] of Object.entries({ A: Av, B: Bv })) bombsites[k] = { center: v.clone(), radius: 4, box: new THREE.Box3(V3(v.x - 4, v.y - 1, v.z - 4), V3(v.x + 4, v.y + 3, v.z + 4)) };
-  return { layout: L, stairs: stairsList, callouts: L.callouts.map(([name, x, z]) => ({ name, position: V3(x, getHeight(x, z), z) })), group, lights, colliders, physicsColliders, floors, ramps, getHeight,
+  // palm trees: shared by the renderer (graphics.js), the server and bots so trunks block players, cars and bullets
+  const palmSpots = []; { const wp = new THREE.Vector3(); let ci = 0; group.traverse((o) => { if (o.isMesh && o.geometry && o.geometry.type === 'ConeGeometry') { if (o.name === 'plant' && ci % 2 === 0) { o.getWorldPosition(wp); palmSpots.push({ x: wp.x, z: wp.z, s: 1.05, y0: 0 }); } ci++; } });
+    const fr = (n) => { const v = Math.sin(n * 12.9898 + 78.233) * 43758.5453; return v - Math.floor(v); };
+    for (let i = 0; i < 14; i++) { const a = (i / 14) * 6.2832 + (fr(i + 1) - .5) * .3, rad = 55 + fr(i + 20) * 6; palmSpots.push({ x: Math.cos(a) * rad, z: Math.sin(a) * rad, s: .9 + fr(i + 40) * .6, y0: -.35 }); }
+    for (const p of palmSpots) { const hw = .32 * p.s, b = new THREE.Box3(new THREE.Vector3(p.x - hw, p.y0, p.z - hw), new THREE.Vector3(p.x + hw, p.y0 + 4.2 * p.s, p.z + hw)); b.name = 'palm trunk'; b.structural = true; b.breakable = false; colliders.push(b); } }
+  const physicsColliders = [...colliders, ...rampColliders];
+  return { layout: L, palmSpots, stairs: stairsList, callouts: L.callouts.map(([name, x, z]) => ({ name, position: V3(x, getHeight(x, z), z) })), group, lights, colliders, physicsColliders, floors, ramps, getHeight,
     stepHeight: STEP, spawnPoints, bombsites, navGrid, bounds: { minX: -H, maxX: H, minZ: -H, maxZ: H }, sky: { background: 0xb4dcf0, fog: { color: 0xb4dcf0, near: 80, far: 200 } },
     dispose() { for (const g of geos) g.dispose(); for (const m of mats) m.dispose(); for (const t of textures) t.dispose(); sun.shadow.map?.dispose(); } };
 }
