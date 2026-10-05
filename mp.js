@@ -1,6 +1,7 @@
 // mp.js - multiplayer lobby, wake screen and in-match client (uses net.js / common.js)
 import { NetClient } from './net.js';
 import * as ACC from './account.js';
+import { lobbyPanel } from './social.js';
 import { createController } from './movement.js';
 import { createCharacter, CHARACTER_IDS } from './characters.js';
 import { WEAPON_ORDER } from './player.js';
@@ -70,6 +71,7 @@ export function createMultiplayer(game, THREE) {
 <label>OPEN GAMES <a id="mpr" style="cursor:pointer;opacity:.8">refresh</a></label><div id="mpl" style="max-height:110px;overflow:auto;font-size:14px;opacity:.9">Loading...</div>
 <label>OR JOIN WITH A CODE</label><div class="mp-row" style="margin-top:0"><input id="mpj" maxlength="8" placeholder="CODE" style="text-transform:uppercase"><button class="mp-btn alt" id="mpg" style="flex:0 0 90px">JOIN</button></div>
 <div class="mp-row"><button class="mp-btn alt" id="mpb">BACK</button></div>`);
+    s.appendChild(lobbyPanel());
     const q = (i) => s.querySelector('#' + i), nm = () => (q('mpn').value.trim() || 'Player').slice(0, 14);
     const setMode = (m) => { mode = m; q('m1').classList.toggle('alt', m !== '1v1'); q('m2').classList.toggle('alt', m !== '2v2'); };
     setMode(mode);

@@ -33,3 +33,6 @@ export async function restore(code) { const old = cred; cred = String(code || ''
 export const publicProfile = async (id) => (await api('/u/' + encodeURIComponent(id))).j;
 export const companies = async () => (await api('/leaderboard/companies')).j || [];
 export const players = async () => (await api('/leaderboard/players')).j || [];
+export const board = async (range) => (await api('/leaderboard/players?range=' + (range || 'all'))).j || [];
+export const feed = async () => (await api('/feed')).j || [];
+export const online = async () => (await api('/online')).j || [];

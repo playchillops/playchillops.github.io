@@ -1,6 +1,7 @@
 // menu.js - ChillOps main menu (Black Ops style layout): modes left, section content center, player right.
 import { getStats, shareCard, shareText, rank, favDiff } from './stats.js';
 import * as ACC from './account.js';
+import { topBox, boardPanel } from './social.js';
 import { logoHTML, startConfetti } from './intro.js';
 const CSS = `
 .mn{position:absolute;inset:0;z-index:1;font-family:Fredoka,system-ui,sans-serif;color:#fff;text-align:left;box-sizing:border-box}
@@ -61,7 +62,7 @@ export function buildMenu(game, THREE, createCharacter, ROSTER) {
   el.innerHTML = `<div class="mn-char"><canvas style="width:100%;height:100%"></canvas></div><div class="mn-logo"><div class="chl">${logoHTML()}</div></div><div class="mn-list"></div><div class="mn-pan"></div>
 <div class="mn-who"><div class="mn-name">${name}</div><div class="mn-lvl">LEVEL 1</div></div>
 <div class="mn-bar"><span><kbd>↑↓</kbd>Navigate</span><span><kbd>Enter</kbd>Select</span><span><kbd>Esc</kbd>Back</span></div>`;
-  ov.appendChild(el);
+  ov.appendChild(el); el.appendChild(topBox());
   { const bd = document.createElement('div'); bd.style.cssText = 'position:absolute;left:clamp(20px,4vw,64px);top:clamp(96px,19vh,176px);z-index:3;font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:#9aa6c8;opacity:0;transition:opacity .4s'; el.appendChild(bd);
     const load = async () => { try { const c = new AbortController(); const to = setTimeout(() => c.abort(), 70000); const r = await (await fetch('https://sniper-chill-mp.onrender.com/stats', { cache: 'no-store', signal: c.signal })).json(); clearTimeout(to); bd.innerHTML = '<span style="color:#52f0a0">●</span> ' + r.players + ' playing now'; bd.style.opacity = 1; } catch (e) {} };
     if (!/[?&]nostats/.test(location.search)) load(); }
@@ -83,7 +84,7 @@ export function buildMenu(game, THREE, createCharacter, ROSTER) {
     box.querySelector('#acr').onclick = (e) => { e.target.outerHTML = '<code style="user-select:all;word-break:break-all">' + esc(ACC.recoveryCode()) + '</code> (keep it private; it logs you in on another device)'; }; };
   const fillBoard = async () => { const b = pan.querySelector('#lbox'); if (!b) return; const [c, pl] = await Promise.all([ACC.companies(), ACC.players()]); if (!pan.contains(b)) return;
     b.innerHTML = (c.length ? '<table style="width:100%;border-collapse:collapse"><tr style="opacity:.6;text-align:left"><th>#</th><th>Company</th><th>Wins</th><th>Kills</th><th>Players</th></tr>' + c.slice(0, 12).map((x, i) => `<tr><td>${i + 1}</td><td>${esc(x.company)}</td><td>${x.wins}</td><td>${x.kills}</td><td>${x.players}</td></tr>`).join('') + '</table>' : '<p>No companies yet. Be the first: set yours in Profile and win a multiplayer match.</p>') + (pl.length ? '<h4 style="margin:12px 0 4px">TOP PLAYERS</h4>' + pl.slice(0, 8).map((x, i) => `<div>${i + 1}. <a style="color:#9fd" href="?u=${esc(x.id)}">${esc(x.name)}</a> ${x.company ? '(' + esc(x.company) + ')' : ''} - ${x.wins} wins, ${x.kills} kills</div>`).join('') : ''); };
-  const show = () => { const it = items[sel]; pan.innerHTML = it.p ? panels[it.p]() : ''; if (it.p === 'profile') fillProfile(); if (it.p === 'board') fillBoard(); };
+  const show = () => { const it = items[sel]; pan.innerHTML = it.p ? panels[it.p]() : ''; if (it.p === 'profile') fillProfile(); if (it.p === 'board') boardPanel(pan); };
   const setSel = (i) => { if (items[i].gap) return; if (i !== sel) { try { window.ChillAudio && window.ChillAudio.play('uiHover'); } catch (e) {} } sel = i; btns.forEach((b, k) => b && b.classList.toggle('act', k === i)); show(); };
   items.forEach((it, i) => { if (it.gap) { const d = document.createElement('div'); d.className = 'mn-gap'; list.appendChild(d); btns.push(null); return; }
     const b = document.createElement('button'); b.className = 'mn-i' + (it.lock ? ' lock' : '') + (it.diff ? ' dif' : ''); b.innerHTML = it.t + (it.lock ? `<em>${it.lock}</em>` : '') + (it.diff ? `<em>${game.diff}</em>` : ''); b.onmouseenter = () => setSel(i); b.onclick = () => { setSel(i); if (it.a) it.a(); }; list.appendChild(b); btns.push(b); });
