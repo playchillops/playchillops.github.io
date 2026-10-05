@@ -1,7 +1,7 @@
 // common.js - constants + tiny pure helpers shared by server and client (no imports, runs in Node and browser).
 export const TICK = 30;                 // server simulation rate (Hz); client input rate is the same
 export const DT = 1 / TICK;
-export const SNAP_DIV = 2;              // snapshot every N ticks -> 15 Hz (set 1 for 30 Hz, doubles bandwidth)
+export const SNAP_DIV = 1;              // snapshot every tick -> 30 Hz (~8 kB/s per client)
 export const MAX_PLAYERS = 12;
 export const REWIND_TICKS = 10;         // lag compensation window (~333 ms)
 export const HIST_TICKS = 32;
