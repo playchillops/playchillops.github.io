@@ -294,7 +294,7 @@ export class Game {
   endMatchEffects(id) { this.destruction.reset(id); this.grenades.reset(id); }
   onWeaponEvent(n, d) {
     const map = { pistol: 'shot_pistol', machinegun: 'shot_mg', sniper: 'shot_sniper' };
-    if (n === 'shot') play(map[d.weapon]); else if (n === 'empty') { play('empty'); this.anim.onEmpty(); } else if (n === 'reload') { play('reload'); this.anim.onReload(); } else if (n === 'switch') { play('ui_click'); this.anim.onSwitch(); }
+    if (n === 'shot') play(map[d.weapon]); else if (n === 'empty') { play('empty'); this.anim.onEmpty(); } else if (n === 'reload') { play('reload'); this.anim.onReload(); } else if (n === 'switch') { play('switch'); this.anim.onSwitch(); }
   }
   newEconomy() {
     if (this.eco) { try { this.eco.dispose(); } catch (e) {} }
@@ -584,4 +584,4 @@ export class Game {
     this.kc.afterRender();
   }
   destroy() { this.running = false; this.ro && this.ro.disconnect(); this.ctrl.dispose(); this.renderer.dispose(); }
-  }
+}
