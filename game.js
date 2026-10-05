@@ -31,6 +31,7 @@ const CSS = `
 .sg{font-family:Fredoka,system-ui,sans-serif;color:#fff;user-select:none;-webkit-user-select:none;background:#9fdcff}
 .sg canvas.main{width:100%;height:100%;display:block}
 .sg .scb{position:absolute;left:50%;top:8px;transform:translateX(-50%);z-index:30;display:none;align-items:center;gap:10px;pointer-events:none;background:rgba(14,20,28,.55);border-radius:999px;padding:4px 16px;font-family:Fredoka,system-ui,sans-serif;color:#fff;backdrop-filter:blur(3px)}
+.sg .sbm{position:absolute;left:50%;top:50px;transform:translateX(-50%);z-index:21;display:none;align-items:center;gap:12px;font:600 13px Fredoka,system-ui,sans-serif;text-shadow:0 0 3px #000,0 1px 4px #000;pointer-events:none;white-space:nowrap}.sg .sbm .l{font-size:10px;letter-spacing:.14em;color:#fff;opacity:.7}
 .sg .scb b{font-size:20px;font-weight:600;line-height:1;min-width:14px;text-align:center}
 .sg .scb .sep{opacity:.5;font-size:16px}
 .sg .scb .rd{font-size:10px;letter-spacing:.14em;opacity:.65;font-weight:500}
@@ -63,7 +64,7 @@ const CSS = `
 .sg button.b{font:inherit;font-weight:700;padding:12px 20px;border-radius:10px;border:0;background:#ffd166;color:#222;cursor:pointer;min-height:44px}
 .sg button.b.alt{background:#9ad1ff}
 .sg .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
-.sg .info{position:absolute;top:78px;left:50%;transform:translateX(-50%);z-index:21;font-weight:700;font-size:15px;text-shadow:0 2px 0 rgba(0,0,0,.5);pointer-events:none;white-space:nowrap}
+.sg .info{position:absolute;top:76px;left:50%;transform:translateX(-50%);z-index:21;font-weight:700;font-size:15px;text-shadow:0 2px 0 rgba(0,0,0,.5);pointer-events:none;white-space:nowrap}
 .sg .kf{position:absolute;right:24px;top:70px;z-index:21;font-weight:700;text-align:right;text-shadow:0 1px 3px #000;pointer-events:none}
 `;
 const mulberry = (a) => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
@@ -134,7 +135,7 @@ export class Game {
     this.info = document.createElement('div'); this.info.className = 'info'; root.appendChild(this.info);
     this.kf = document.createElement('div'); this.kf.className = 'kf'; root.appendChild(this.kf);
     this.hint = document.createElement('div'); this.hint.style.cssText = 'position:absolute;right:200px;bottom:34px;z-index:21;font-weight:800;font-size:18px;text-shadow:0 2px 4px #000;pointer-events:none'; root.appendChild(this.hint);
-    this.sb = document.createElement('div'); this.sb.className = 'scb'; this.sb.style.display = 'none'; this.sb.style.flexWrap = 'wrap'; root.appendChild(this.sb);
+    this.sb = document.createElement('div'); this.sb.className = 'scb'; this.sb.style.display = 'none'; root.appendChild(this.sb); this.sbm = document.createElement('div'); this.sbm.className = 'sbm'; this.sbm.style.display = 'none'; root.appendChild(this.sbm);
     this.match = { p: 0, b: 0, round: 1, over: false };
     this.perf = document.createElement('div'); this.perf.style.cssText = 'position:absolute;left:8px;top:8px;z-index:200;font:700 10px/1 ui-monospace,monospace;color:#fff;background:rgba(0,0,0,.45);padding:5px 8px;border-radius:8px;pointer-events:none'; this.perf.textContent = '-- FPS · -- ms'; root.appendChild(this.perf); this.pf = { n: 0, t: 0, worst: 0 };
     this.setOv = document.createElement('div'); this.setOv.className = 'setov'; this.setOv.style.display = 'none'; root.appendChild(this.setOv);
@@ -318,13 +319,14 @@ export class Game {
   renderSB() {
     const m = this.match, pips = (w, c) => Array.from({ length: 3 }, (_, i) => `<i class="pip${i < w ? ' on' : ''}" style="--c:${c}"></i>`).join('');
     this.sb.style.display = this.state === 'menu' ? 'none' : 'flex';
-    this.sb.innerHTML = `<span class="pips">${pips(m.p, '#7dffb0')}</span><b>${m.p}</b><span class="sep">:</span><b>${m.b}</b><span class="pips">${pips(m.b, '#ffb35c')}</span><span class="rd">R${Math.min(5, m.round)}/5</span><span class="mny" style="flex-basis:100%;display:flex;justify-content:space-between;font-size:11px;letter-spacing:.06em;opacity:.85;margin-top:2px"><span id="sbm1" style="color:#7dffb0"></span><span style="opacity:.6">AVG $ / PLAYER</span><span id="sbm2" style="color:#ffb35c"></span></span>`;
+    this.sb.innerHTML = `<span class="pips">${pips(m.p, '#7dffb0')}</span><b>${m.p}</b><span class="sep">:</span><b>${m.b}</b><span class="pips">${pips(m.b, '#ffb35c')}</span><span class="rd">R${Math.min(5, m.round)}/5</span>`;
     this.updSBMoney();
   }
   updSBMoney() {
-    const a = this.sb.querySelector('#sbm1'), b = this.sb.querySelector('#sbm2'); if (!a || !b || !this.eco) return;
+    if (!this.eco || !this.sbm) return; const show = this.state !== 'menu' && this.mode === 'bomb'; this.sbm.style.display = show ? 'flex' : 'none'; if (!show) return;
     const mine = this.eco.getState().money, be = this.botEco || [], avg = be.length ? be.reduce((s, e) => s + e.money, 0) / be.length : 0;
-    const f = (n) => '$' + Math.round(n).toLocaleString('en-US'); a.textContent = f(mine); b.textContent = f(avg);
+    const f = (n) => '$' + Math.round(n).toLocaleString('en-US');
+    this.sbm.innerHTML = `<span style="color:#7dffb0">${f(mine)}</span><span class="l">AVG $ / PLAYER</span><span style="color:#ffb35c">${f(avg)}</span>`;
   }
   loadSettings() { let s = {}; try { s = JSON.parse(localStorage.getItem('sc_settings') || '{}'); if (!localStorage.getItem('sc_diff_hard')) { delete s.diff; localStorage.setItem('sc_diff_hard', '1'); localStorage.setItem('sc_settings', JSON.stringify(s)); } } catch (e) {} this.set = Object.assign({ fps: false, sens: 1, vol: 0.7, diff: this.diff }, s); }
   saveSettings() { try { localStorage.setItem('sc_settings', JSON.stringify(this.set)); } catch (e) {} }
@@ -424,7 +426,7 @@ export class Game {
   renderMP() { if (this.look) this.look.render(this.camera); else this.renderer.render(this.scene, this.camera); }
   showMenu() {
     if (this.mp && this.mp.active) this.mp.stop(); this.ov.style.display = 'flex';
-    this.state = 'menu'; this.sb.style.display = 'none'; this.streaks.cancel('menu'); this.streaks.show(false); this.hud.root.style.display = 'none'; this.info.textContent = ''; this.kf.textContent = '';
+    this.state = 'menu'; this.sb.style.display = 'none'; if (this.sbm) this.sbm.style.display = 'none'; this.streaks.cancel('menu'); this.streaks.show(false); this.hud.root.style.display = 'none'; this.info.textContent = ''; this.kf.textContent = '';
     this.ctrl.setEnabled(false); this.ctrl.exitPointerLock();
     this.overlay('', []); this.menuStop = buildMenu(this, THREE, createCharacter, ROSTER);
   }
