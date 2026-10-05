@@ -120,12 +120,13 @@ export class Game {
     this.killfx.config.slowmo = false; // killcam owns time; only last-enemy kills get the cinematic
     this.streaks = createStreaks({ THREE, renderer: this.renderer, scene: this.scene, camera: this.camera, root, ctrl: this.ctrl, bots: this.bots, map: m, world: this.world, raycast, play, vm: this.vm,
       isPlaying: () => this.state === 'play',
+      damageBot: (b, amount, meta) => { if (this.mp && this.mp.active) { this.mp.xdmg(b, amount); return false; } const hp = b.health; this.bots.damage(b, Math.max(0, hp - amount), false); return !b.alive; },
       onKill: ({ bot }) => { this.kills++; this.score += 100; this.kf.textContent = 'Streak kill +100'; this.kfT = 1.5; this.hud.hitMarker(true, false); play('kill'); } });
     this.streaks.on('earned', () => play('streak_earned')); this.streaks.on('called', ({ id }) => play(id === 'nuke' ? 'nuke' : 'streak_call'));
     this.streaks.on('explosion', ({ position, radius, source }) => this.destruction.damage(position, radius, source === 'rc' ? 150 : 200, { source }));
     this.grenades = createGrenades(THREE, { scene: this.scene, map: m, colliders: this.world,
       raycast, destruction: this.destruction, getTargets: () => this.bots.list,
-      onDamage: (b, amount) => { const alive = b.alive; this.bots.damage(b, Math.max(0, b.health - amount), false);
+      onDamage: (b, amount) => { if (this.mp && this.mp.active) { this.mp.xdmg(b, amount); return; } const alive = b.alive; this.bots.damage(b, Math.max(0, b.health - amount), false);
         if (alive && !b.alive) { this.eco.recordKill({ id: b.id, weapon: 'frag' }); this.streaks.registerKill({ headshot: false }); this.kills++; this.score += 100; } },
       onFlash: (b, seconds) => { b.grenadeFlash = Math.max(b.grenadeFlash || 0, seconds); }
     });
@@ -665,4 +666,4 @@ export class Game {
     this.kc.afterRender();
   }
   destroy() { this.running = false; this.ro && this.ro.disconnect(); this.ctrl.dispose(); this.renderer.dispose(); }
-}
+      }
