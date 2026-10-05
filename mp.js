@@ -133,6 +133,7 @@ export function createMultiplayer(game, THREE) {
     net.on('defused', () => { banner('Bomb defused', 2); play('bomb_defuse'); });
     net.on('explode', () => { banner('Bomb exploded', 2); play('bomb_explode'); });
     net.on('kill', (m) => { if (!m) return;
+      if (m.by === net.id && m.id !== net.id) { try { const hs = m.cause === 'headshot'; play('kill'); game.streaks.registerKill({ headshot: hs }); game.kf.textContent = hs ? 'HEADSHOT +150' : 'Kill +100'; game.kfT = 1.5; } catch (e) {} }
       if (m.id !== net.id) { try { const vb = game.bots.list.find((x) => x.netId === m.id); if (vb && vb.alive) { vb._kt = performance.now(); game.bots.damage(vb, 0, false); } } catch (e) {} }
       if (m.id === net.id) { banner(m.rv ? 'You were killed. A teammate can revive you for ' + m.rv + 's' : '', 0.1); try { const g = game, kb = g.bots.list.find((b) => b.netId === m.by); play('death'); g.streaks.registerDeath(); g.killfx.playerDied(); g.hud.setHealth(0); if (kb) g.startDeathCam(kb.group.position, 'You were eliminated.'); } catch (e) {} }
       if (m.rv) bodies.set(m.id, { x: m.x, y: m.y, z: m.z, t: performance.now() / 1000, rv: m.rv }); });
@@ -262,4 +263,4 @@ export function createMultiplayer(game, THREE) {
   mp.solo = () => { let n = 'Player'; try { n = localStorage.getItem('sc_name') || 'Player'; } catch (e) {} connect({ room: 'new', name: n, solo: true }); };
   mp.autoJoin = () => { const m = /[?&]room=([A-Za-z0-9]+)/.exec(location.search); if (m) { lobby(m[1].toUpperCase()); return true; } return false; };
   return mp;
-}
+                                                                                                                                                      }
