@@ -241,6 +241,7 @@ export class Game {
     if (!this.player.alive || this.knifeCd > 0 || this.state !== 'play') return;
     const es = this.eco.getState(); if (es.menuOpen) return;
     this.knifeCd = 0.42; this.slashT = 0; play('hit');
+    if (this.mp && this.mp.active && this.mp.net) { this.mp.net.sendRaw({ t: 'knife' }); return; }   // server decides the hit (one-hit kill)
     const o = this.ctrl.state.eye, d = this.ctrl.getDirection(); let best = null, bd = 1e9;
     for (const b of this.bots.list) {
       if (!b.alive) continue; const p = b.position, vx = p.x - o.x, vy = p.y + 1.0 - o.y, vz = p.z - o.z, dist = Math.hypot(vx, vy, vz);
@@ -583,4 +584,4 @@ export class Game {
     this.kc.afterRender();
   }
   destroy() { this.running = false; this.ro && this.ro.disconnect(); this.ctrl.dispose(); this.renderer.dispose(); }
-      }
+  }
