@@ -113,7 +113,7 @@ export function createMultiplayer(game, THREE) {
     net.on('error', (m) => { if (!welcomed) { stop(); show(`<div class="mp-c"><h2 style="font-size:22px">Could not join</h2><p>${esc(m.msg || m.code || 'Room unavailable')}</p><div class="mp-row"><button class="mp-btn" id="mpr">BACK</button></div></div>`).querySelector('#mpr').onclick = () => lobby(); } });
     net.on('reconnecting', () => { banner('Connection lost. Reconnecting...', 99); });
     net.on('disconnected', () => { stop(); show(`<div class="mp-c"><h2 style="font-size:22px">Disconnected</h2><p>The connection dropped.</p><div class="mp-row"><button class="mp-btn" id="mpr">BACK TO LOBBY</button></div></div>`).querySelector('#mpr').onclick = () => lobby(); });
-    net.on('close', () => { if (!welcomed && !net.closing && ++tries > 3) { stop(); wakeScreen(p, 0); } });
+    net.on('close', () => { if (!welcomed && !net.closing && ++tries > 3) { stop(); p._n = (p._n || 0) + 1; if (p._n >= 3) { show(`<div class="mp-c"><h2 style="font-size:22px">Can't reach the server</h2><p>The game server answered but refused the connection. Check your internet, or try again in a minute.</p><div class="mp-row"><button class="mp-btn" id="mpy">TRY AGAIN</button><button class="mp-btn alt" id="mpr">BACK</button></div></div>`).querySelector('#mpy').onclick = () => { p._n = 0; connect(p); }; screen.querySelector('#mpr').onclick = () => lobby(); } else wakeScreen(p, 0); } });
     net.on('round_start', () => banner('Round start', 1.6));
     net.on('round_end', (m) => banner(m && m.winner != null ? 'Round over' : 'Round over', 2.5));
     net.on('planted', () => banner('Bomb planted', 2));
@@ -187,7 +187,7 @@ export function createMultiplayer(game, THREE) {
       try { r.ch.update(dt, { speed: r.sp, aiming: false, pitch: p.pitch, reloading: false, weapon: WEAPON_ORDER[p.weapon], alive: p.alive }); } catch (er) {}
       if (p.alive && r.sp > 3 && (r.stepT = (r.stepT || 0) - dt) <= 0) { r.stepT = 0.36; play('footstep', { x: p.x, y: p.y, z: p.z }); }
       v3.set(p.x, p.y + 2.1, p.z).project(cam); const vis = r.ch.group.visible && v3.z < 1;
-      r.tag.style.display = vis ? '' : 'none'; if (vis) { r.tag.style.left = ((v3.x + 1) / 2 * 100) + '%'; r.tag.style.top = ((1 - v3.y) / 2 * 100) + '%'; r.tag.style.color = p.team === net.team ? '#7fe3ff' : '#ffb347'; }
+      const mate = p.team === net.team; r.tag.style.display = vis && mate ? '' : 'none'; if (vis) { r.tag.style.left = ((v3.x + 1) / 2 * 100) + '%'; r.tag.style.top = ((1 - v3.y) / 2 * 100) + '%'; r.tag.style.color = p.team === net.team ? '#7fe3ff' : '#ffb347'; }
     }
     if (net.alive && bodies.size) { const nowS = performance.now() / 1000; let best = null, bdist = 2.4; for (const [id, b] of bodies) { if (nowS - b.t > b.rv) { bodies.delete(id); continue; } const rp = rem.find((r) => r.id === id); if (!rp || rp.team !== net.team) continue; const d = Math.hypot(e.x - b.x, e.z - b.z); if (d < bdist) { bdist = d; best = rp; } } if (best) banner('Hold E to revive ' + (best.name || 'teammate'), 0.2); }
     if (net.bomb && net.bomb.t != null && net.phase === 'planted') { bombBeepT -= dt; if (bombBeepT <= 0) { const left = Math.max(0, net.bomb.t); bombBeepT = left < 5 ? 0.25 : left < 10 ? 0.5 : left < 20 ? 0.8 : 1.1; play('bomb_beep', typeof net.bomb.x === 'number' ? { x: net.bomb.x, y: net.bomb.y || 0, z: net.bomb.z } : undefined); } }
