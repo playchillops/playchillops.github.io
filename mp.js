@@ -29,7 +29,7 @@ const CSS = `
 .mp-hud .ph{font-size:13px;opacity:.85;letter-spacing:.14em}
 .mp-hud .hp{position:absolute;left:28px;bottom:26px;font-size:34px;font-weight:600}.mp-hud .am{position:absolute;right:28px;bottom:44px;font-size:34px;font-weight:600}.mp-hud .am small{font-size:16px;opacity:.7}
 .mp-hud .cr,.mp-hud .hp,.mp-hud .am,.mp-hud .sc{display:none}
-.mp-hud .top{top:44px}
+.mp-hud .top{top:76px}
 .mp-hud .net{position:absolute;right:14px;bottom:8px;font-size:11px;opacity:.65}
 .mp-hud .msg{position:absolute;top:34%;left:50%;transform:translateX(-50%);font-size:28px;font-weight:600;letter-spacing:.1em;text-align:center}
 .mp-hud .rc{position:absolute;left:14px;top:12px;font-size:12px;opacity:.7;letter-spacing:.12em}
