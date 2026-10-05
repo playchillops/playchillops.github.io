@@ -7,6 +7,7 @@
 //   manager.damage(bot, newHealth, headshot)
 //   manager.aliveCount()
 import * as AI from './botsai.js';
+import { wallBlocked } from './hitscan.js';
 import { createCharacter, CHARACTER_IDS } from './characters.js';
 export function createBots(THREE, scene, map, opts) {
   const { raycast, colliders } = opts;
@@ -42,6 +43,7 @@ export function createBots(THREE, scene, map, opts) {
         if (t > 0 && t < wd) {
           const qx = o.x + dir.x * t, qy = o.y + dir.y * t, qz = o.z + dir.z * t;
           hit = Math.hypot(qx - pl.x, qz - pl.z) < 0.4 && qy > pl.y && qy < pl.y + 1.85;
+          if (hit && wallBlocked(o, dir, t, colliders, 0.07)) hit = false;
         }
       }
       const end = hit && lastEnv ? lastEnv.playerEye : (wh ? wh.point : { x: o.x + dir.x * range, y: o.y + dir.y * range, z: o.z + dir.z * range });

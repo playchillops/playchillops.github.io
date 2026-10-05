@@ -220,7 +220,7 @@ export function applyLook(THREE, renderer, scene, map, opts = {}) {
   sky.renderOrder = -10; sky.frustumCulled = false; group.add(sky);
 
   // ---------------------------------------------------------------- sand island ring + water
-  const isl = new THREE.Mesh(track(new THREE.CylinderGeometry(46, 52, 3, 28, 1)), toon({ map: sandTex, color: 0xffffff, flatShading: true }));
+  const isl = new THREE.Mesh(track(new THREE.CylinderGeometry(55, 62, 3, 32, 1)), toon({ map: sandTex, color: 0xffffff, flatShading: true }));
   isl.position.y = -1.8; isl.receiveShadow = true; isl.name = 'look_island'; group.add(isl);
   // the original ground slab already has a hard seam; add a soft grass skirt around it (visual only, below walkable y)
   const waterMat = track(new THREE.ShaderMaterial({
@@ -336,8 +336,8 @@ export function applyLook(THREE, renderer, scene, map, opts = {}) {
   const bushGeo = track(new THREE.IcosahedronGeometry(1, 1));
   const bushMats = [toon({ color: 0x4fb86a, flatShading: true }), toon({ color: 0x6acb6a, flatShading: true }), toon({ color: 0x3fa766, flatShading: true })];
   const bpts = place(22, () => {
-    const edge = rnd() > 0.5, t = rr(-29, 29), s = rr(0, 1) > 0.5 ? 1 : -1;
-    const x = edge ? s * rr(26, 30) : rr(-28, 28), z = edge ? t : s * rr(26, 30);
+    const edge = rnd() > 0.5, t = rr(-35, 35), s = rr(0, 1) > 0.5 ? 1 : -1;
+    const x = edge ? s * rr(31, 36) : rr(-34, 34), z = edge ? t : s * rr(31, 36);
     return free(x, z, 0.6) ? [x, z] : null; });
   const bush = (x, z, sc) => { const g = new THREE.Group(); const mm = bushMats[(rnd() * 3) | 0];
     for (let i = 0; i < 3; i++) { const b = new THREE.Mesh(bushGeo, mm); const s = sc * rr(0.6, 1); b.scale.set(s, s * 0.8, s); b.position.set(rr(-.6, .6) * sc, s * 0.6, rr(-.6, .6) * sc); b.castShadow = true; b.receiveShadow = true; g.add(b); }
@@ -346,8 +346,8 @@ export function applyLook(THREE, renderer, scene, map, opts = {}) {
   const rockGeo = track(new THREE.DodecahedronGeometry(1, 0));
   const rockMat = toon({ color: 0xb9b4c9, flatShading: true }), rockMat2 = toon({ color: 0x9fa6bd, flatShading: true });
   const rock = (x, y, z, s) => { const r = new THREE.Mesh(rockGeo, rnd() > 0.5 ? rockMat : rockMat2); r.scale.set(s * rr(.9, 1.4), s * rr(.6, 1), s * rr(.9, 1.4)); r.position.set(x, y + s * 0.3, z); r.rotation.set(rnd() * 3, rnd() * 6, rnd() * 3); r.castShadow = r.receiveShadow = true; group.add(r); };
-  place(14, () => { const a = rnd() * 6.28, rad = rr(35.5, 44); return [Math.cos(a) * rad, Math.sin(a) * rad]; }, 1).forEach(([x, z]) => rock(x, -0.3, z, rr(0.6, 1.8)));
-  place(10, () => { const x = rr(-28, 28), z = rr(-28, 28); return free(x, z, 0.5) ? [x, z] : null; }).forEach(([x, z]) => rock(x, 0, z, rr(0.25, 0.5)));
+  place(14, () => { const a = rnd() * 6.28, rad = rr(50, 62); return [Math.cos(a) * rad, Math.sin(a) * rad]; }, 1).forEach(([x, z]) => rock(x, -0.3, z, rr(0.6, 1.8)));
+  place(10, () => { const x = rr(-34, 34), z = rr(-34, 34); return free(x, z, 0.5) ? [x, z] : null; }).forEach(([x, z]) => rock(x, 0, z, rr(0.25, 0.5)));
 
   // ---------------------------------------------------------------- palms (bent trunk + curved fronds + coconuts)
   const frondGeo = (() => {
@@ -383,11 +383,11 @@ export function applyLook(THREE, renderer, scene, map, opts = {}) {
   };
   palmCones.forEach((c, i) => { if (i % 2 === 0) palm(c.position.x, c.position.z, 1.05); });
   // beach palms beyond the arena walls
-  for (let i = 0; i < 14; i++) { const a = (i / 14) * 6.2832 + rr(-0.15, 0.15), rad = rr(38.5, 44); palm(Math.cos(a) * rad, Math.sin(a) * rad, rr(0.9, 1.5), -0.35); }
+  for (let i = 0; i < 14; i++) { const a = (i / 14) * 6.2832 + rr(-0.15, 0.15), rad = rr(55, 61); palm(Math.cos(a) * rad, Math.sin(a) * rad, rr(0.9, 1.5), -0.35); }
 
   // ---------------------------------------------------------------- floating pollen / petals
   const pn = 140, ppos = new Float32Array(pn * 3), pseed = new Float32Array(pn);
-  for (let i = 0; i < pn; i++) { ppos[i * 3] = rr(-34, 34); ppos[i * 3 + 1] = rr(0.3, 6); ppos[i * 3 + 2] = rr(-34, 34); pseed[i] = rnd() * 100; }
+  for (let i = 0; i < pn; i++) { ppos[i * 3] = rr(-41, 41); ppos[i * 3 + 1] = rr(0.3, 6); ppos[i * 3 + 2] = rr(-41, 41); pseed[i] = rnd() * 100; }
   const pgeo = track(new THREE.BufferGeometry()); pgeo.setAttribute('position', new THREE.BufferAttribute(ppos, 3)); pgeo.setAttribute('seed', new THREE.BufferAttribute(pseed, 1));
   const pmat = track(new THREE.ShaderMaterial({ transparent: true, depthWrite: false, uniforms: { uTime: U.time },
     vertexShader: `attribute float seed; uniform float uTime; varying float vA; void main(){ vec3 p = position; p.x += sin(uTime*0.3+seed)*1.8 + uTime*0.25; p.z += cos(uTime*0.27+seed*1.3)*1.8; p.y += sin(uTime*0.5+seed*2.)*0.4; p.x = mod(p.x+34.,68.)-34.;

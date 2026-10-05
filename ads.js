@@ -20,12 +20,15 @@ export function cardCanvas(i, W = 1024, H = 512) {
 const tex = (THREE, canvas) => { const t = new THREE.CanvasTexture(canvas); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; };
 
 // name, x, z, rotY (0 faces +z), width. Freestanding on two posts, standing in open ground beside the lanes.
-const BOARDS = [
+import { MAP_SCALE as _S } from './map.js';
+const BOARDS0 = [
   ['billboard-1', -17, 15, Math.PI / 2, 4.4], ['billboard-2', 17, 15, -Math.PI / 2, 4.4],
   ['billboard-3', -17, -2, Math.PI / 2, 4.4], ['billboard-4', 17, -2, -Math.PI / 2, 4.4],
   ['billboard-5', 0, 36.5, Math.PI, 4.4],
 ];
-const FLAGS = [['banner-1', -9, 24], ['banner-2', 9, 24], ['banner-3', -9, 8], ['banner-4', 9, 8], ['banner-5', -14, -24], ['banner-6', 14, -24]];
+const BOARDS = BOARDS0.map(([n, x, z, r, w]) => [n, x * _S, z * _S, r, w]);
+const FLAGS0 = [['banner-1', -9, 24], ['banner-2', 9, 24], ['banner-3', -9, 8], ['banner-4', 9, 8], ['banner-5', -14, -24], ['banner-6', 14, -24]];
+const FLAGS = FLAGS0.map(([n, x, z]) => [n, x * _S, z * _S]);
 
 export function addAds(THREE, scene, opts = {}) {
   const group = new THREE.Group(); group.name = 'ads'; const slots = new Map(), loader = new THREE.TextureLoader(); let n = 0;

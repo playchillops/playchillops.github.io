@@ -10,7 +10,7 @@ const PAL = { ground:0x91c990, tile:0xe2d2b4, edge:0xb2c4a0, metal:0x6d8494, roo
   coral:0xff846e, cyan:0x68e3db, purple:0xc8b3cb, green:0x73b787, gold:0xffda8d, mint:0xa9e0c4, peach:0xffc9a3,
   sky:0x9fd0e8, wood:0xb98b64, lilac:0xd9c4e8, stone:0xcfc6b8, dark:0x4b5b70, rose:0xf2a9b8, brick:0xe39a86 };
 
-export function buildMap(THREE, layout = KITE_GARDEN_V4) {
+export function buildMap(THREE, layout = scaleLayout(KITE_GARDEN_V4)) {
   const L = layout, H = L.half, P = L.plateau;
   const group = new THREE.Group(); group.name = L.name + ' v' + L.version;
   const colliders = [], floors = [], ramps = [], stairsList = [], rampColliders = [], geos = new Set(), mats = new Set(), textures = [];
@@ -215,7 +215,7 @@ export function buildMap(THREE, layout = KITE_GARDEN_V4) {
   for (const team of ['T', 'CT']) for (const [x, z] of L.spawns[team]) spawnPoints.push({ position: V3(x, 0, z), yaw: team === 'T' ? 0 : Math.PI, team });
   const lights = new THREE.Group(); lights.add(new THREE.HemisphereLight(0xcceeff, 0x8cad72, 2));
   const sun = new THREE.DirectionalLight(0xfff3df, 2); sun.position.set(-30, 55, 20); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
-  Object.assign(sun.shadow.camera, { left: -45, right: 45, top: 45, bottom: -45, near: 1, far: 150 }); sun.shadow.bias = -.001; sun.shadow.normalBias = .025; lights.add(sun); group.add(lights);
+  Object.assign(sun.shadow.camera, { left: -56, right: 56, top: 56, bottom: -56, near: 1, far: 150 }); sun.shadow.bias = -.001; sun.shadow.normalBias = .025; lights.add(sun); group.add(lights);
   // ---------- heights + navigation ----------
   function getHeight(x, z) {
     if (x < -H || x > H || z < -H || z > H) return -Infinity;
@@ -346,4 +346,29 @@ export const KITE_GARDEN_V4 = {
     ['BURROW', 22, 11], ['TUNNEL', 16, 3], ['BANANA', 32, 8], ['B SITE', 26, -13], ['APARTMENTS', 19, -15], ['HEAVEN', 33, -16], ['GREENHOUSE', 31, -21],
     ['CT COURT', 0, -31], ['ORCHARD', -24, -30], ['GARDEN YARD', 24, -30]],
 };
+
+// ---- map scale (Juan 11:44 PM: "somewhat bigger map"). Every footprint, lane and door is stretched sideways by MAP_SCALE;
+// heights, props and art keep their size, so the world feels longer without changing how anything looks.
+export const MAP_SCALE = 1.2;
+export function scaleLayout(L, S = MAP_SCALE) {
+  if (!S || S === 1) return L;
+  const f = (v) => +(v * S).toFixed(3), rect = (r) => [f(r[0]), f(r[1]), f(r[2]), f(r[3]), ...r.slice(4)];
+  const pair = (q) => [f(q[0]), f(q[1]), ...q.slice(2)];
+  const wallOpts = (o) => (o && o.open ? { ...o, open: o.open.map(pair) } : o);
+  const sides = (d) => { if (!d) return d; const out = {}; for (const k of Object.keys(d)) out[k] = d[k].map(pair); return out; };
+  return {
+    ...L, __raw: L, half: f(L.half),
+    sites: Object.fromEntries(Object.entries(L.sites).map(([k, v]) => [k, { ...v, x: f(v.x), z: f(v.z) }])),
+    spawns: Object.fromEntries(Object.entries(L.spawns).map(([k, a]) => [k, a.map((p) => [f(p[0]), f(p[1])])])),
+    paths: L.paths.map(rect), blocks: L.blocks.map(rect), ramps: L.ramps.map(rect), stairs: L.stairs.map(rect),
+    walls: L.walls.map((w) => [f(w[0]), f(w[1]), f(w[2]), f(w[3]), wallOpts(w[4])]),
+    masses: L.masses.map((m) => ({ ...m, rects: m.rects.map(rect), ceil: m.ceil.map(rect) })),
+    buildings: L.buildings.map((b) => ({ ...b, x0: f(b.x0), z0: f(b.z0), x1: f(b.x1), z1: f(b.z1), doors: sides(b.doors), windows: sides(b.windows),
+      inner: b.inner && b.inner.map((w) => [f(w[0]), f(w[1]), f(w[2]), f(w[3]), wallOpts(w[4])]) })),
+    covers: L.covers.map((c) => [f(c[0]), f(c[1]), ...c.slice(2)]), crates: L.crates.map((c) => [f(c[0]), f(c[1]), ...c.slice(2)]),
+    landmarks: L.landmarks.map((m) => (m.type === 'kite' ? m : { ...m, x: f(m.x), z: f(m.z) })),
+    signs: L.signs.map((q) => [q[0], f(q[1]), q[2], f(q[3]), ...q.slice(4)]),
+    callouts: L.callouts.map((c) => [c[0], f(c[1]), f(c[2])]),
+  };
+}
 export default buildMap;

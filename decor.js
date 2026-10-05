@@ -1,7 +1,9 @@
 // decor.js - visual-only polish for Kite Garden: trims, shutters, flower boxes, planters, bunting, ground decals, soft AO.
 // No colliders are added. Batched per colour. Seeded so it is stable between runs.
+import { MAP_SCALE } from './map.js';
 export function addDecor(THREE, map, parent) {
-  const L = map.layout; if (!L) return null;
+  const L = (map.layout && map.layout.__raw) || map.layout; if (!L) return null;
+  const SC = map.layout && map.layout.__raw ? MAP_SCALE : 1;
   const g = new THREE.Group(); g.name = 'decor';
   let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   const batches = new Map(), mats = new Map();
@@ -15,7 +17,7 @@ export function addDecor(THREE, map, parent) {
     if (idx) { for (let k = 0; k < idx.count; k++) b.i.push(base + idx.getX(k)); } else { for (let k = 0; k < pos.count; k++) b.i.push(base + k); }
   }
   const box = (c, x, y, z, w, h, d, ry, rz, a) => put(boxG, c, x, y, z, w, h, d, ry, rz, a);
-  const ground = (x, z) => { const h = map.getHeight ? map.getHeight(x, z) : 0; return Number.isFinite(h) ? h : 0; };
+  const ground = (x, z) => { const h = map.getHeight ? map.getHeight(x * SC, z * SC) : 0; return Number.isFinite(h) ? h : 0; };
   const inOpen = (o, a, b) => (o.open || []).some((r) => a < r[1] + 0.3 && b > r[0] - 0.3);
   const shut = [0xff846e, 0x68e3db, 0xffda8d, 0xc8b3cb, 0xa9e0c4], flowers = [0xff6b9a, 0xffe066, 0xffffff, 0xff9f43];
   // ---- walls ----
@@ -86,5 +88,5 @@ export function addDecor(THREE, map, parent) {
     const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(b.p, 3)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(b.n, 3)); geo.setIndex(b.i);
     const m = new THREE.MeshLambertMaterial({ color: b.color, flatShading: true, transparent: b.alpha < 1, opacity: b.alpha, depthWrite: b.alpha >= 1, polygonOffset: true, polygonOffsetFactor: b.alpha < 1 ? -4 : -2, polygonOffsetUnits: b.alpha < 1 ? -4 : -2 }); const mesh = new THREE.Mesh(geo, m); mesh.userData.decor = true; mesh.frustumCulled = true; g.add(mesh);
   }
-  parent.add(g); return g;
+  g.scale.set(SC, 1, SC); parent.add(g); return g;
 }

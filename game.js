@@ -2,7 +2,7 @@
 import * as THREE from './three.module.min.js';
 import { buildMap } from './map.js';
 import { createController } from './movement.js';
-import { raycast } from './hitscan.js';
+import { raycast, wallBlocked } from './hitscan.js';
 import { createViewmodels, createWeaponSystem, createHUD, createPlayerState, applyDamage, WEAPON_ORDER } from './player.js';
 import { initAudio, play, setListener, startAmbient, setVolume } from './audio.js';
 import { createBots } from './bots.js';
@@ -98,7 +98,7 @@ export class Game {
     for (const f of m.physicsColliders ? [] : m.floors) if (f.y > 0) phys.push({ min: { x: f.minX, y: f.y - 3, z: f.minZ }, max: { x: f.maxX, y: f.y, z: f.maxZ } });
     for (const r of m.physicsColliders ? [] : m.ramps) phys.push({ type: 'ramp', axis: r.axis, direction: r.y1 > r.y0 ? 1 : -1, min: { x: r.minX, y: Math.min(r.y0, r.y1), z: r.minZ }, max: { x: r.maxX, y: Math.max(r.y0, r.y1), z: r.maxZ } });
     this.phys = phys;
-    this.world = [...phys, { min: { x: -40, y: -2, z: -40 }, max: { x: 40, y: 0, z: 40 } }]; // ground also stops bullets
+    this.world = [...phys, { min: { x: -60, y: -2, z: -60 }, max: { x: 60, y: 0, z: 60 } }]; // ground also stops bullets
 
     this.destruction = createDestruction(THREE, { scene: this.scene, map: m,
       colliderArrays: [this.phys, this.world], onCollidersChanged: () => this.bots?.refreshNavigation?.() });
@@ -501,7 +501,9 @@ export class Game {
     for (const s of shots) {
       const yaw = st.yaw + s.dir.x, pit = st.pitch + s.dir.y, cp = Math.cos(pit);
       const dir = { x: -Math.sin(yaw) * cp, y: Math.sin(pit), z: -Math.cos(yaw) * cp };
-      const hit = raycast(o, dir, { colliders: this.world, targets: this.bots.list, maxDistance: s.range });
+      let hit = raycast(o, dir, { colliders: this.world, targets: this.bots.list, maxDistance: s.range });
+      if (hit && hit.kind === 'target' && wallBlocked(o, dir, hit.distance, this.world, 0.07)) hit = raycast(o, dir, { colliders: this.world, maxDistance: s.range }); // grazing a corner: wall wins
+      else if (hit && hit.kind === 'target') { const mz = { x: muzzle.x - o.x, y: muzzle.y - o.y, z: muzzle.z - o.z }, ml = Math.hypot(mz.x, mz.y, mz.z); if (ml > 0.05 && ml < 2 && wallBlocked(o, mz, ml + 0.02, this.world, 0.02)) hit = raycast(o, dir, { colliders: this.world, maxDistance: s.range }); } // gun poking through a wall
       const end = hit ? hit.point : { x: o.x + dir.x * s.range, y: o.y + dir.y * s.range, z: o.z + dir.z * s.range };
       if (hit?.kind === 'world') this.destruction.damageHit(hit, WEAPON_STATS[s.weapon]?.damage.body || 30);
       this.anim.onShot({ weapon: s.weapon, end, hit });

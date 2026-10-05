@@ -113,3 +113,16 @@ export function raycast(origin,direction,{colliders=[],targets=[],maxDistance=10
   return result;
 }
 export const hitscan=raycast;
+
+/** true when a solid box (inflated sideways by pad) sits on the segment origin -> origin+dir*dist. Ramps and floors are skipped. */
+export function wallBlocked(origin,direction,dist,colliders,pad=.07){
+  const L=Math.hypot(direction.x,direction.y,direction.z);if(L<EPS||!(dist>0))return false;
+  const d={x:direction.x/L,y:direction.y/L,z:direction.z/L};
+  for(const c of colliders){
+    if(!c||c.blocksShots===false||c.type==='ramp')continue;
+    const b=bounds(c);if(!b||b.max.y-b.min.y>60||b.max.x-b.min.x>70)continue;
+    const bx={min:{x:b.min.x-pad,y:b.min.y,z:b.min.z-pad},max:{x:b.max.x+pad,y:b.max.y,z:b.max.z+pad}};
+    const hit=rayAABB(origin,d,bx,dist-.02);if(hit&&hit.distance>0.001)return true;
+  }
+  return false;
+}
