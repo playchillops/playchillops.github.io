@@ -148,8 +148,9 @@ export function createBots(THREE, scene, map, opts) {
       seen.add(p.id); let b = rmap.get(p.id);
       if (!b) { b = spawn({ x: p.x, y: p.y, z: p.z }, { weapon: WN[p.weapon] || 'machinegun' }); b.id = 'net' + p.id; b.netId = p.id; b.alive = !!p.alive; b.health = p.hp; rmap.set(p.id, b); }
       b.net = p; b.name = p.name; b.team = p.team; b.position.x = p.x; b.position.y = p.y; b.position.z = p.z;
-      if (p.alive && !b.alive) { b.alive = true; b.health = p.hp; b.deadT = 0; b.group.visible = true; b.ch.setAnim('idle'); }
+      if (p.alive && !b.alive && !(b._kt && performance.now() - b._kt < 700)) { b.alive = true; b.health = p.hp; b.deadT = 0; b.group.visible = true; b.ch.setAnim('idle'); }
       else if (!p.alive && b.alive) damage(b, 0, false);
+      else if (p.alive && !b.alive) { /* kill event already applied, snapshot lags */ }
       else if (p.alive && p.hp < b.health) damage(b, p.hp, false);
       else if (p.alive) b.health = p.hp;
     }
