@@ -40,8 +40,8 @@ const CSS = `
 .sg .pip{display:inline-block;width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.2)}
 .sg .pip.on{background:var(--c)}
 .sg .setov{position:absolute;inset:0;z-index:400;background:rgba(14,22,34,.82);align-items:center;justify-content:center}
-.sg .setp{background:#1d2b3d;border:3px solid #fff;border-radius:22px;padding:22px 28px;min-width:min(420px,88vw);display:flex;flex-direction:column;gap:14px;box-shadow:0 8px 0 rgba(0,0,0,.3)}
-.sg .setp h2{margin:0 0 4px;font-size:30px}
+.sg .setp{background:#1d2b3d;border:3px solid #fff;border-radius:22px;padding:16px 28px;min-width:min(420px,88vw);display:flex;flex-direction:column;gap:6px;max-height:92vh;overflow-y:auto;box-shadow:0 8px 0 rgba(0,0,0,.3)}
+.sg .setp h2{margin:0 0 4px;font-size:26px}
 .sg .sr{display:flex;flex-direction:column;gap:6px;font-weight:600;font-size:16px;text-align:left}
 .sg .sr small{opacity:.65;font-weight:500;font-size:12px}.sg .sr em{font-style:normal;color:#ffd166;float:right}
 .sg .sr:has(input[type=checkbox]){flex-direction:row;justify-content:space-between;align-items:center}
@@ -676,4 +676,4 @@ export class Game {
     this.kc.afterRender();
   }
   destroy() { this.running = false; this.ro && this.ro.disconnect(); this.ctrl.dispose(); this.renderer.dispose(); }
-      }
+                                             }
