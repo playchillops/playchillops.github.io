@@ -133,7 +133,7 @@ export function createMultiplayer(game, THREE) {
     net.on('defused', () => { banner('Bomb defused', 2); play('bomb_defuse'); });
     net.on('explode', () => { banner('Bomb exploded', 2); play('bomb_explode'); });
     net.on('kill', (m) => { if (!m) return;
-      if (m.id === net.id) { banner(m.rv ? 'You were killed. A teammate can revive you for ' + m.rv + 's' : '', 0.1); try { const g = game, kb = g.bots.list.find((b) => b.netId === m.by); g.streaks.registerDeath(); g.killfx.playerDied(); g.hud.setHealth(0); if (kb) g.startDeathCam(kb.group.position, 'You were eliminated.'); } catch (e) {} }
+      if (m.id === net.id) { banner(m.rv ? 'You were killed. A teammate can revive you for ' + m.rv + 's' : '', 0.1); try { const g = game, kb = g.bots.list.find((b) => b.netId === m.by); play('death'); g.streaks.registerDeath(); g.killfx.playerDied(); g.hud.setHealth(0); if (kb) g.startDeathCam(kb.group.position, 'You were eliminated.'); } catch (e) {} }
       if (m.rv) bodies.set(m.id, { x: m.x, y: m.y, z: m.z, t: performance.now() / 1000, rv: m.rv }); });
     net.on('revive', (m) => { if (!m) return; bodies.delete(m.id); banner(m.id === net.id ? 'You were revived' : 'Teammate revived', 1.6); });
     net.on('shot', (m) => { if (!m || m.id === net.id) return; const b = game.bots.list.find((x) => x.netId === m.id); if (b) b.aimT = 0.5; try { const from = new THREE.Vector3(m.o[0], m.o[1], m.o[2]), to = new THREE.Vector3(m.e[0], m.e[1], m.e[2]); play(['shot_pistol', 'shot_mg', 'shot_sniper'][m.w | 0] || 'bot_shot', from); game.anim.onBotShot({ from, to, hit: false });
@@ -166,6 +166,15 @@ export function createMultiplayer(game, THREE) {
     const canBot = () => isHost() && (mp.net.phase === 'waiting' || mp.net.phase === 'freeze');
     on(window, 'keydown', (e) => { if (!mp.net || !canBot() || e.repeat) return; if (e.code === 'KeyK') { mp.net.sendRaw({ t: 'addbot', team: mp.net.team === 'T' ? 'CT' : 'T' }); banner('Enemy bot added', 1.5); } else if (e.code === 'KeyL') { mp.net.sendRaw({ t: 'addbot', team: mp.net.team }); banner('Ally bot added', 1.5); } else if (e.code === 'KeyU') { mp.net.sendRaw({ t: 'rmbots' }); banner('Bots removed', 1.5); } });
     mp._canBot = canBot;
+    { const box = document.createElement('div'); box.style.cssText = 'position:fixed;left:50%;top:116px;transform:translateX(-50%);z-index:6;display:none;gap:8px;align-items:center;padding:8px 12px;border-radius:14px;background:rgba(10,24,40,.72);color:#fff;font:600 13px Fredoka,system-ui,sans-serif;backdrop-filter:blur(4px)';
+      const lab = document.createElement('span'); lab.textContent = 'Host bots:'; lab.style.opacity = '.8'; box.appendChild(lab);
+      const mk = (txt, key, fn) => { const b = document.createElement('button'); b.textContent = txt + ' (' + key + ')'; b.style.cssText = 'font:inherit;color:#fff;background:rgba(255,255,255,.16);border:0;border-radius:10px;padding:5px 10px;cursor:pointer'; b.onclick = (e) => { e.stopPropagation(); if (mp.net && canBot()) fn(); }; box.appendChild(b); };
+      mk('+ Enemy bot', 'K', () => { mp.net.sendRaw({ t: 'addbot', team: mp.net.team === 'T' ? 'CT' : 'T' }); banner('Enemy bot added', 1.5); });
+      mk('+ Ally bot', 'L', () => { mp.net.sendRaw({ t: 'addbot', team: mp.net.team }); banner('Ally bot added', 1.5); });
+      mk('Remove bots', 'U', () => { mp.net.sendRaw({ t: 'rmbots' }); banner('Bots removed', 1.5); });
+      document.body.appendChild(box); let hinted = false;
+      binds.push([{ removeEventListener() { box.remove(); clearInterval(bt); } }, 'x', null, null]);
+      const bt = setInterval(() => { let show = false; try { show = !!(mp.active && mp.net && mp.net.connected && canBot()); } catch (e) {} box.style.display = show ? 'flex' : 'none'; if (show && !hinted) { hinted = true; banner('Host: K enemy bot, L ally bot, U remove bots', 4); } if (!show && mp.net && mp.net.phase === 'live') hinted = true; }, 500); }
     on(document, 'keydown', (e) => { if (!mp.active) return; if (e.code === 'Escape') return; if (e.code === 'KeyL') { game.showMenu(); return; } keys[e.code] = true; if (['Space', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault(); });
     on(document, 'keyup', (e) => { keys[e.code] = false; });
     on(game.canvas, 'mousedown', (e) => { if (!mp.active) return; if (document.pointerLockElement !== game.canvas) { game.canvas.requestPointerLock(); return; } if (game.eco && game.eco.getState().menuOpen) return; if (e.button === 0) { if (!(mp.net.me.pp > 0 || mp.net.me.dp > 0)) { mp.net.setInput({ fire: true }); mp.net.tap(); } } });
@@ -185,6 +194,7 @@ export function createMultiplayer(game, THREE) {
     const busy = (net.me.pp > 0 || net.me.dp > 0) && net.alive; if (busy || !net.alive) net.setInput({ fire: false });
     if (!net.alive || busy) g.ws.setTrigger(false);
     net.update(dt);
+    try { if (!g.zoneMesh) g.setZone(); if (net.sz && g.zoneMesh) { if (net.phase === 'freeze') g.zoneMesh.position.y = (net.cur ? net.cur.y : g.zoneMesh.position.y) + 0.05; g.zoneMesh.position.x = net.sz[0]; g.zoneMesh.position.z = net.sz[1]; if (g.zone) { g.zone.x = net.sz[0]; g.zone.z = net.sz[1]; } } } catch (er) {}
     const e = net.eye();
     g.ctrl.teleport({ x: e.feet.x, y: e.feet.y, z: e.feet.z }, { yaw: st.yaw, pitch: st.pitch });
     try { st.velocity.x = net.me.v ? net.me.v[0] : 0; st.velocity.y = net.me.v ? net.me.v[1] : 0; st.velocity.z = net.me.v ? net.me.v[2] : 0; st.grounded = e.grounded !== false; st.crouched = !!e.crouched; st.speed = Math.hypot(st.velocity.x, st.velocity.z); } catch (er) {}
