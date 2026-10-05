@@ -301,7 +301,7 @@ export class Game {
     if (this.eco) { try { this.eco.dispose(); } catch (e) {} }
     this.owned = new Set(['pistol']);
     this.grenades?.clearRound();
-    this.eco = createEconomy({ container: this.root, team: 'T', freezeTime: 10, autoOpen: false, inZone: () => true, onEvent: (n, d) => this.onEco(n, d) });
+    this.eco = createEconomy({ container: this.root, team: 'T', freezeTime: 10, autoOpen: false, inZone: () => !!(this.mp && this.mp.net && this.mp.net.lobby) || this.inBuyZone(), onEvent: (n, d) => this.onEco(n, d) });
     if (this.grenades) this.grenades.setEconomy(this.eco);
   }
   syncAmmoToEco() { if (!this.eco) return; for (const id of ['pistol', 'machinegun', 'sniper']) { const a = this.ws.ammo[id]; if (a && this.eco.getState().inventory.ammo[id]) this.eco.setAmmo(id, { mag: a.mag, reserve: a.reserve }); } }
@@ -585,4 +585,4 @@ export class Game {
     this.kc.afterRender();
   }
   destroy() { this.running = false; this.ro && this.ro.disconnect(); this.ctrl.dispose(); this.renderer.dispose(); }
-                                                                                                                           }
+                             }
