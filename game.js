@@ -183,11 +183,11 @@ export class Game {
     d.addEventListener('wheel', (e) => { if (this.state === 'play') { const inv = this.eco.getState().inventory; this.pick(this.ws.current === inv.primary ? 'secondary' : 'primary'); } }, { passive: true });
     d.addEventListener('pointerlockchange', () => {
       const on = d.pointerLockElement === c;
-      if (on) { this.wasLocked = true; } else if (this.wasLocked) { this.wasLocked = false; if (this.state === 'play' && !(this.eco && this.eco.getState().menuOpen) && !this.streaks.controlling) this.pause(); }
+      if (on) { this.wasLocked = true; } else if (this.wasLocked) { this.wasLocked = false; if (this.state === 'play' && !(this.mp && this.mp.active) && !(this.eco && this.eco.getState().menuOpen) && !this.streaks.controlling) this.pause(); }
     });
     d.addEventListener('keydown', (e) => {
       if (this.state !== 'play') return;
-      if (e.code === 'Escape') { if (this.setOv.style.display !== 'none') { this.closeSettings(); return; } this.pause(); return; }
+      if (e.code === 'Escape') { if (this.setOv.style.display !== 'none') { this.closeSettings(); return; } if (this.mp && this.mp.active) return; this.pause(); return; }
       if (this.eco && this.eco.getState().menuOpen) return;
       if (e.code === 'Digit1') this.pick('primary'); else if (e.code === 'Digit2') this.pick('secondary'); else if (e.code === 'Digit3' && !e.repeat) this.toggleKnife(); else if (e.code === 'KeyF' && !e.repeat) this.inspect();
       if (!e.repeat && ['KeyV', 'KeyH', 'KeyJ'].includes(e.code)) { this.throwGrenade({ KeyV: 'frag', KeyH: 'smoke', KeyJ: 'flash' }[e.code]); return; }
@@ -253,7 +253,7 @@ export class Game {
     play(killed ? 'kill' : 'hit');
     if (killed) {
       this.streaks.registerKill({ headshot: false }); this.eco.recordKill({ id: b.id, headshot: false, weapon: 'pistol' });
-      const bw = (b.ch && b.ch.weapon) || 'machinegun'; this.addDrop({ dropId: 'bot-' + b.id + '-' + Date.now(), weapon: bw, ammo: { mag: 12, reserve: 24 }, position: { x: b.position.x, y: b.position.y, z: b.position.z } });
+      const bw = (b.ch && b.ch.weapon) || 'machinegun'; if (!(this.mp && this.mp.active)) this.addDrop({ dropId: 'bot-' + b.id + '-' + Date.now(), weapon: bw, ammo: { mag: 12, reserve: 24 }, position: { x: b.position.x, y: b.position.y, z: b.position.z } });
       this.kills++; this.score += back ? 150 : 100; this.kf.textContent = back ? 'BACKSTAB +150' : 'Kill +100'; this.kfT = 1.5;
     } else { this.kf.textContent = 'Slash -55'; this.kfT = 0.8; }
   }
@@ -323,6 +323,7 @@ export class Game {
     this.updSBMoney();
   }
   updSBMoney() {
+    if (this.mp && this.mp.active && this.mp.net && this.sbm) { const n = this.mp.net, av = n.avg || [0, 0], f = (v) => '$' + Math.round(v).toLocaleString('en-US'); this.sbm.style.display = 'flex'; this.sbm.innerHTML = `<span style="color:#7dffb0">${f(this.eco.getState().money)}</span><span class="l">AVG $ / PLAYER</span><span style="color:#ffb35c">${f(n.team === 'T' ? av[1] : av[0])}</span>`; return; }
     if (!this.eco || !this.sbm) return; const show = this.state !== 'menu' && this.mode === 'bomb'; this.sbm.style.display = show ? 'flex' : 'none'; if (!show) return;
     const mine = this.eco.getState().money, be = this.botEco || [], avg = be.length ? be.reduce((s, e) => s + e.money, 0) / be.length : 0;
     const f = (n) => '$' + Math.round(n).toLocaleString('en-US');
@@ -479,6 +480,7 @@ export class Game {
     }
   }
   end(win, msg) {
+    if (this.mp && this.mp.active) return;
     if (this.over) return; this.streaks.cancel('end'); if (this.kc.active) { this.pendEnd = [win, msg]; return; } this.over = true; play(win ? 'round_win' : 'round_lose'); if (win) this.match.p++; else this.match.b++; this.renderSB(); try { recordRound(this, win); import('./account.js').then((a) => a.sync()).catch(() => {}); } catch (e) {} try { this.botSettle(win); } catch (e) {} this.syncAmmoToEco(); try { this.eco.endRound({ won: win, reason: win ? 'win' : 'loss' }); } catch (e) {} this.state = 'over'; this.ctrl.setEnabled(false); this.ws.setTrigger(false); this.ws.setAim(false); this.ctrl.exitPointerLock();
     let extra = '';
     if (this.mode === 'daily') {
@@ -566,10 +568,11 @@ export class Game {
       this.anim.update(dt, { moving: false, sprinting: false, grounded: true, playerEye: st.eye, feetY: st.position.y, bots: [] });
       return;
     }
-    c.update(dt);
-    if (es.phase === 'freeze' && this.zone) { const z = this.zone, p = st.position; const cx = Math.max(z.x - z.h, Math.min(z.x + z.h, p.x)), cz = Math.max(z.z - z.h, Math.min(z.z + z.h, p.z)); if (cx !== p.x || cz !== p.z) c.teleport({ x: cx, y: p.y, z: cz }, { yaw: st.yaw, pitch: st.pitch }); }
+    const MP = !!(this.mp && this.mp.active);
+    if (!MP) c.update(dt);
+    if (!MP && es.phase === 'freeze' && this.zone) { const z = this.zone, p = st.position; const cx = Math.max(z.x - z.h, Math.min(z.x + z.h, p.x)), cz = Math.max(z.z - z.h, Math.min(z.z + z.h, p.z)); if (cx !== p.x || cz !== p.z) c.teleport({ x: cx, y: p.y, z: cz }, { yaw: st.yaw, pitch: st.pitch }); }
     const k = this.ws.consumeLook(); if (k.pitch || k.yaw) c.look(-k.yaw / 0.0022, -k.pitch / 0.0022);
-    c.applyToCamera(this.camera);
+    if (MP) { this.mp.drive(this._real || dt); c.applyToCamera(this.camera); this.mp.fixCam(this.camera); } else c.applyToCamera(this.camera);
     this.camera.fov = this.ws.fov(75); this.camera.updateProjectionMatrix();
     this.streaks.update(dt);
     if (this.player.hp < 100) this.killfx.setPlayerWound(st.position, this.player.hp, 100);
@@ -595,7 +598,7 @@ export class Game {
     const bs = this.map.bombsites; let site = null;
     for (const key of ['A', 'B']) { const s = bs[key], d = Math.hypot(st.position.x - s.center.x, st.position.z - s.center.z); if (d < s.radius && Math.abs(st.position.y - s.center.y) < 2) site = key; }
     let hint = '';
-    if (this.mode === 'bomb' && !this.bomb.planted) {
+    if (this.mode === 'bomb' && !this.bomb.planted && !MP) {
       if (site && this.eDown && st.grounded) { this.plantT += dt; hint = `Planting ${site}... ${Math.min(100, Math.round(this.plantT / 3.2 * 100))}%`; if (this.plantT >= 3.2) this.plant(site); }
       else { this.plantT = 0; hint = site ? `Hold E to plant at ${site}` : 'Go to site A or B'; }
     }
@@ -615,6 +618,7 @@ export class Game {
       } else if (e.type === 'defused') { play('bomb_defuse'); this.end(false, 'The bomb was defused.'); }
     }
     this.anim.update(dt, { moving, sprinting: false, grounded: st.grounded, playerEye: st.eye, feetY: st.position.y, bots: [] });
+    if (MP) { this.mp.hud(dt, hint); return; }
     if (this.over) return;
     // timers / rules
     if (this.mode === 'bomb') {
@@ -649,7 +653,7 @@ export class Game {
     { const fr = now - this.last; const p = this.pf; p.n++; p.t += fr; if (fr > p.worst) p.worst = fr; if (p.t >= 500) { this.perf.textContent = Math.round(p.n * 1000 / p.t) + ' FPS · ' + Math.round(p.t / p.n) + ' ms (max ' + Math.round(p.worst) + ')'; p.n = 0; p.t = 0; p.worst = 0; } }
     const real = Math.min(0.05, (now - this.last) / 1000); this.last = now;
     const dt = real * this.kc.update(real) * this.killfx.update(real) * (this.deathCam ? 0.35 : 1);
-    if (this.mp && this.mp.active) { this.mp.frame(real); return; }
+    this._real = real;
     this.updateBlast(dt);
     if (this.pendEnd && !this.kc.active) { const p = this.pendEnd; this.pendEnd = null; this.end(p[0], p[1]); }
     for (let i = this.fx.length - 1; i >= 0; i--) { const f = this.fx[i]; f.t -= dt; f.l.material.opacity = Math.max(0, f.t / f.life); if (f.t <= 0) { this.scene.remove(f.l); f.l.geometry.dispose(); f.l.material.dispose(); this.fx.splice(i, 1); } }

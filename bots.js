@@ -139,7 +139,36 @@ export function createBots(THREE, scene, map, opts) {
     }
     b.ch.update(dt, { speed, aiming, pitch, reloading, weapon: weapon === 'machinegun' || weapon === 'pistol' || weapon === 'sniper' ? weapon : undefined, alive: true, distance: lastEnv && lastEnv.playerEye ? Math.hypot(lastEnv.playerEye.x - x, lastEnv.playerEye.z - z) : undefined });
   }
+  // ---- network opponents: same bot objects (character, hit zones, death/hit anims), driven by server snapshots instead of AI
+  const WN = ['pistol', 'machinegun', 'sniper']; let remote = false; const rmap = new Map();
+  function setRemote(on) { if (remote === !!on) return; remote = !!on; clear(); rmap.clear(); }
+  function syncRemote(players) {
+    const seen = new Set();
+    for (const p of players) {
+      seen.add(p.id); let b = rmap.get(p.id);
+      if (!b) { b = spawn({ x: p.x, y: p.y, z: p.z }, { weapon: WN[p.weapon] || 'machinegun' }); b.id = 'net' + p.id; b.netId = p.id; b.alive = !!p.alive; b.health = p.hp; rmap.set(p.id, b); }
+      b.net = p; b.name = p.name; b.team = p.team; b.position.x = p.x; b.position.y = p.y; b.position.z = p.z;
+      if (p.alive && !b.alive) { b.alive = true; b.health = p.hp; b.deadT = 0; b.group.visible = true; b.ch.setAnim('idle'); }
+      else if (!p.alive && b.alive) damage(b, 0, false);
+      else if (p.alive && p.hp < b.health) damage(b, p.hp, false);
+      else if (p.alive) b.health = p.hp;
+    }
+    for (const [id, b] of rmap) if (!seen.has(id)) { scene.remove(b.group); const i = list.indexOf(b); if (i >= 0) list.splice(i, 1); rmap.delete(id); }
+  }
+  function remoteUpdate(dt) {
+    for (const b of list) {
+      const p = b.net; if (!p) continue;
+      b.group.visible = p.connected !== false && (b.alive || b.deadT < 6);
+      b.group.position.set(p.x, p.y, p.z); b.group.rotation.y = p.yaw;
+      if (!b.alive) { b.deadT += dt; b.ch.update(dt, { alive: false }); continue; }
+      const lp = b._lp || (b._lp = { x: p.x, z: p.z }); const sp = dt > 0 ? Math.hypot(p.x - lp.x, p.z - lp.z) / dt : 0; lp.x = p.x; lp.z = p.z; b._sp = (b._sp || 0) + (sp - (b._sp || 0)) * 0.3;
+      b.aimT = Math.max(0, (b.aimT || 0) - dt);
+      b.ch.update(dt, { speed: b._sp, crouched: !!p.crouched, aiming: b.aimT > 0, pitch: p.pitch, reloading: false, weapon: WN[p.weapon], alive: true });
+    }
+    return [];
+  }
   function update(dt, env) {
+    if (remote) return remoteUpdate(dt);
     for (const b of list) b.grenadeFlash = Math.max(0, (b.grenadeFlash || 0) - dt);
     const events = [];
     if (aiList.length && dt > 0) {
@@ -206,6 +235,6 @@ export function createBots(THREE, scene, map, opts) {
     AI.invalidateNav(grid);
     for (const b of list) { b.path = []; b.pathT = 0; }
   }
-  return { list, spawn, clear, update, damage, aliveCount, noise, useAI,
+  return { list, spawn, clear, update, setRemote, syncRemote, damage, aliveCount, noise, useAI,
     refreshNavigation, set smokeLOS(fn) { smokeLOS = fn; } };
 }

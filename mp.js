@@ -121,31 +121,28 @@ export function createMultiplayer(game, THREE) {
     net.on('disconnected', () => { stop(); show(`<div class="mp-c"><h2 style="font-size:22px">Disconnected</h2><p>The connection dropped.</p><div class="mp-row"><button class="mp-btn" id="mpr">BACK TO LOBBY</button></div></div>`).querySelector('#mpr').onclick = () => lobby(); });
     net.on('close', () => { if (!welcomed && !net.closing && ++tries > 3) { stop(); p._n = (p._n || 0) + 1; if (p._n >= 3) { show(`<div class="mp-c"><h2 style="font-size:22px">Can't reach the server</h2><p>The game server answered but refused the connection. Check your internet, or try again in a minute.</p><div class="mp-row"><button class="mp-btn" id="mpy">TRY AGAIN</button><button class="mp-btn alt" id="mpr">BACK</button></div></div>`).querySelector('#mpy').onclick = () => { p._n = 0; connect(p); }; screen.querySelector('#mpr').onclick = () => lobby(); } else wakeScreen(p, 0); } });
     net.on('swap', () => banner('Switching sides', 3));
-    net.on('round_start', () => banner('Round start', 1.6));
-    net.on('round_end', (m) => banner(m && m.winner != null ? 'Round over' : 'Round over', 2.5));
-    net.on('planted', () => banner('Bomb planted', 2));
-    net.on('defused', () => banner('Bomb defused', 2));
-    net.on('explode', () => banner('Bomb exploded', 2));
-    net.on('kill', (m) => { if (!m) return; if (m.by === net.id) banner('You got a kill', 1.2); else if (m.id === net.id) banner(m.rv ? 'You were killed. A teammate can revive you for ' + m.rv + 's' : 'You were killed', 2.5);
+    net.on('round_start', () => { bodies.clear(); play('round_start'); banner('Round start', 1.6); try { const g = game; if (g.deathCam) { g.deathCam.banner.remove(); g.deathCam = null; g.hud.root.style.display = ''; g.vm.group.visible = true; g.camera.fov = 75; g.camera.updateProjectionMatrix(); } g.killfx.reset(); g.kc.clear(); g.streaks.cancel('round'); g.player.reset(); g.ws.refill(); g.pick('secondary'); g.hud.setHealth(100); } catch (e) {} });
+    net.on('round_end', (m) => { banner('Round over', 2.5); try { play(m && m.winner === net.team ? 'round_win' : 'round_lose'); } catch (e) {} });
+    net.on('planted', () => { banner('Bomb planted', 2); play('bomb_plant'); });
+    net.on('defused', () => { banner('Bomb defused', 2); play('bomb_defuse'); });
+    net.on('explode', () => { banner('Bomb exploded', 2); play('bomb_explode'); });
+    net.on('kill', (m) => { if (!m) return;
+      if (m.id === net.id) { banner(m.rv ? 'You were killed. A teammate can revive you for ' + m.rv + 's' : '', 0.1); try { const g = game, kb = g.bots.list.find((b) => b.netId === m.by); g.streaks.registerDeath(); g.killfx.playerDied(); g.hud.setHealth(0); if (kb) g.startDeathCam(kb.group.position, 'You were eliminated.'); } catch (e) {} }
       if (m.rv) bodies.set(m.id, { x: m.x, y: m.y, z: m.z, t: performance.now() / 1000, rv: m.rv }); });
     net.on('revive', (m) => { if (!m) return; bodies.delete(m.id); banner(m.id === net.id ? 'You were revived' : 'Teammate revived', 1.6); });
-    net.on('round_start', () => { bodies.clear(); play('round_start'); });
-    net.on('shot', (m) => { if (!m) return; const nm = SHOT[m.w] || 'shot_mg'; if (m.id === net.id) { play(nm); try { game.vm.fire(); } catch (e) {} } else { play(nm, P3(m.o)); const rr = remotes.get(m.id); if (rr) rr.aimT = 0.5; } });
-    net.on('hit', (m) => { if (!m) return; if (m.id === net.id) { play('hurt'); try { game.hud.damageFlash(); } catch (e) {} } else if (m.by === net.id) { play(m.head ? 'headshot' : 'hit'); try { game.hud.hitMarker(!!m.kill, !!m.head); } catch (e) {} } if (m.kill && m.by === net.id) play('kill'); });
-    net.on('planted', () => play('bomb_plant')); net.on('defused', () => play('bomb_defuse')); net.on('explode', () => play('bomb_explode'));
-    net.on('round_end', (m) => { try { play(m && m.winner === net.team ? 'round_win' : 'round_lose'); } catch (e) {} });
+    net.on('shot', (m) => { if (!m || m.id === net.id) return; const b = game.bots.list.find((x) => x.netId === m.id); if (b) b.aimT = 0.5; try { const from = new THREE.Vector3(m.o[0], m.o[1], m.o[2]), to = new THREE.Vector3(m.e[0], m.e[1], m.e[2]); play('bot_shot', from); game.anim.onBotShot({ from, to, hit: false }); } catch (e) {} });
+    net.on('hit', (m) => { if (!m || m.id !== net.id) return; play('hurt'); try { game.hud.damageFlash(); } catch (e) {} });
     net.connect();
   }
 
   function banner(t, secs) { lastMsg = t; msgT = secs; }
 
   function begin(w) {
-    clear(); mp.active = true; game.state = 'mp';
+    clear(); mp.active = true; game.state = 'play'; game.mode = 'bomb'; game.over = false;
     if (game.ov) game.ov.style.display = 'none';
     if (game.menuStop) try { game.menuStop(); } catch (e) {}
-    game.bots && game.bots.clear && game.bots.clear();
-    try { game.vm.group.visible = true; } catch (e) {}
-    hud = el(`<div class="cr"></div><div class="top"><div class="sc"><b>0</b> : <b>0</b></div><div class="ph"></div></div><div class="rc"></div><div class="hp"></div><div class="am"></div><div class="net"></div><div class="msg"></div>`, 'mp-hud');
+    try { game.bots.setRemote(true); game.killfx.reset(); game.kc.clear(); game.streaks.reset(); game.streaks.show(false); game.player.reset(); game.ws.refill(); game.vm.group.visible = true; game.ctrl.setEnabled(true); } catch (e) {}
+    hud = el(`<div class="rc"></div><div class="net"></div><div class="msg"></div>`, 'mp-hud');
     root.appendChild(hud); try { game.hud.root.style.display = ''; game.hud.setHealth(100); } catch (e) {}
     try { game.newEconomy(); game.eco.setRemote((id) => mp.net && mp.net.sendRaw({ t: 'buy', id })); } catch (e) {}
     mp._sk = null; hud.querySelector('.rc').textContent = 'ROOM ' + w.room + ' - share the link or code. L to leave';
@@ -154,80 +151,70 @@ export function createMultiplayer(game, THREE) {
 
   function bind() {
     const on = (t, ev, f, o) => { t.addEventListener(ev, f, o); binds.push([t, ev, f, o]); };
-    on(document, 'keydown', (e) => { if (!mp.active) return; if (e.code === 'Escape') return; if (e.code === 'KeyL') { game.showMenu(); return; } if (e.code === 'KeyB') { try { game.eco.toggle(); if (game.eco.getState().menuOpen && document.pointerLockElement) document.exitPointerLock(); } catch (er) {} return; } keys[e.code] = true; if (e.code === 'KeyQ' && !e.repeat) mp.net.input.aim = !mp.net.input.aim; if (e.code.startsWith('Digit') && +e.code[5] >= 1 && +e.code[5] <= 3 && e.code !== 'Digit3') mp.net.setInput({ w: +e.code[5] - 1 }); if (['Space', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault(); });
+    on(document, 'keydown', (e) => { if (!mp.active) return; if (e.code === 'Escape') return; if (e.code === 'KeyL') { game.showMenu(); return; } keys[e.code] = true; if (['Space', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault(); });
     on(document, 'keyup', (e) => { keys[e.code] = false; });
-    on(game.canvas, 'mousedown', (e) => { if (!mp.active) return; if (document.pointerLockElement !== game.canvas) { game.canvas.requestPointerLock(); return; } if (game.eco && game.eco.getState().menuOpen) return; if (e.button === 0) { if (!(mp.net.me.pp > 0 || mp.net.me.dp > 0)) { mp.net.setInput({ fire: true }); mp.net.tap(); } } if (e.button === 2) mp.net.input.aim = !mp.net.input.aim; e.preventDefault(); });
+    on(game.canvas, 'mousedown', (e) => { if (!mp.active) return; if (document.pointerLockElement !== game.canvas) { game.canvas.requestPointerLock(); return; } if (game.eco && game.eco.getState().menuOpen) return; if (e.button === 0) { if (!(mp.net.me.pp > 0 || mp.net.me.dp > 0)) { mp.net.setInput({ fire: true }); mp.net.tap(); } } });
     on(document, 'mouseup', (e) => { if (mp.active && e.button === 0) mp.net.setInput({ fire: false }); });
-    on(document, 'mousemove', (e) => { if (mp.active && document.pointerLockElement === game.canvas) mp.net.look(e.movementX, e.movementY); });
     on(window, 'blur', () => { keys = {}; });
   }
 
-  function charFor(p) {
-    let r = remotes.get(p.id);
-    if (!r) {
-      const ch = createCharacter(THREE, { id: CHARACTER_IDS[p.id % CHARACTER_IDS.length], team: p.team === mp.net.team ? 'CT' : 'T', weapon: WEAPON_ORDER[p.weapon] || 'machinegun' });
-      game.scene.add(ch.group);
-      const tag = el(esc(p.name), 'tag'); hud.appendChild(tag);
-      r = { ch, tag, lx: p.x, lz: p.z, wp: p.weapon }; remotes.set(p.id, r);
-    }
-    return r;
-  }
-
   const v3 = new THREE.Vector3();
-  mp.frame = (dt) => {
+  // Called by the solo Game.update each frame: feeds local input to the server and mirrors the server state into the SAME solo systems
+  // (ctrl pose, player hp, eco, bomb, opponents as bots).
+  mp.drive = (dt) => {
     const net = mp.net; if (!net) return;
-    const k = keys;
-    net.setInput({ f: (k.KeyW ? 1 : 0) - (k.KeyS ? 1 : 0), r: (k.KeyD ? 1 : 0) - (k.KeyA ? 1 : 0), j: !!k.Space, c: !!(k.ShiftLeft || k.ShiftRight), rl: !!k.KeyR, use: !!k.KeyE });
-    const busy = (net.me.pp > 0 || net.me.dp > 0) && net.alive; if (busy) net.setInput({ fire: false });
+    const g = game, st = g.ctrl.state, k = keys;
+    if (mp._re !== net.respawns) { mp._re = net.respawns; g.ctrl.teleport({ x: net.cur.x, y: net.cur.y, z: net.cur.z }, { yaw: net.yaw, pitch: net.pitch }); } else { net.yaw = st.yaw; net.pitch = st.pitch; }
+    net.setInput({ f: (k.KeyW ? 1 : 0) - (k.KeyS ? 1 : 0), r: (k.KeyD ? 1 : 0) - (k.KeyA ? 1 : 0), j: !!k.Space, c: !!(k.ShiftLeft || k.ShiftRight), rl: !!k.KeyR, use: !!k.KeyE, aim: !!g.ws.aiming, w: Math.max(0, WEAPON_ORDER.indexOf(g.ws.current)) });
+    const busy = (net.me.pp > 0 || net.me.dp > 0) && net.alive; if (busy || !net.alive) net.setInput({ fire: false });
+    if (!net.alive || busy) g.ws.setTrigger(false);
     net.update(dt);
-    game.plantT = busy ? 1 : 0; try { game.plantAnimTick(dt); } catch (er) {}
-    const e = net.eye(), cam = game.camera;
-    cam.position.set(e.x, e.y, e.z); cam.rotation.order = 'YXZ'; cam.rotation.set(e.pitch, e.yaw, 0);
-    try { setListener({ x: e.x, y: e.y, z: e.z }, { x: -Math.sin(e.yaw) * Math.cos(e.pitch), y: Math.sin(e.pitch), z: -Math.cos(e.yaw) * Math.cos(e.pitch) }); } catch (er) {}
-    const want = new Set(); const rem = net.remotes(); let spec = null;
-    if (!net.alive && net.phase !== 'waiting') spec = rem.find((r) => r.team === net.team && r.alive && r.connected !== false) || null;
-    if (spec) { cam.position.set(spec.x, spec.y + (spec.crouched ? 1.1 : 1.6), spec.z); cam.rotation.set(spec.pitch, spec.yaw, 0); }
-    for (const p of rem) {
-      want.add(p.id); const r = charFor(p);
-      const bd = bodies.get(p.id), fresh = bd && !p.alive && (performance.now() / 1000 - bd.t) < bd.rv;
-      r.ch.group.visible = (p.alive || fresh) && p.connected !== false && p !== spec; r.ch.group.rotation.z = fresh ? Math.PI / 2 : 0; r.ch.group.position.set(p.x, p.y, p.z); r.ch.group.rotation.y = p.yaw;
-      const sp = dt > 0 ? Math.hypot(p.x - r.lx, p.z - r.lz) / dt : 0; r.lx = p.x; r.lz = p.z; r.sp = (r.sp || 0) + (sp - (r.sp || 0)) * 0.3;
-      r.aimT = Math.max(0, (r.aimT || 0) - dt); try { r.ch.update(dt, { speed: r.sp, crouched: !!p.crouched || !!p.c, aiming: r.aimT > 0, pitch: p.pitch, reloading: false, weapon: WEAPON_ORDER[p.weapon], alive: p.alive }); } catch (er) {}
-      if (p.alive && r.sp > 3 && (r.stepT = (r.stepT || 0) - dt) <= 0) { r.stepT = 0.36; play('footstep', { x: p.x, y: p.y, z: p.z }); }
-      v3.set(p.x, p.y + 2.1, p.z).project(cam); const vis = r.ch.group.visible && v3.z < 1;
-      const mate = p.team === net.team; r.tag.style.display = vis && mate ? '' : 'none'; if (vis) { r.tag.style.left = ((v3.x + 1) / 2 * 100) + '%'; r.tag.style.top = ((1 - v3.y) / 2 * 100) + '%'; r.tag.style.color = p.team === net.team ? '#7fe3ff' : '#ffb347'; }
-    }
-    if (net.alive && bodies.size) { const nowS = performance.now() / 1000; let best = null, bdist = 2.4; for (const [id, b] of bodies) { if (nowS - b.t > b.rv) { bodies.delete(id); continue; } const rp = rem.find((r) => r.id === id); if (!rp || rp.team !== net.team) continue; const d = Math.hypot(e.x - b.x, e.z - b.z); if (d < bdist) { bdist = d; best = rp; } } if (best) banner('Hold E to revive ' + (best.name || 'teammate'), 0.2); }
-    if (net.bomb && net.bomb.t != null && net.phase === 'planted') { bombBeepT -= dt; if (bombBeepT <= 0) { const left = Math.max(0, net.bomb.t); bombBeepT = left < 5 ? 0.25 : left < 10 ? 0.5 : left < 20 ? 0.8 : 1.1; play('bomb_beep', typeof net.bomb.x === 'number' ? { x: net.bomb.x, y: net.bomb.y || 0, z: net.bomb.z } : undefined); } }
-    for (const [id, r] of remotes) if (!want.has(id)) { game.scene.remove(r.ch.group); r.tag.remove(); remotes.delete(id); }
-    // viewmodel
-    try { const wi = WEAPON_ORDER[net.me.weapon]; if (wi && game.vm.current !== wi) game.vm.setWeapon(wi); game.vm.group.visible = net.alive && !(game.handBomb && game.handBomb.hid); game.vm.update(dt, { speed: e.speed, grounded: e.grounded, crouched: e.crouched, aiming: net.input.aim }); } catch (er) {}
-    cam.fov = net.input.aim ? 30 : 75; cam.updateProjectionMatrix();
-    // HUD
+    const e = net.eye();
+    g.ctrl.teleport({ x: e.feet.x, y: e.feet.y, z: e.feet.z }, { yaw: st.yaw, pitch: st.pitch });
+    try { st.velocity.x = net.me.v ? net.me.v[0] : 0; st.velocity.y = net.me.v ? net.me.v[1] : 0; st.velocity.z = net.me.v ? net.me.v[2] : 0; st.grounded = e.grounded !== false; st.crouched = !!e.crouched; st.speed = Math.hypot(st.velocity.x, st.velocity.z); } catch (er) {}
+    g.player.hp = Math.max(0, net.me.hp || 0); g.player.alive = net.alive;
+    g.bots.syncRemote(net.remotes());
+    const ph = net.phase === 'freeze' ? 'freeze' : (net.phase === 'live' || net.phase === 'planted') ? 'live' : 'ended', inv = net.me.inv || [];
+    g.eco.remote({ money: net.me.m, primary: inv[0], secondary: inv[1], team: net.team, alive: net.alive, phase: ph, freezeRemaining: ph === 'freeze' ? net.phaseLeft : 0 });
+    if (net.bomb && net.bomb.x != null) { g.bomb.planted = true; g.bomb.t = net.bomb.t; g.bomb.pos.set(net.bomb.x, net.bomb.y, net.bomb.z); g.bombMesh.position.set(net.bomb.x, net.bomb.y + 0.13, net.bomb.z); g.bombMesh.visible = true; }
+    else { g.bomb.planted = false; g.bombMesh.visible = false; }
+    g.plantT = busy ? 1 : 0;
+  };
+  mp.fixCam = (cam) => {
+    const net = mp.net; if (!net) return;
+    const e = net.eye(); cam.position.set(e.x, e.y, e.z);
+    let spec = null; if (!net.alive && net.phase !== 'waiting') { spec = game.bots.list.find((b) => b.net && b.net.team === net.team && b.alive && b.net.connected !== false) || null; }
+    mp._spec = spec;
+    if (spec) { cam.position.set(spec.net.x, spec.net.y + (spec.net.crouched ? 1.1 : 1.6), spec.net.z); cam.rotation.set(spec.net.pitch, spec.net.yaw, 0); }
+  };
+  mp.hud = (dt, hint) => {
+    const net = mp.net; if (!net) return; const g = game;
     const q = (c) => hud.querySelector('.' + c);
     try { const my = net.team === 'T' ? 0 : 1, key = net.score[my] + ':' + net.score[1 - my] + ':' + net.round;
-      if (mp._sk !== key) { mp._sk = key; game.match = { p: net.score[my], b: net.score[1 - my], round: net.round }; game.renderSB(); }
-      const ph = net.phase === 'freeze' ? 'freeze' : (net.phase === 'live' || net.phase === 'planted') ? 'live' : 'ended', inv = net.me.inv || [];
-      game.eco.remote({ money: net.me.m, primary: inv[0], secondary: inv[1], team: net.team, alive: net.alive, phase: ph, freezeRemaining: ph === 'freeze' ? net.phaseLeft : 0 });
-      if (game.sbm) { const av = net.avg || [0, 0], mineT = net.team === 'T', f = (n) => '$' + Math.round(n).toLocaleString('en-US'); game.sbm.style.display = 'flex';
-        game.sbm.innerHTML = `<span style="color:#7dffb0">${f(net.me.m || 0)}</span><span class="l">AVG $ / PLAYER</span><span style="color:#ffb35c">${f(mineT ? av[1] : av[0])}</span>`; } } catch (er) {}
-    q('ph').textContent = (net.phase || '').toUpperCase() + (net.phaseLeft ? '  ' + Math.ceil(net.phaseLeft) + 's' : '') + (net.bomb ? '  BOMB ' + (net.bomb.t != null ? Math.ceil(net.bomb.t) + 's' : '') : '');
-    q('hp').textContent = (net.alive || net.phase !== 'live') ? Math.max(0, Math.round(net.me.hp || 100)) : 'DEAD';
-    q('am').innerHTML = (net.alive || net.phase !== 'live') ? `${net.me.mag} <small>/ ${net.me.res}</small>` : '';
+      if (mp._sk !== key) { mp._sk = key; g.match = { p: net.score[my], b: net.score[1 - my], round: net.round }; g.renderSB(); } } catch (er) {}
+    const bt = net.bomb && net.bomb.t != null && net.phase === 'planted' ? 'BOMB ' + Math.ceil(net.bomb.t) + 's' : '';
+    g.info.textContent = net.phase === 'freeze' ? `BUY PHASE · ${Math.ceil(net.phaseLeft)} s · B = shop` : `${bt || hint || ''}${bt ? '' : (hint ? ' · ' : '') + (net.phase || '').toUpperCase() + ' ' + Math.ceil(net.phaseLeft || 0) + 's'}`;
     q('net').textContent = Math.round(net.rttMs) + ' ms';
-    try { const H = game.hud, show = net.alive || net.phase !== 'live'; H.setHealth(Math.max(0, net.me.hp || 100)); H.setAmmo(net.me.mag, net.me.res, String(WEAPON_ORDER[net.me.weapon] || '').toUpperCase(), net.me.rl > 0); H.setScope(!!net.input.aim, net.input.aim ? 1 : 0); H.setCrosshair(6 + (net.me.bloom || 0) * 400, show && !net.input.aim);
-      if (net.me.rl > 0 && !mp._rl) { try { game.vm.reload(1.4); } catch (e) {} } mp._rl = net.me.rl > 0; } catch (er) {}
+    if (net.alive && net.phase === 'live') { /* room hint fades after the round starts */ }
+    const cam = g.camera;
+    for (const b of g.bots.list) {
+      if (!b.net) continue; const p = b.net;
+      if (!b.tag) { b.tag = el(esc(p.name || ''), 'tag'); hud.appendChild(b.tag); }
+      if (p.alive && b.sp3 !== 1 && (b.stepT = (b.stepT || 0) - dt) <= 0 && (b._sp || 0) > 3) { b.stepT = 0.36; play('footstep', { x: p.x, y: p.y, z: p.z }); }
+      v3.set(p.x, p.y + 2.1, p.z).project(cam); const vis = b.group.visible && p.alive && v3.z < 1 && p.team === net.team;
+      b.tag.style.display = vis ? '' : 'none'; if (vis) { b.tag.style.left = ((v3.x + 1) / 2 * 100) + '%'; b.tag.style.top = ((1 - v3.y) / 2 * 100) + '%'; b.tag.style.color = '#7fe3ff'; }
+    }
+    if (net.bomb && net.bomb.t != null && net.phase === 'planted') { bombBeepT -= dt; if (bombBeepT <= 0) { const left = Math.max(0, net.bomb.t); bombBeepT = left < 5 ? 0.25 : left < 10 ? 0.5 : left < 20 ? 0.8 : 1.1; play('bomb_beep', { x: net.bomb.x, y: net.bomb.y, z: net.bomb.z }); } }
     if (msgT > 0) { msgT -= dt; q('msg').textContent = msgT > 0 ? lastMsg : ''; } else if (lastMsg && msgT <= 0 && lastMsg.indexOf('Reconnecting') < 0) q('msg').textContent = '';
     else q('msg').textContent = lastMsg;
-    if (!net.alive && net.phase === 'live') q('msg').textContent = spec ? 'Spectating ' + spec.name : 'You are dead. Waiting for the round to end';
-    game.renderMP();
+    if (!net.alive && net.phase === 'live') q('msg').textContent = mp._spec ? 'Spectating ' + (mp._spec.name || '') : 'You are dead. Waiting for the round to end';
   };
 
   function stop() {
     mp.active = false; remotes.forEach((r) => { game.scene.remove(r.ch.group); }); remotes.clear();
     if (mp.net) { try { mp.net.closing = true; mp.net.ws && mp.net.ws.close(); } catch (e) {} mp.net = null; }
     binds.forEach(([t, ev, f, o]) => t.removeEventListener(ev, f, o)); binds = [];
-    if (hud) { hud.remove(); hud = null; } try { game.hud.root.style.display = 'none'; game.hud.setScope(false); game.sb.style.display = 'none'; if (game.sbm) game.sbm.style.display = 'none'; } catch (e) {} keys = {}; game.state = 'menu'; wakeStop = true; clearTimeout(wakeTimer);
+    if (hud) { hud.remove(); hud = null; } try { game.bots.setRemote(false); game.streaks.show(true); game.hud.root.style.display = 'none'; game.hud.setScope(false); game.sb.style.display = 'none'; if (game.sbm) game.sbm.style.display = 'none'; } catch (e) {} keys = {}; game.state = 'menu'; wakeStop = true; clearTimeout(wakeTimer);
     if (document.pointerLockElement) document.exitPointerLock();
     try { game.vm.group.visible = false; } catch (e) {}
   }
