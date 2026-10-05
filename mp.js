@@ -28,6 +28,7 @@ const CSS = `
 .mp-hud .sc{font-size:30px;font-weight:600;letter-spacing:.08em}.mp-hud .sc b:first-child{color:#ffb347}.mp-hud .sc b:last-child{color:#7fe3ff}
 .mp-hud .ph{font-size:13px;opacity:.85;letter-spacing:.14em}
 .mp-hud .hp{position:absolute;left:28px;bottom:26px;font-size:34px;font-weight:600}.mp-hud .am{position:absolute;right:28px;bottom:44px;font-size:34px;font-weight:600}.mp-hud .am small{font-size:16px;opacity:.7}
+.mp-hud .cr,.mp-hud .hp,.mp-hud .am{display:none}
 .mp-hud .net{position:absolute;right:14px;bottom:8px;font-size:11px;opacity:.65}
 .mp-hud .msg{position:absolute;top:34%;left:50%;transform:translateX(-50%);font-size:28px;font-weight:600;letter-spacing:.1em;text-align:center}
 .mp-hud .rc{position:absolute;left:14px;top:12px;font-size:12px;opacity:.7;letter-spacing:.12em}
@@ -123,8 +124,8 @@ export function createMultiplayer(game, THREE) {
       if (m.rv) bodies.set(m.id, { x: m.x, y: m.y, z: m.z, t: performance.now() / 1000, rv: m.rv }); });
     net.on('revive', (m) => { if (!m) return; bodies.delete(m.id); banner(m.id === net.id ? 'You were revived' : 'Teammate revived', 1.6); });
     net.on('round_start', () => { bodies.clear(); play('round_start'); });
-    net.on('shot', (m) => { if (!m) return; const nm = SHOT[m.w] || 'shot_mg'; if (m.id === net.id) play(nm); else play(nm, P3(m.o)); });
-    net.on('hit', (m) => { if (!m) return; if (m.id === net.id) play('hurt'); else if (m.by === net.id) play(m.head ? 'headshot' : 'hit'); if (m.kill && m.by === net.id) play('kill'); });
+    net.on('shot', (m) => { if (!m) return; const nm = SHOT[m.w] || 'shot_mg'; if (m.id === net.id) { play(nm); try { game.vm.fire(); } catch (e) {} } else { play(nm, P3(m.o)); const rr = remotes.get(m.id); if (rr) rr.aimT = 0.5; } });
+    net.on('hit', (m) => { if (!m) return; if (m.id === net.id) { play('hurt'); try { game.hud.damageFlash(); } catch (e) {} } else if (m.by === net.id) { play(m.head ? 'headshot' : 'hit'); try { game.hud.hitMarker(!!m.kill, !!m.head); } catch (e) {} } if (m.kill && m.by === net.id) play('kill'); });
     net.on('planted', () => play('bomb_plant')); net.on('defused', () => play('bomb_defuse')); net.on('explode', () => play('bomb_explode'));
     net.on('round_end', (m) => { try { play(m && m.winner === net.team ? 'round_win' : 'round_lose'); } catch (e) {} });
     net.connect();
@@ -139,7 +140,7 @@ export function createMultiplayer(game, THREE) {
     game.bots && game.bots.clear && game.bots.clear();
     try { game.vm.group.visible = true; } catch (e) {}
     hud = el(`<div class="cr"></div><div class="top"><div class="sc"><b>0</b> : <b>0</b></div><div class="ph"></div></div><div class="rc"></div><div class="hp"></div><div class="am"></div><div class="net"></div><div class="msg"></div>`, 'mp-hud');
-    root.appendChild(hud);
+    root.appendChild(hud); try { game.hud.root.style.display = ''; game.hud.setHealth(100); } catch (e) {}
     hud.querySelector('.rc').textContent = 'ROOM ' + w.room + ' - share the link or code. L to leave';
     bind(); game.canvas.requestPointerLock && game.canvas.requestPointerLock();
   }
@@ -184,7 +185,7 @@ export function createMultiplayer(game, THREE) {
       const bd = bodies.get(p.id), fresh = bd && !p.alive && (performance.now() / 1000 - bd.t) < bd.rv;
       r.ch.group.visible = (p.alive || fresh) && p.connected !== false && p !== spec; r.ch.group.rotation.z = fresh ? Math.PI / 2 : 0; r.ch.group.position.set(p.x, p.y, p.z); r.ch.group.rotation.y = p.yaw;
       const sp = dt > 0 ? Math.hypot(p.x - r.lx, p.z - r.lz) / dt : 0; r.lx = p.x; r.lz = p.z; r.sp = (r.sp || 0) + (sp - (r.sp || 0)) * 0.3;
-      try { r.ch.update(dt, { speed: r.sp, aiming: false, pitch: p.pitch, reloading: false, weapon: WEAPON_ORDER[p.weapon], alive: p.alive }); } catch (er) {}
+      r.aimT = Math.max(0, (r.aimT || 0) - dt); try { r.ch.update(dt, { speed: r.sp, crouched: !!p.crouched || !!p.c, aiming: r.aimT > 0, pitch: p.pitch, reloading: false, weapon: WEAPON_ORDER[p.weapon], alive: p.alive }); } catch (er) {}
       if (p.alive && r.sp > 3 && (r.stepT = (r.stepT || 0) - dt) <= 0) { r.stepT = 0.36; play('footstep', { x: p.x, y: p.y, z: p.z }); }
       v3.set(p.x, p.y + 2.1, p.z).project(cam); const vis = r.ch.group.visible && v3.z < 1;
       const mate = p.team === net.team; r.tag.style.display = vis && mate ? '' : 'none'; if (vis) { r.tag.style.left = ((v3.x + 1) / 2 * 100) + '%'; r.tag.style.top = ((1 - v3.y) / 2 * 100) + '%'; r.tag.style.color = p.team === net.team ? '#7fe3ff' : '#ffb347'; }
@@ -202,6 +203,8 @@ export function createMultiplayer(game, THREE) {
     q('hp').textContent = (net.alive || net.phase !== 'live') ? Math.max(0, Math.round(net.me.hp || 100)) : 'DEAD';
     q('am').innerHTML = (net.alive || net.phase !== 'live') ? `${net.me.mag} <small>/ ${net.me.res}</small>` : '';
     q('net').textContent = Math.round(net.rttMs) + ' ms';
+    try { const H = game.hud, show = net.alive || net.phase !== 'live'; H.setHealth(Math.max(0, net.me.hp || 100)); H.setAmmo(net.me.mag, net.me.res, String(WEAPON_ORDER[net.me.weapon] || '').toUpperCase(), net.me.rl > 0); H.setScope(!!net.input.aim, net.input.aim ? 1 : 0); H.setCrosshair(6 + (net.me.bloom || 0) * 400, show && !net.input.aim);
+      if (net.me.rl > 0 && !mp._rl) { try { game.vm.reload(1.4); } catch (e) {} } mp._rl = net.me.rl > 0; } catch (er) {}
     if (msgT > 0) { msgT -= dt; q('msg').textContent = msgT > 0 ? lastMsg : ''; } else if (lastMsg && msgT <= 0 && lastMsg.indexOf('Reconnecting') < 0) q('msg').textContent = '';
     else q('msg').textContent = lastMsg;
     if (!net.alive && net.phase === 'live') q('msg').textContent = spec ? 'Spectating ' + spec.name : 'You are dead. Waiting for the round to end';
@@ -212,7 +215,7 @@ export function createMultiplayer(game, THREE) {
     mp.active = false; remotes.forEach((r) => { game.scene.remove(r.ch.group); }); remotes.clear();
     if (mp.net) { try { mp.net.closing = true; mp.net.ws && mp.net.ws.close(); } catch (e) {} mp.net = null; }
     binds.forEach(([t, ev, f, o]) => t.removeEventListener(ev, f, o)); binds = [];
-    if (hud) { hud.remove(); hud = null; } keys = {}; game.state = 'menu'; wakeStop = true; clearTimeout(wakeTimer);
+    if (hud) { hud.remove(); hud = null; } try { game.hud.root.style.display = 'none'; game.hud.setScope(false); } catch (e) {} keys = {}; game.state = 'menu'; wakeStop = true; clearTimeout(wakeTimer);
     if (document.pointerLockElement) document.exitPointerLock();
     try { game.vm.group.visible = false; } catch (e) {}
   }
