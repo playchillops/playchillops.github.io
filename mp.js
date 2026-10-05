@@ -214,6 +214,7 @@ export function createMultiplayer(game, THREE) {
       v3.set(p.x, p.y + 2.1, p.z).project(cam); const vis = b.group.visible && p.alive && v3.z < 1 && p.team === net.team;
       b.tag.style.display = vis ? '' : 'none'; if (vis) { b.tag.style.left = ((v3.x + 1) / 2 * 100) + '%'; b.tag.style.top = ((1 - v3.y) / 2 * 100) + '%'; b.tag.style.color = '#7fe3ff'; }
     }
+    if (net.alive && bodies.size) { const nowS = performance.now() / 1000, e = net.eye(); let best = null, bdist = 2.4; for (const [id, b] of bodies) { if (nowS - b.t > b.rv) { bodies.delete(id); continue; } const bb = g.bots.list.find((x) => x.netId === id); if (!bb || bb.net.team !== net.team) continue; const d = Math.hypot(e.x - b.x, e.z - b.z); if (d < bdist) { bdist = d; best = bb; } } if (best) banner('Hold E to revive ' + (best.name || 'teammate'), 0.2); }
     if (net.bomb && net.bomb.t != null && net.phase === 'planted') { bombBeepT -= dt; if (bombBeepT <= 0) { const left = Math.max(0, net.bomb.t); bombBeepT = left < 5 ? 0.25 : left < 10 ? 0.5 : left < 20 ? 0.8 : 1.1; play('bomb_beep', { x: net.bomb.x, y: net.bomb.y, z: net.bomb.z }); } }
     if (msgT > 0) { msgT -= dt; q('msg').textContent = msgT > 0 ? lastMsg : ''; } else if (lastMsg && msgT <= 0 && lastMsg.indexOf('Reconnecting') < 0) q('msg').textContent = '';
     else q('msg').textContent = lastMsg;
