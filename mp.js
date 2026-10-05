@@ -141,7 +141,7 @@ export function createMultiplayer(game, THREE) {
   function banner(t, secs) { lastMsg = t; msgT = secs; }
 
   function begin(w) {
-    clear(); mp.active = true; game.state = 'play'; game.mode = 'bomb'; game.over = false;
+    try { game.setMusicMode('match'); } catch (e) {} clear(); mp.active = true; game.state = 'play'; game.mode = 'bomb'; game.over = false;
     if (game.ov) game.ov.style.display = 'none';
     if (game.menuStop) try { game.menuStop(); } catch (e) {}
     try { game.bots.setRemote(true); game.killfx.reset(); game.kc.clear(); game.streaks.reset(); game.streaks.show(true); game.player.reset(); game.ws.refill(); game.vm.group.visible = true; game.ctrl.setEnabled(true); } catch (e) {}
@@ -227,6 +227,7 @@ export function createMultiplayer(game, THREE) {
   };
 
   function stop() {
+    try { game.setMusicMode('menu'); } catch (e) {}
     mp.active = false; remotes.forEach((r) => { game.scene.remove(r.ch.group); }); remotes.clear();
     if (mp.net) { try { mp.net.closing = true; mp.net.ws && mp.net.ws.close(); } catch (e) {} mp.net = null; }
     binds.forEach(([t, ev, f, o]) => t.removeEventListener(ev, f, o)); binds = [];
@@ -239,4 +240,4 @@ export function createMultiplayer(game, THREE) {
   mp.solo = () => { let n = 'Player'; try { n = localStorage.getItem('sc_name') || 'Player'; } catch (e) {} connect({ room: 'new', name: n, solo: true }); };
   mp.autoJoin = () => { const m = /[?&]room=([A-Za-z0-9]+)/.exec(location.search); if (m) { lobby(m[1].toUpperCase()); return true; } return false; };
   return mp;
-}
+  }
