@@ -8,6 +8,13 @@ function exitFS() { (document.exitFullscreen || document.webkitExitFullscreen).c
 const btn = document.getElementById('fs');
 btn.onclick = (e) => { e.stopPropagation(); fsEl() ? exitFS() : goFS(); };
 document.addEventListener('fullscreenchange', () => { btn.textContent = fsEl() ? 'Exit fullscreen' : 'Fullscreen'; });
+btn.style.display = 'block'; btn.textContent = 'Fullscreen';
+const lockNow = () => { try { const c = g.canvas; if (c && g.state === 'play' && document.pointerLockElement !== c && c.requestPointerLock) { const p = c.requestPointerLock(); p && p.catch && p.catch(() => {}); } } catch (e) {} };
+document.addEventListener('fullscreenchange', () => { btn.textContent = fsEl() ? 'Exit fullscreen' : 'Fullscreen'; setTimeout(lockNow, 150); });
+// trackpads: any click on the game while playing grabs the mouse (pointer lock) so look follows the cursor
+document.addEventListener('mousedown', (e) => { if (e.target && e.target.closest && e.target.closest('button,input,textarea,select,a')) return; lockNow(); }, true);
+document.addEventListener('keydown', (e) => { if (e.code === 'F11') { e.preventDefault(); fsEl() ? exitFS() : goFS(); } });
+
 document.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('.sg button')) goFS(); }, true);
 document.addEventListener('keydown', (e) => { if (e.code === 'KeyF' && g.state !== 'play') { fsEl() ? exitFS() : goFS(); } });
 
