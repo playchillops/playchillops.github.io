@@ -157,9 +157,9 @@ export function createMultiplayer(game, THREE) {
 
   function bind() {
     const on = (t, ev, f, o) => { t.addEventListener(ev, f, o); binds.push([t, ev, f, o]); };
-    const isHost = () => { const ids = [net.id, ...net.roster.keys()]; return net.id === Math.min(...ids); };
-    const canBot = () => isHost() && (net.phase === 'waiting' || net.phase === 'freeze');
-    on(window, 'keydown', (e) => { if (!canBot() || e.repeat) return; if (e.code === 'KeyK') { net.sendRaw({ t: 'addbot', team: net.team === 'T' ? 'CT' : 'T' }); banner('Enemy bot added', 1.5); } else if (e.code === 'KeyL') { net.sendRaw({ t: 'addbot', team: net.team }); banner('Ally bot added', 1.5); } else if (e.code === 'KeyU') { net.sendRaw({ t: 'rmbots' }); banner('Bots removed', 1.5); } });
+    const isHost = () => { const ids = [mp.net.id, ...mp.net.roster.keys()]; return mp.net.id === Math.min(...ids); };
+    const canBot = () => isHost() && (mp.net.phase === 'waiting' || mp.net.phase === 'freeze');
+    on(window, 'keydown', (e) => { if (!mp.net || !canBot() || e.repeat) return; if (e.code === 'KeyK') { mp.net.sendRaw({ t: 'addbot', team: mp.net.team === 'T' ? 'CT' : 'T' }); banner('Enemy bot added', 1.5); } else if (e.code === 'KeyL') { mp.net.sendRaw({ t: 'addbot', team: mp.net.team }); banner('Ally bot added', 1.5); } else if (e.code === 'KeyU') { mp.net.sendRaw({ t: 'rmbots' }); banner('Bots removed', 1.5); } });
     mp._canBot = canBot;
     on(document, 'keydown', (e) => { if (!mp.active) return; if (e.code === 'Escape') return; if (e.code === 'KeyL') { game.showMenu(); return; } keys[e.code] = true; if (['Space', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault(); });
     on(document, 'keyup', (e) => { keys[e.code] = false; });
@@ -239,4 +239,4 @@ export function createMultiplayer(game, THREE) {
   mp.solo = () => { let n = 'Player'; try { n = localStorage.getItem('sc_name') || 'Player'; } catch (e) {} connect({ room: 'new', name: n, solo: true }); };
   mp.autoJoin = () => { const m = /[?&]room=([A-Za-z0-9]+)/.exec(location.search); if (m) { lobby(m[1].toUpperCase()); return true; } return false; };
   return mp;
-          }
+}
