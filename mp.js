@@ -28,7 +28,8 @@ const CSS = `
 .mp-hud .sc{font-size:30px;font-weight:600;letter-spacing:.08em}.mp-hud .sc b:first-child{color:#ffb347}.mp-hud .sc b:last-child{color:#7fe3ff}
 .mp-hud .ph{font-size:13px;opacity:.85;letter-spacing:.14em}
 .mp-hud .hp{position:absolute;left:28px;bottom:26px;font-size:34px;font-weight:600}.mp-hud .am{position:absolute;right:28px;bottom:44px;font-size:34px;font-weight:600}.mp-hud .am small{font-size:16px;opacity:.7}
-.mp-hud .cr,.mp-hud .hp,.mp-hud .am{display:none}
+.mp-hud .cr,.mp-hud .hp,.mp-hud .am,.mp-hud .sc{display:none}
+.mp-hud .top{top:44px}
 .mp-hud .net{position:absolute;right:14px;bottom:8px;font-size:11px;opacity:.65}
 .mp-hud .msg{position:absolute;top:34%;left:50%;transform:translateX(-50%);font-size:28px;font-weight:600;letter-spacing:.1em;text-align:center}
 .mp-hud .rc{position:absolute;left:14px;top:12px;font-size:12px;opacity:.7;letter-spacing:.12em}
@@ -141,7 +142,7 @@ export function createMultiplayer(game, THREE) {
     try { game.vm.group.visible = true; } catch (e) {}
     hud = el(`<div class="cr"></div><div class="top"><div class="sc"><b>0</b> : <b>0</b></div><div class="ph"></div></div><div class="rc"></div><div class="hp"></div><div class="am"></div><div class="net"></div><div class="msg"></div>`, 'mp-hud');
     root.appendChild(hud); try { game.hud.root.style.display = ''; game.hud.setHealth(100); } catch (e) {}
-    hud.querySelector('.rc').textContent = 'ROOM ' + w.room + ' - share the link or code. L to leave';
+    mp._sk = null; hud.querySelector('.rc').textContent = 'ROOM ' + w.room + ' - share the link or code. L to leave';
     bind(); game.canvas.requestPointerLock && game.canvas.requestPointerLock();
   }
 
@@ -198,7 +199,9 @@ export function createMultiplayer(game, THREE) {
     cam.fov = net.input.aim ? 30 : 75; cam.updateProjectionMatrix();
     // HUD
     const q = (c) => hud.querySelector('.' + c);
-    q('sc').innerHTML = `<b>${net.score[0]}</b> : <b>${net.score[1]}</b>`;
+    try { const my = net.team === 'T' ? 0 : 1, key = net.score[my] + ':' + net.score[1 - my] + ':' + net.round;
+      if (mp._sk !== key) { mp._sk = key; game.match = { p: net.score[my], b: net.score[1 - my], round: net.round }; game.renderSB(); }
+      if (game.sbm) game.sbm.style.display = 'none'; } catch (er) {}
     q('ph').textContent = (net.phase || '').toUpperCase() + (net.phaseLeft ? '  ' + Math.ceil(net.phaseLeft) + 's' : '') + (net.bomb ? '  BOMB ' + (net.bomb.t != null ? Math.ceil(net.bomb.t) + 's' : '') : '');
     q('hp').textContent = (net.alive || net.phase !== 'live') ? Math.max(0, Math.round(net.me.hp || 100)) : 'DEAD';
     q('am').innerHTML = (net.alive || net.phase !== 'live') ? `${net.me.mag} <small>/ ${net.me.res}</small>` : '';
@@ -215,7 +218,7 @@ export function createMultiplayer(game, THREE) {
     mp.active = false; remotes.forEach((r) => { game.scene.remove(r.ch.group); }); remotes.clear();
     if (mp.net) { try { mp.net.closing = true; mp.net.ws && mp.net.ws.close(); } catch (e) {} mp.net = null; }
     binds.forEach(([t, ev, f, o]) => t.removeEventListener(ev, f, o)); binds = [];
-    if (hud) { hud.remove(); hud = null; } try { game.hud.root.style.display = 'none'; game.hud.setScope(false); } catch (e) {} keys = {}; game.state = 'menu'; wakeStop = true; clearTimeout(wakeTimer);
+    if (hud) { hud.remove(); hud = null; } try { game.hud.root.style.display = 'none'; game.hud.setScope(false); game.sb.style.display = 'none'; if (game.sbm) game.sbm.style.display = 'none'; } catch (e) {} keys = {}; game.state = 'menu'; wakeStop = true; clearTimeout(wakeTimer);
     if (document.pointerLockElement) document.exitPointerLock();
     try { game.vm.group.visible = false; } catch (e) {}
   }
