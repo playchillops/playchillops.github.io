@@ -141,10 +141,13 @@ export function createMultiplayer(game, THREE) {
     clear(); mp.active = true; game.state = 'play'; game.mode = 'bomb'; game.over = false;
     if (game.ov) game.ov.style.display = 'none';
     if (game.menuStop) try { game.menuStop(); } catch (e) {}
-    try { game.bots.setRemote(true); game.killfx.reset(); game.kc.clear(); game.streaks.reset(); game.streaks.show(false); game.player.reset(); game.ws.refill(); game.vm.group.visible = true; game.ctrl.setEnabled(true); } catch (e) {}
+    try { game.bots.setRemote(true); game.killfx.reset(); game.kc.clear(); game.streaks.reset(); game.streaks.show(true); game.player.reset(); game.ws.refill(); game.vm.group.visible = true; game.ctrl.setEnabled(true); } catch (e) {}
     hud = el(`<div class="rc"></div><div class="net"></div><div class="msg"></div>`, 'mp-hud');
     root.appendChild(hud); try { game.hud.root.style.display = ''; game.hud.setHealth(100); } catch (e) {}
     try { game.newEconomy(); game.eco.setRemote((id) => mp.net && mp.net.sendRaw({ t: 'buy', id })); } catch (e) {}
+    try { if (!game._mpHooks) { game._mpHooks = true;
+      game.streaks.on('called', ({ id }) => { if (mp.active && mp.net) mp.net.sendRaw({ t: 'scall', id }); });
+      game.eco.on && 0; } game.eco.on('grenade', ({ id }) => { if (mp.active && mp.net) mp.net.sendRaw({ t: 'gren', id }); }); } catch (e) {}
     mp._sk = null; hud.querySelector('.rc').textContent = 'ROOM ' + w.room + ' - share the link or code. L to leave';
     bind(); game.canvas.requestPointerLock && game.canvas.requestPointerLock();
   }
@@ -175,11 +178,12 @@ export function createMultiplayer(game, THREE) {
     g.player.hp = Math.max(0, net.me.hp || 0); g.player.alive = net.alive;
     g.bots.syncRemote(net.remotes());
     const ph = net.phase === 'freeze' ? 'freeze' : (net.phase === 'live' || net.phase === 'planted') ? 'live' : 'ended', inv = net.me.inv || [];
-    g.eco.remote({ money: net.me.m, primary: inv[0], secondary: inv[1], team: net.team, alive: net.alive, phase: ph, freezeRemaining: ph === 'freeze' ? net.phaseLeft : 0 });
+    g.eco.remote({ grenades: net.me.gr, armor: net.me.ar, helmet: net.me.he, money: net.me.m, primary: inv[0], secondary: inv[1], team: net.team, alive: net.alive, phase: ph, freezeRemaining: ph === 'freeze' ? net.phaseLeft : 0 });
     if (net.bomb && net.bomb.x != null) { g.bomb.planted = true; g.bomb.t = net.bomb.t; g.bomb.pos.set(net.bomb.x, net.bomb.y, net.bomb.z); g.bombMesh.position.set(net.bomb.x, net.bomb.y + 0.13, net.bomb.z); g.bombMesh.visible = true; }
     else { g.bomb.planted = false; g.bombMesh.visible = false; }
     g.plantT = busy ? 1 : 0;
   };
+  mp.xdmg = (b, amt) => { if (mp.net && b && b.netId != null) mp.net.sendRaw({ t: 'xdmg', id: b.netId, amt: Math.round(amt) }); };
   mp.fixCam = (cam) => {
     const net = mp.net; if (!net) return;
     const e = net.eye(); cam.position.set(e.x, e.y, e.z);
