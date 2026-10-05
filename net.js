@@ -103,7 +103,7 @@ export class NetClient {
   }
   renderTick() {
     if (!this.snaps.length) return 0;
-    const delay = this.o.interpTicks ?? this.snapDiv * 2;
+    const delay = this.o.interpTicks ?? Math.max(3, this.snapDiv * 2);
     return this.latestK + (this.o.now() - this.latestRecv) * this.tickRate - delay;
   }
   /** interpolated remote players (not including yourself) */
