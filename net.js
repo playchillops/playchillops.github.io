@@ -76,8 +76,9 @@ export class NetClient {
   gate() { return this.phase !== 'freeze' && this.phase !== 'match_end' && this.alive; }
   applyPredicted(inp) {
     aimTo(this.ctrl, inp.yaw, inp.pitch);
-    const m = this.gate();
+    const m = this.phase !== 'match_end' && this.alive;
     this.ctrl.update(DT, m ? { forward: inp.f, right: inp.r, jump: inp.j, crouch: inp.c, sprint: false } : { forward: 0, right: 0, jump: false, crouch: inp.c, sprint: false });
+    if (this.phase === 'freeze' && this.sz) { const ps = this.ctrl.state.position, cx = Math.max(this.sz[0] - 2.5, Math.min(this.sz[0] + 2.5, ps.x)), cz = Math.max(this.sz[1] - 2.5, Math.min(this.sz[1] + 2.5, ps.z)); if (cx !== ps.x || cz !== ps.z) this.ctrl.teleport({ x: cx, y: ps.y, z: cz }, { yaw: this.ctrl.state.yaw, pitch: this.ctrl.state.pitch }); }
   }
   stepTick() {
     const i = this.input;
@@ -146,10 +147,10 @@ export class NetClient {
     this.snaps.push({ k: m.k, pl }); this.snaps[this.snaps.length - 1].recv = this.o.now();
     if (this.snaps.length > 30) this.snaps.shift();
     this.latestK = m.k; this.latestRecv = this.o.now(); this.stats.snaps++;
-    this.phase = m.ph; this.phaseLeft = m.pt; this.score = m.sc; this.round = m.rd; this.bomb = m.bomb ? { site: m.bomb[0], x: m.bomb[1], y: m.bomb[2], z: m.bomb[3], t: m.bomb[4] } : null;
+    this.lobby = !!m.ls; this.phase = m.ph; this.phaseLeft = m.pt; this.score = m.sc; this.round = m.rd; this.bomb = m.bomb ? { site: m.bomb[0], x: m.bomb[1], y: m.bomb[2], z: m.bomb[3], t: m.bomb[4] } : null;
     const mine = pl.get(this.id), me = m.me;
     if (mine && me) {
-      this.alive = mine.alive; Object.assign(this.me, { mag: me.mag, res: me.res, rl: me.rl, hp: mine.hp, weapon: mine.weapon, pp: me.pp, dp: me.dp, m: me.m, inv: me.inv }); if (m.av) this.avg = m.av;
+      this.alive = mine.alive; this.sz = me.sz || null; Object.assign(this.me, { mag: me.mag, res: me.res, rl: me.rl, hp: mine.hp, weapon: mine.weapon, pp: me.pp, dp: me.dp, m: me.m, inv: me.inv }); if (m.av) this.avg = m.av;
       this.reconcile(me, mine);
     }
     this.emit('snap', m);
