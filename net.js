@@ -44,7 +44,7 @@ export class NetClient {
     const full = this.token && this.room ? withParams(this.url, { room: this.room, token: this.token }) : this.url;
     const ws = this.o.makeSocket(full); this.ws = ws;
     ws.onopen = () => { this.connected = true; this.attempt = 0; this.pingTimer = this.o.setTimeout(() => this.ping(), 200); };
-    ws.onmessage = (ev) => this.lastRx = this.o.now(), this.onMessage(typeof ev === 'string' ? ev : ev.data);
+    ws.onmessage = (ev) => { this.lastRx = this.o.now(); this.onMessage(typeof ev === 'string' ? ev : ev.data); };
     ws.onclose = (e) => { if (ws !== this.ws) return; this.connected = false; this.o.clearTimeout(this.pingTimer); this.emit('close', { intentional: this.closing, code: e && e.code, sinceRx: this.lastRx ? this.o.now() - this.lastRx : -1 }); if (!this.closing) this.retry(); };
     ws.onerror = () => {};
   }
