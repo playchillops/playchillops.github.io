@@ -25,6 +25,7 @@ import { createGrenades } from './grenades.js';
 import { playIntro } from './intro.js';
 import { buildMenu } from './menu.js';
 import { createMultiplayer } from './mp.js';
+import { parkourColliders, parkourMeshes } from './parkour.js';
 import { showTutorial } from './tutorial.js';
 import { createCharacter, ROSTER } from './characters.js';
 
@@ -98,6 +99,7 @@ export class Game {
 
     // physics world: map blocking boxes + roof slabs + ramps (from the map's floor/ramp data)
     const m = this.map; const phys = m.physicsColliders ? [...m.physicsColliders] : [...m.colliders];
+    for (const c of parkourColliders(this.mapId)) phys.push(c); try { this.scene.add(parkourMeshes(THREE, this.mapId)); } catch (e) { console.warn('parkour', e); }
     for (const f of m.physicsColliders ? [] : m.floors) if (f.y > 0) phys.push({ min: { x: f.minX, y: f.y - 3, z: f.minZ }, max: { x: f.maxX, y: f.y, z: f.maxZ } });
     for (const r of m.physicsColliders ? [] : m.ramps) phys.push({ type: 'ramp', axis: r.axis, direction: r.y1 > r.y0 ? 1 : -1, min: { x: r.minX, y: Math.min(r.y0, r.y1), z: r.minZ }, max: { x: r.maxX, y: Math.max(r.y0, r.y1), z: r.maxZ } });
     this.phys = phys;
