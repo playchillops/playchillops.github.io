@@ -66,7 +66,7 @@ const CSS = `
 .sg button.b.alt{background:#9ad1ff}
 .sg .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 .sg .info{position:absolute;top:76px;left:50%;transform:translateX(-50%);z-index:21;font-weight:700;font-size:15px;text-shadow:0 2px 0 rgba(0,0,0,.5);pointer-events:none;white-space:nowrap}
-.sg .kf{position:absolute;right:24px;top:70px;z-index:21;font-weight:700;text-align:right;text-shadow:0 1px 3px #000;pointer-events:none}
+.sg .kf{position:absolute;left:50%;transform:translateX(-50%);right:auto;top:96px;z-index:21;font-weight:700;text-align:center;font-size:20px;text-shadow:0 1px 3px #000;pointer-events:none}
 `;
 const mulberry = (a) => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
 const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
@@ -586,4 +586,4 @@ export class Game {
     this.kc.afterRender();
   }
   destroy() { this.running = false; this.ro && this.ro.disconnect(); this.ctrl.dispose(); this.renderer.dispose(); }
-  }
+      }
