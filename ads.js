@@ -68,5 +68,11 @@ export function addAds(THREE, scene, opts = {}) {
   };
   scene.add(group); window.ChillAds = api; { let last = performance.now(); const tick = (n) => { const dt = Math.min(0.1, (n - last) / 1000); last = n; try { api.update(dt); } catch (e) {} requestAnimationFrame(tick); }; requestAnimationFrame(tick); }
   fetch('ads.json?' + (Date.now() / 3600000 | 0)).then((r) => (r.ok ? r.json() : null)).then((j) => { if (j && j.slots) for (const k in j.slots) if (j.slots[k].image) api.setSlot(k, j.slots[k].image); }).catch(() => {});
+  { // posts, frames, poles and arms all use the same material: merge them into one mesh (one draw call instead of ~30)
+    group.updateMatrixWorld(true); const list = []; group.traverse((o) => { if (o.isMesh && o.material === post && !o.children.length) list.push(o); });
+    if (list.length > 1) { const parts = list.map((o) => { const g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone(); g.applyMatrix4(o.matrixWorld); return g; });
+      const n = parts.reduce((a, g) => a + g.attributes.position.count, 0), pos = new Float32Array(n * 3); let off = 0; for (const g of parts) { pos.set(g.attributes.position.array, off * 3); off += g.attributes.position.count; g.dispose(); }
+      const mg = new THREE.BufferGeometry(); mg.setAttribute('position', new THREE.BufferAttribute(pos, 3)); mg.computeVertexNormals(); const mm = new THREE.Mesh(mg, post); mm.name = 'ad posts';
+      for (const o of list) o.removeFromParent(); group.add(mm); } }
   return api;
 }
