@@ -8,6 +8,7 @@ import { WEAPON_ORDER } from './player.js';
 import { createSpectator } from './spectate.js';
 import { profileComplete, requireProfile } from './profilegate.js';
 import { play, setListener, initAudio } from './audio.js';
+import { initProgress } from './progress.js';
 const SHOT = ['shot_pistol', 'shot_mg', 'shot_sniper'];
 const P3 = (a) => (a && a.length === 3 ? { x: a[0], y: a[1], z: a[2] } : undefined);
 
@@ -126,6 +127,7 @@ export function createMultiplayer(game, THREE) {
     const url = WS + '?room=' + encodeURIComponent(p.room) + '&name=' + encodeURIComponent(p.name) + (p.solo ? '&mode=solo&bots=' + Math.max(1, Math.min(4, (game.set && game.set.bots) || 4)) + '&diff=' + encodeURIComponent(game.diff || 'hard') + '&map=' + mapSel : p.room === 'new' || p.room === 'MATCH' ? '&mode=' + mode + '&map=' + mapSel : '') + (ACC.hasAccount() ? '&acct=' + encodeURIComponent(ACC.token()) : '');
     const net = new NetClient({ createController, colliders: game.phys, url });
     mp.net = net; let welcomed = false, tries = 0;
+    try { initProgress(net, { me: () => (ACC.getProfile() || {}).name }); } catch (e) {}
     net.on('welcome', (w) => { if (w.map && game.mapId && w.map !== game.mapId) { try { net.close(); } catch (e) {} show(`<div class="mp-c"><div class="mp-spin"></div><h2 style="font-size:22px">Loading map...</h2></div>`); setTimeout(() => location.replace(location.pathname + '?map=' + w.map + '&room=' + w.room + '&go=1' + keepQ()), 250); return; } welcomed = true; if (!mp.active) begin(w); else recovered(); try { history.replaceState(0, '', '?room=' + w.room); } catch (e) {} });
     net.on('error', (m) => { if (!welcomed) { stop(); show(`<div class="mp-c"><h2 style="font-size:22px">Could not join</h2><p>${esc(m.msg || m.code || 'Room unavailable')}</p><div class="mp-row"><button class="mp-btn" id="mpr">BACK</button></div></div>`).querySelector('#mpr').onclick = () => lobby(); } });
     const diag = (o) => { try { fetch(HEALTH.replace('/healthz', '/diag'), { method: 'POST', mode: 'cors', keepalive: true, headers: { 'content-type': 'text/plain' }, body: JSON.stringify({ room: net.room, vis: document.visibilityState, net: (navigator.connection && navigator.connection.effectiveType) || '', rtt: Math.round(net.rttMs || 0), ...o }) }).catch(() => {}); } catch (e) {} };
