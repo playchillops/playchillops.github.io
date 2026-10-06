@@ -552,7 +552,7 @@ export class Game {
 
     // bomb planting
     const bs = this.map.bombsites; let site = null;
-    for (const key of ['A', 'B']) { const s = bs[key], d = Math.hypot(st.position.x - s.center.x, st.position.z - s.center.z); if (d < s.radius && Math.abs(st.position.y - s.center.y) < 2) site = key; }
+    for (const key of Object.keys(bs)) { const s = bs[key], d = Math.hypot(st.position.x - s.center.x, st.position.z - s.center.z); if (d < s.radius && Math.abs(st.position.y - s.center.y) < 2) site = key; }
     let hint = '';
     if (this.plantT > 0 && !this._plS) { this._plS = true; play('plant_start'); } else if (this.plantT <= 0) this._plS = false;
     this.plantAnimTick(dt);
@@ -587,4 +587,4 @@ export class Game {
     this.kc.afterRender();
   }
   destroy() { this.running = false; this.ro && this.ro.disconnect(); this.ctrl.dispose(); this.renderer.dispose(); }
-                        }
+}
