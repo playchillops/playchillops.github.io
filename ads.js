@@ -33,8 +33,8 @@ const FLAGS = FLAGS0.map(([n, x, z]) => [n, x * _S, z * _S]);
 export function addAds(THREE, scene, opts = {}) {
   const group = new THREE.Group(); group.name = 'ads'; const slots = new Map(), loader = new THREE.TextureLoader(); let n = 0;
   const post = new THREE.MeshBasicMaterial({ color: 0x333a55 }), cloth = (i) => new THREE.MeshBasicMaterial({ map: tex(THREE, cardCanvas(i)), side: THREE.DoubleSide });
-  const gh = opts.ground || (() => 0);
-  for (const [name, x, z, ry, w] of BOARDS) {
+  const gh = opts.ground || (() => 0), lay = opts.layout && opts.layout.ads; // a map can bring its own slot positions
+  for (const [name, x, z, ry, w] of (lay && lay.boards) || BOARDS) {
     const h = w / 2, y0 = gh(x, z), g = new THREE.Group(); g.position.set(x, y0, z); g.rotation.y = ry;
     for (const sx of [-1, 1]) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.16, 1.6 + h, 0.16), post); p.position.set(sx * (w / 2 - 0.35), (1.6 + h) / 2, -0.12); g.add(p); }
     const frame = new THREE.Mesh(new THREE.BoxGeometry(w + 0.24, h + 0.24, 0.12), post); frame.position.set(0, 1.6 + h / 2 + 0.2, -0.04); g.add(frame);
@@ -42,7 +42,7 @@ export function addAds(THREE, scene, opts = {}) {
     const back = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat); back.position.set(0, 1.6 + h / 2 + 0.2, -0.11); back.rotation.y = Math.PI; g.add(back);
     group.add(g); slots.set(name, { mat });
   }
-  for (const [name, x, z] of FLAGS) {
+  for (const [name, x, z] of (lay && lay.flags) || FLAGS) {
     const y0 = gh(x, z), g = new THREE.Group(); g.position.set(x, y0, z); g.rotation.y = x < 0 ? Math.PI / 2 : -Math.PI / 2;
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 5.2, 8), post); pole.position.y = 2.6; g.add(pole);
     const mat = cloth(n++), cv = cardCanvas(n, 512, 1024); mat.map = tex(THREE, cv);
