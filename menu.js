@@ -12,7 +12,6 @@ const CSS = `
 .mn-bg:after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,transparent 45%,rgba(0,0,0,.65) 100%);pointer-events:none}
 .mn-char{position:absolute;right:0;top:0;bottom:0;width:62%;z-index:1;pointer-events:none}
 .mn-logo{position:absolute;left:clamp(20px,4vw,64px);top:clamp(14px,4vh,44px);font-size:clamp(46px,9vh,92px);line-height:1;z-index:3}
-.mn-logo .chl{font-size:inherit;-webkit-text-stroke:3px #2a3b55;filter:drop-shadow(0 4px 0 rgba(0,0,0,.35))}.mn-logo .chl span{animation:none;opacity:1}
 .mn-list{position:absolute;left:clamp(20px,4vw,64px);top:clamp(130px,26vh,240px);z-index:3;display:flex;flex-direction:column;gap:2px}
 .mn-i{font:inherit;font-weight:500;font-size:clamp(15px,2.6vh,22px);letter-spacing:.14em;text-transform:uppercase;text-align:left;padding:7px 36px 7px 12px;border:0;background:transparent;color:#cfd6ea;cursor:pointer;min-width:210px;transition:padding .12s,background .12s;border-left:3px solid transparent}
 .mn-i em{font-style:normal;font-size:.55em;opacity:.6;margin-left:8px;letter-spacing:.1em}
@@ -61,7 +60,7 @@ export function buildMenu(game, THREE, createCharacter, ROSTER) {
     { t: 'Play', p: 'play', a: () => { const b = pan.querySelector('.pl-go'); if (b) b.focus(); } }, { gap: 1 },
     { t: 'Difficulty', diff: 1, a: () => cycleDiff() }, { t: 'How to play', a: () => game.tutorial() }, { t: 'Profile', p: 'profile' }, { t: 'Leaderboard', p: 'board' }, { t: 'Streaks', p: 'streaks' }, { t: 'Help', p: 'help' }, { t: 'Settings', a: () => game.openSettings() },
   ];
-  el.innerHTML = `<div class="mn-char"><canvas style="width:100%;height:100%"></canvas></div><div class="mn-logo"><div class="chl">${logoHTML()}</div></div><div class="mn-list"></div><div class="mn-pan"></div>
+  el.innerHTML = `<div class="mn-char"><canvas style="width:100%;height:100%"></canvas></div><div class="mn-logo">${logoHTML()}</div><div class="mn-list"></div><div class="mn-pan"></div>
 <div class="mn-who"><div class="mn-name">${name}</div><div class="mn-lvl">LEVEL 1</div></div>
 <div class="mn-bar"><span><kbd>↑↓</kbd>Navigate</span><span><kbd>Enter</kbd>Select</span><span><kbd>Esc</kbd>Back</span></div>`;
   ov.appendChild(el); el.appendChild(topBox());
