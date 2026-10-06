@@ -149,8 +149,10 @@ export function buildMap(THREE, layout = scaleLayout(KITE_GARDEN_V4)) {
     ctx.font = 'bold 66px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, 262, 82);
     const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; textures.push(tex);
     const m = new THREE.MeshBasicMaterial({ map: tex }); mats.add(m); // two single-sided faces back to back: the text reads right from both sides (no mirrored signs)
-    const pg = new THREE.PlaneGeometry(width, width * 160 / 512), o = mesh(pg, m, x, y, z, false, 'wayfinding'); o.rotation.y = rotation;
-    const back = mesh(pg, m, x - Math.sin(rotation) * .004, y, z - Math.cos(rotation) * .004, false, 'wayfinding'); back.rotation.y = rotation + Math.PI;
+    const hw = width / 2, hh = width * 80 / 512, d = -.004, pg = new THREE.BufferGeometry(); // front + back face in one mesh; the back face's u is flipped so it reads correctly
+    pg.setAttribute('position', new THREE.Float32BufferAttribute([-hw, -hh, 0, hw, -hh, 0, hw, hh, 0, -hw, -hh, 0, hw, hh, 0, -hw, hh, 0, hw, -hh, d, -hw, -hh, d, -hw, hh, d, hw, -hh, d, -hw, hh, d, hw, hh, d], 3));
+    pg.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1], 2)); pg.computeVertexNormals();
+    const o = mesh(pg, m, x, y, z, false, 'wayfinding'); o.rotation.y = rotation;
   }
   function discLabel(letter, v, color) {
     mesh(new THREE.CylinderGeometry(4, 4, .06, 32), material(col(color)), v.x, v.y + .04, v.z, false, 'site ' + letter);
@@ -178,6 +180,7 @@ export function buildMap(THREE, layout = scaleLayout(KITE_GARDEN_V4)) {
     for (const r of open.values()) out.push(r); return out;
   }
   // ---------- landmarks (decor is never solid above head height) ----------
+  const flames = [];
   const LM = {
     // themed zones: stepped pyramid with a N-S passage, and a launch-ready rocket with thrusters that fire now and then
     pyramid(o) { const { x, z, s = 12, layers = 5, h = 1.4, gap = 2.8 } = o; const cols = ['gold', 'peach', 'gold', 'peach', 'gold'];
@@ -262,8 +265,7 @@ export function buildMap(THREE, layout = scaleLayout(KITE_GARDEN_V4)) {
         if (alongX) vbox(a, z0, b, z1, y, y + .08, c, true); else vbox(x0, a, x1, b, y, y + .08, c, true); }
       for (const [px, pz] of [[x0, z0], [x1, z0], [x0, z1], [x1, z1]]) sbox(px - .08, pz - .08, px + .08, pz + .08, 0, y, 'wood', 'canopy post'); },
     torch(o) { const { x, z, y = 0, h = 1.6 } = o; vbox(x - .1, z - .1, x + .1, z + .1, y, y + h, 'dark', true); vbox(x - .22, z - .22, x + .22, z + .22, y + h, y + h + .14, 'gold', true);
-      const fm = new THREE.MeshBasicMaterial({ color: 0xffb347 }); mats.add(fm); const fl = mesh(new THREE.OctahedronGeometry(.2, 0), fm, x, y + h + .38, z, false, 'torch flame'); fl.castShadow = false;
-      const ph = x * 1.7 + z; fl.onBeforeRender = () => { const t = performance.now() / 1000 + ph; const k = 1 + .18 * Math.sin(t * 13) + .1 * Math.sin(t * 7.3); fl.scale.set(.85 * k, 1.5 * k, .85 * k); fl.rotation.y = t * 2; }; },
+      flames.push([x, y + h + .38, z, x * 1.7 + z]); },   // all torch flames are one instanced mesh (see below)
     pool(o) { const { x0, z0, x1, z1, h = .7 } = o, r = .6; // oasis: low stone rim (cover), sunken water, ripples that grow and fade
       sbox(x0, z0, x1, z0 + r, 0, h, 'stone', 'pool rim'); sbox(x0, z1 - r, x1, z1, 0, h, 'stone', 'pool rim'); sbox(x0, z0 + r, x0 + r, z1 - r, 0, h, 'stone', 'pool rim'); const zm = (z0 + z1) / 2; sbox(x1 - r, z0 + r, x1, zm - 1.6, 0, h, 'stone', 'pool rim'); sbox(x1 - r, zm + 1.6, x1, z1 - r, 0, h, 'stone', 'pool rim'); // wade-in gap on the east side
       vbox(x0 + r, z0 + r, x1 - r, z1 - r, .02, .22, 'water');
@@ -409,8 +411,33 @@ export function buildMap(THREE, layout = scaleLayout(KITE_GARDEN_V4)) {
   for (const o of L.stairs || []) stairs(...o);
   for (const o of L.covers || []) cover(...o);
   for (const o of L.crates || []) crate(...o);
+  // ---------- movement extras (movement.js): jump pads and ladders ----------
+  // pad: [x0, z0, x1, z1, vy, dx, dz, y]  solid 12 cm plate carrying pad={vy,dx,dz}; launch arrows point along (dx, dz)
+  for (const [x0, z0, x1, z1, vy, dx = 0, dz = 0, y = 0] of L.pads || []) {
+    const b = sbox(x0, z0, x1, z1, y, y + .12, 'dark', 'jump pad'); b.pad = { vy, dx, dz }; floors.push({ minX: x0, maxX: x1, minZ: z0, maxZ: z1, y: y + .12 });
+    const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, hw = (x1 - x0) / 2, hd = (z1 - z0) / 2, t = y + .12;
+    vbox(x0 + .12, z0 + .12, x1 - .12, z1 - .12, t + .002, t + .012, 'cyan', true); vbox(x0 + .3, z0 + .3, x1 - .3, z1 - .3, t + .012, t + .02, 'dark', true);
+    const L2 = Math.hypot(dx, dz) || 1, ux = dx / L2, uz = dz / L2;   // three chevrons along the throw direction (or a cross for straight up)
+    for (let k = -1; k <= 1; k++) { const px = cx + ux * k * .45 * Math.min(hw, hd), pz = cz + uz * k * .45 * Math.min(hw, hd), s2 = .16;
+      if (Math.abs(ux) > Math.abs(uz) || (!dx && !dz)) vbox(px - s2, pz - .35, px + s2, pz + .35, t + .02, t + .03, 'gold', true); if (Math.abs(uz) >= Math.abs(ux) || (!dx && !dz)) vbox(px - .35, pz - s2, px + .35, pz + s2, t + .02, t + .03, 'gold', true); }
+    const um = new THREE.MeshBasicMaterial({ color: 0x8ff3ff, transparent: true, opacity: .3, depthWrite: false, side: THREE.DoubleSide }); mats.add(um);
+    const up = mesh(new THREE.CylinderGeometry(Math.min(hw, hd) * .8, Math.min(hw, hd) * .95, 1.6, 20, 1, true), um, cx, t + .8, cz, false, 'pad updraft'); up.castShadow = false; up.receiveShadow = false;
+    const ph = cx * .7 + cz; up.onBeforeRender = () => { const u = ((performance.now() / 1000 + ph) % 1.2) / 1.2; up.scale.set(1 - u * .25, .4 + u * 1.4, 1 - u * .25); up.position.y = t + .3 + u * 1.2; um.opacity = .38 * (1 - u); };
+  }
+  // ladder: [x0, z0, x1, z1, y0, y1, wall]  non-solid climb volume in front of a wall; wall = side of the volume the wall is on (N/S/E/W)
+  for (const [x0, z0, x1, z1, y0, y1, wall = 'N'] of L.ladders || []) {
+    colliders.push({ min: { x: x0, y: y0, z: z0 }, max: { x: x1, y: y1, z: z1 }, solid: false, ladder: true, name: 'ladder' });
+    const alongX = wall === 'N' || wall === 'S', top = y1 - .2, w = .07;
+    const fz = wall === 'N' ? z0 : z1, fx = wall === 'W' ? x0 : x1, off = (wall === 'N' || wall === 'W') ? 1 : -1;   // rails hug the wall face
+    for (const e of [0, 1]) { const a = alongX ? (e ? x1 - .12 : x0 + .12) : (e ? z1 - .12 : z0 + .12);
+      if (alongX) vbox(a - w, Math.min(fz, fz + off * .16), a + w, Math.max(fz, fz + off * .16), y0, top + .9, 'wood', false); else vbox(Math.min(fx, fx + off * .16), a - w, Math.max(fx, fx + off * .16), a + w, y0, top + .9, 'wood', false); }
+    for (let yy = y0 + .3; yy < top + .1; yy += .34) { if (alongX) vbox(x0 + .12, Math.min(fz, fz + off * .14), x1 - .12, Math.max(fz, fz + off * .14), yy, yy + .05, 'peach', false); else vbox(Math.min(fx, fx + off * .14), z0 + .12, Math.max(fx, fx + off * .14), z1 - .12, yy, yy + .05, 'peach', false); }
+  }
   for (const o of L.landmarks || []) LM[o.type](o);
   for (const o of L.signs || []) label(...o);
+  if (flames.length) { const fm = new THREE.MeshBasicMaterial({ color: 0xffb347 }); mats.add(fm); const fg = new THREE.OctahedronGeometry(.2, 0); geos.add(fg);
+    const fl = new THREE.InstancedMesh(fg, fm, flames.length); fl.name = 'torch flames'; fl.frustumCulled = false; group.add(fl); const m4 = new THREE.Matrix4(), q4 = new THREE.Quaternion(), e4 = new THREE.Euler(), p4 = new THREE.Vector3(), s4 = new THREE.Vector3();
+    fl.onBeforeRender = () => { const t0 = performance.now() / 1000; flames.forEach(([x, y, z, ph], i) => { const t = t0 + ph, k = 1 + .18 * Math.sin(t * 13) + .1 * Math.sin(t * 7.3); fl.setMatrixAt(i, m4.compose(p4.set(x, y, z), q4.setFromEuler(e4.set(0, t * 2, 0)), s4.set(.85 * k, 1.5 * k, .85 * k))); }); fl.instanceMatrix.needsUpdate = true; }; }
   for (const [x0, z0, x1, z1, h] of [[-H - 1, -H - 1, H + 1, -H, 7], [-H - 1, H, H + 1, H + 1, 7], [-H - 1, -H, -H, H, 7], [H, -H, H + 1, H, 7]]) { sbox(x0, z0, x1, z1, 0, h, 'cream', 'perimeter');
     if (L.crenel) { const ax = x1 - x0 > z1 - z0; for (let a = (ax ? x0 : z0) + .6; a < (ax ? x1 : z1) - 1; a += 2.2) if (ax) vbox(a, z0 - .08, a + 1.1, z1 + .08, h, h + .8, L.crenel, true); else vbox(x0 - .08, a, x1 + .08, a + 1.1, h, h + .8, L.crenel, true); } }
   flushBatches();
@@ -435,7 +462,7 @@ export function buildMap(THREE, layout = scaleLayout(KITE_GARDEN_V4)) {
   const stairCell = new Uint8Array(N);
   for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
     const x = originX + c + .5, z = originZ + r + .5, y = getHeight(x, z), i = r * cols + c; height[i] = y; stairCell[i] = inStairs(x, z) ? 1 : 0;
-    walkable[i] = Number.isFinite(y) && !colliders.some(b => x > b.min.x - .45 && x < b.max.x + .45 && z > b.min.z - .45 && z < b.max.z + .45 && b.max.y > y + .5 && b.min.y < y + 1.8) ? 1 : 0;
+    walkable[i] = Number.isFinite(y) && !colliders.some(b => b.solid !== false && x > b.min.x - .45 && x < b.max.x + .45 && z > b.min.z - .45 && z < b.max.z + .45 && b.max.y > y + .5 && b.min.y < y + 1.8) ? 1 : 0;
     if (walkable[i]) valid.push(i);
   }
   { // random roam targets stay on the main connected area (e.g. pyramid tier rings cut by passage roofs are bot islands)
@@ -479,6 +506,82 @@ export function buildMap(THREE, layout = scaleLayout(KITE_GARDEN_V4)) {
     for (let i = 0; i < 14; i++) { const a = (i / 14) * 6.2832 + (fr(i + 1) - .5) * .3, rad = H + 13 + fr(i + 20) * 6; palmSpots.push({ x: Math.cos(a) * rad, z: Math.sin(a) * rad, s: .9 + fr(i + 40) * .6, y0: -.35 }); }
     for (const [x, z, sc = 1.1] of L.palms || []) palmSpots.push({ x, z, s: sc, y0: 0 });
     for (const p of palmSpots) { const hw = .32 * p.s, b = new THREE.Box3(new THREE.Vector3(p.x - hw, p.y0, p.z - hw), new THREE.Vector3(p.x + hw, p.y0 + 4.2 * p.s, p.z + hw)); b.name = 'palm trunk'; b.structural = true; b.breakable = false; colliders.push(b); } }
+  // ---------- set dressing: hundreds of small props, ONE draw call per kind (instanced, visual only, hugging walls) ----------
+  // L.scatter: [{ kind, zone: [x0, z0, x1, z1], n, hug = .9, colors, seed, scale: [a, b] }]  (or pts: [[x, z, rot, scale], ...])
+  { const dress = new THREE.Group(); dress.name = 'set dressing'; group.add(dress); const T = THREE;
+    const up = (g, y) => { g.translate(0, y, 0); return g; };
+    const KIND = {
+      pot: () => new T.LatheGeometry([[0, 0], [.17, 0], [.27, .16], [.25, .34], [.14, .47], [.17, .55], [0, .55]].map(([a, b]) => new T.Vector2(a, b)), 8),
+      sack: () => { const g = new T.IcosahedronGeometry(.3, 1); g.scale(1, .68, .82); return up(g, .2); },
+      barrel: () => up(new T.CylinderGeometry(.3, .3, .82, 10), .41), drum: () => up(new T.CylinderGeometry(.27, .27, .9, 12), .45),
+      rock: () => { const g = new T.DodecahedronGeometry(.36, 0); g.scale(1, .55, .9); return up(g, .1); },
+      bush: () => { const g = new T.IcosahedronGeometry(.46, 0); g.scale(1, .78, 1); return up(g, .3); },
+      flower: () => up(new T.OctahedronGeometry(.1, 0), .26), stem: () => up(new T.CylinderGeometry(.018, .018, .26, 4), .13),
+      crateS: () => up(new T.BoxGeometry(.62, .52, .62), .26), cone: () => up(new T.CylinderGeometry(.03, .19, .52, 8), .26),
+      post: () => up(new T.BoxGeometry(.1, 3.1, .1), 1.55), lamp: () => up(new T.OctahedronGeometry(.2, 0), 3.3), amphora: () => new T.LatheGeometry([[0, 0], [.1, 0], [.2, .25], [.17, .55], [.08, .72], [.11, .8], [0, .8]].map(([a, b]) => new T.Vector2(a, b)), 8),
+    };
+    const CAST = { barrel: 1, drum: 1, crateS: 1, bush: 1, post: 1, amphora: 1 }, BASIC = { lamp: 1 };
+    const solid = colliders.filter((b) => b.solid !== false && b.max.y - b.min.y > .5);
+    const near = (x, z, d) => solid.some((b) => x > b.min.x - d && x < b.max.x + d && z > b.min.z - d && z < b.max.z + d);
+    const blockedXZ = (x, z, r) => solid.some((b) => x > b.min.x - r && x < b.max.x + r && z > b.min.z - r && z < b.max.z + r && b.min.y < getHeight(x, z) + 1.5) ||
+      stairsList.some((q) => x > q.minX - .3 && x < q.maxX + .3 && z > q.minZ - .3 && z < q.maxZ + .3) || ramps.some((q) => x > q.minX - .3 && x < q.maxX + .3 && z > q.minZ - .3 && z < q.maxZ + .3);
+    const M4 = new T.Matrix4(), Q = new T.Quaternion(), E = new T.Euler(), P = new T.Vector3(), S3 = new T.Vector3(), C = new T.Color();
+    const byKind = new Map();   // every zone's points of one kind end up in ONE instanced mesh
+    for (const sc of L.scatter || []) {
+      if (!KIND[sc.kind]) continue; let seed = (sc.seed || 7) * 7919 + 13; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+      const pts = sc.pts ? sc.pts.map(([x, z, r = rnd() * 6.28, k = 1]) => [x, z, r, k]) : [];
+      if (!sc.pts) { const [x0, z0, x1, z1] = sc.zone, hug = sc.hug ?? .9; for (let t = 0; t < sc.n * 25 && pts.length < sc.n; t++) {
+        const x = x0 + rnd() * (x1 - x0), z = z0 + rnd() * (z1 - z0); if (!Number.isFinite(getHeight(x, z))) continue;
+        if (blockedXZ(x, z, sc.r ?? .35) || (hug > 0 && !near(x, z, hug)) || pts.some((q) => Math.hypot(q[0] - x, q[1] - z) < (sc.gap ?? .55))) continue;
+        const [a, b] = sc.scale || [.8, 1.25]; pts.push([x, z, rnd() * 6.28, a + rnd() * (b - a)]); } }
+      const cols = (sc.colors || ['cream']).map((c) => col(c)), list = byKind.get(sc.kind) || []; pts.forEach((q, n) => list.push([...q, cols[n % cols.length]])); byKind.set(sc.kind, list);
+    }
+    const inst = (g, mat, pts, name, cast) => { geos.add(g); mats.add(mat); const im = new T.InstancedMesh(g, mat, pts.length); im.name = name; im.castShadow = !!cast; im.receiveShadow = true;
+      pts.forEach(([x, z, r, k, c], n) => { im.setMatrixAt(n, M4.compose(P.set(x, getHeight(x, z) || 0, z), Q.setFromEuler(E.set(0, r, 0)), S3.set(k, k, k))); if (c != null) im.setColorAt(n, C.setHex(c)); });
+      im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true; im.computeBoundingSphere(); dress.add(im); return im; };
+    for (const [kind, pts] of byKind) {
+      inst(KIND[kind](), BASIC[kind] ? new T.MeshBasicMaterial({ color: 0xffffff }) : new T.MeshLambertMaterial({ color: 0xfefefe, flatShading: true }), pts, 'dress ' + kind, CAST[kind]);
+      if (kind === 'flower') inst(KIND.stem(), new T.MeshLambertMaterial({ color: 0x5fa86b, flatShading: true }), pts.map((q) => q.slice(0, 4)), 'dress stems', false);
+      if (kind === 'post') inst(KIND.lamp(), new T.MeshBasicMaterial({ color: col('gold') }), pts.map((q) => q.slice(0, 4)), 'dress lamps', false);
+    }
+    // bunting strings: one mesh for every pennant of every string (vertex colours) + one line set for the cords
+    const pp = [], pc = [], lp = [], pal = ['coral', 'gold', 'cyan', 'rose', 'mint', 'cream'].map((c) => new T.Color(col(c)));
+    for (const [x0, z0, x1, z1, y, sag = 1.2] of L.garlands || []) { const len = Math.hypot(x1 - x0, z1 - z0), n = Math.max(4, Math.round(len / .55)), ux = (x1 - x0) / len, uz = (z1 - z0) / len;
+      const at = (t) => [x0 + (x1 - x0) * t, y - sag * 4 * t * (1 - t), z0 + (z1 - z0) * t];
+      for (let i = 0; i < n; i++) { const a = at(i / n), b = at((i + 1) / n); lp.push(...a, ...b); const m = at((i + .5) / n), c = pal[i % pal.length], hw = .2;
+        pp.push(m[0] - ux * hw, m[1], m[2] - uz * hw, m[0] + ux * hw, m[1], m[2] + uz * hw, m[0], m[1] - .42, m[2]); for (let k = 0; k < 3; k++) pc.push(c.r, c.g, c.b); } }
+    if (pp.length) { const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(pp, 3)); g.setAttribute('color', new T.Float32BufferAttribute(pc, 3)); g.computeVertexNormals(); geos.add(g);
+      const m = new T.MeshBasicMaterial({ vertexColors: true, side: T.DoubleSide }); mats.add(m); const bm = new T.Mesh(g, m); bm.name = 'bunting strings'; bm.userData.keep = true; dress.add(bm);
+      const lg = new T.BufferGeometry(); lg.setAttribute('position', new T.Float32BufferAttribute(lp, 3)); geos.add(lg); const lm3 = new T.LineBasicMaterial({ color: 0x333a55 }); mats.add(lm3); dress.add(new T.LineSegments(lg, lm3)); }
+    // birds circling high over the pyramid (one instanced mesh, wings flap by scaling)
+    if (L.birds) { const [bx, bz, n = 12] = L.birds, bg = new T.BufferGeometry(); bg.setAttribute('position', new T.Float32BufferAttribute([-.6, 0, .15, 0, 0, -.25, 0, .05, .3, .6, 0, .15, 0, .05, .3, 0, 0, -.25], 3)); bg.computeVertexNormals(); geos.add(bg);
+      const bmat = new T.MeshBasicMaterial({ color: 0x3a4660, side: T.DoubleSide }); mats.add(bmat); const birds = new T.InstancedMesh(bg, bmat, n); birds.frustumCulled = false; birds.name = 'birds'; dress.add(birds);
+      const seeds = Array.from({ length: n }, (_, i) => [8 + (i * 7.3) % 14, 19 + (i * 3.7) % 9, (i * 2.399) % 6.283, .25 + (i % 5) * .05, i % 2 ? 1 : -1]);
+      birds.onBeforeRender = () => { const t = performance.now() / 1000; seeds.forEach(([r, y, a0, w, d], i) => { const a = a0 + d * t * w, flap = .35 + .65 * Math.abs(Math.sin(t * 6 + i)); E.set(0, -a * d + (d > 0 ? 0 : Math.PI), Math.sin(t * .7 + i) * .15);
+          birds.setMatrixAt(i, M4.compose(P.set(bx + Math.cos(a) * r, y + Math.sin(t * .9 + i) * .8, bz + Math.sin(a) * r), Q.setFromEuler(E), S3.set(1, flap, 1))); }); birds.instanceMatrix.needsUpdate = true; }; }
+    // waving flags on poles (one instanced mesh; each flag swings on its pole)
+    if (L.flags && L.flags.length) { const fg = new T.PlaneGeometry(1.3, .8, 1, 1); fg.translate(.65, 0, 0); geos.add(fg); const fm = new T.MeshLambertMaterial({ color: 0xfefefe, side: T.DoubleSide, flatShading: true }); mats.add(fm);
+      const flags = new T.InstancedMesh(fg, fm, L.flags.length); flags.name = 'waving flags'; flags.frustumCulled = false; dress.add(flags);
+      const poleG = new T.BoxGeometry(.1, 2.7, .1); geos.add(poleG); L.flags.forEach(([x, z, y, r, c], i) => { flags.setColorAt(i, C.setHex(col(c || 'coral'))); const pole = mesh(poleG, material(col('dark')), x, y - .85, z, false, 'flag pole'); pole.removeFromParent(); group.add(pole); });
+      flags.instanceColor.needsUpdate = true;
+      flags.onBeforeRender = () => { const t = performance.now() / 1000; L.flags.forEach(([x, z, y, r], i) => { flags.setMatrixAt(i, M4.compose(P.set(x, y, z), Q.setFromEuler(E.set(0, r + Math.sin(t * 2.2 + i * 1.7) * .35, Math.sin(t * 3.1 + i) * .05)), S3.set(1, 1, 1))); }); flags.instanceMatrix.needsUpdate = true; }; }
+  }
+  // ---------- static merge: every plain, non-animated, opaque mesh is merged per material into one draw call ----------
+  // (props built as separate meshes - urns, tips, caps, tanks, rocket parts, hills... - cost one draw call each otherwise)
+  { group.updateMatrixWorld(true); const proto = THREE.Object3D.prototype.onBeforeRender, buckets = new Map();
+    for (const o of group.children) {
+      if (!o.isMesh || o.isInstancedMesh || o.onBeforeRender !== proto || o.userData.breakable || o.userData.keep) continue;
+      const m = o.material, g = o.geometry; if (!m || Array.isArray(m) || m.transparent || m.map || !(m.isMeshLambertMaterial || m.isMeshBasicMaterial)) continue;
+      if (['ground', 'plant', 'wayfinding', 'water', 'beach'].includes(o.name) || !g.attributes.position || !g.attributes.normal) continue;
+      const key = m.uuid + (g.attributes.uv ? 'u' : '') + (o.castShadow ? 'c' : '') + (o.receiveShadow ? 'r' : '');
+      let b = buckets.get(key); if (!b) { b = { m, uv: !!g.attributes.uv, cast: o.castShadow, recv: o.receiveShadow, list: [] }; buckets.set(key, b); } b.list.push(o); }
+    for (const b of buckets.values()) { if (b.list.length < 2) continue;
+      const parts = b.list.map((o) => { const g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone(); g.applyMatrix4(o.matrixWorld); return g; });
+      const nv = parts.reduce((a, g) => a + g.attributes.position.count, 0), pos = new Float32Array(nv * 3), nor = new Float32Array(nv * 3), uv = b.uv ? new Float32Array(nv * 2) : null; let off = 0;
+      for (const g of parts) { pos.set(g.attributes.position.array, off * 3); nor.set(g.attributes.normal.array, off * 3); if (uv) uv.set(g.attributes.uv.array, off * 2); off += g.attributes.position.count; g.dispose(); }
+      const mg = new THREE.BufferGeometry(); mg.setAttribute('position', new THREE.BufferAttribute(pos, 3)); mg.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); if (uv) mg.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); mg.computeBoundingSphere();
+      const mm = mesh(mg, b.m, 0, 0, 0, false, 'merged props'); mm.castShadow = b.cast; mm.receiveShadow = b.recv;
+      for (const o of b.list) group.remove(o); } }
   const physicsColliders = [...colliders, ...rampColliders];
   return { layout: L, palmSpots, stairs: stairsList, callouts: L.callouts.map(([name, x, z]) => ({ name, position: V3(x, getHeight(x, z), z) })), group, lights, colliders, physicsColliders, floors, ramps, getHeight,
     stepHeight: STEP, spawnPoints, bombsites, navGrid, bounds: { minX: -H, maxX: H, minZ: -H, maxZ: H }, sky: { background: 0xb4dcf0, fog: { color: 0xb4dcf0, near: 80, far: 200 } },
@@ -764,6 +867,34 @@ export const KITE_PLAZA = {
     ['BAKERY', -23.9, 3.9, -6, 'gold', 3, Math.PI / 2], ['CLOCK HALL', 23.9, 3.9, -6, 'coral', 3.6, -Math.PI / 2], ['OASIS', -47, 3.8, -20.1, 'mint', 3, Math.PI],
     ['OLD TOWN', 47, 3.8, -20.1, 'cyan', 3.2, Math.PI], ['NECROPOLIS', -55.5, 3.8, -41.9, 'mint', 3.8], ['WINDMILL YARD', 55.5, 3.8, -41.9, 'cream', 4.4],
     ['HARBOR', -11.9, 3.8, 48, 'cyan', 3, Math.PI / 2], ['DOCKS', 11.9, 3.8, 48, 'coral', 3, -Math.PI / 2]],
+  // ways to move: jump pads (pyramid tier 1 from the plaza, gantry deck at B) and ladders onto rooftops (movement.js)
+  pads: [[-7.4, 13.5, -5.4, 15.5, 14, 0, -6], [5.4, 13.5, 7.4, 15.5, 14, 0, -6], [-8.5, -18.6, -6.5, -16.6, 14, 0, 6], [6.5, -18.6, 8.5, -16.6, 14, 0, 6], [49, 9.5, 51, 11.5, 15, 0, 6.5]],
+  ladders: [[-29.6, 21.3, -28.6, 22, 0, 4.95, 'S'], [-20, 36, -19, 36.7, 0, 5.35, 'N'], [19, 36, 20, 36.7, 0, 5.35, 'N'], [-36, 49, -35.3, 50, 0, 4.95, 'W'], [47.3, 49, 48, 50, 0, 5.35, 'E']],
+  // set dressing (instanced, visual only, auto-placed against walls inside each zone; one draw call per kind)
+  scatter: [
+    { kind: 'pot', zone: [-60, 4, -24, 36], n: 26, colors: ['coral', 'peach', 'gold', 'cyan', 'brick'], seed: 1 }, { kind: 'sack', zone: [-60, 4, -24, 36], n: 18, colors: ['sand', 'cream', 'peach'], seed: 2 },
+    { kind: 'crateS', zone: [-60, 4, -24, 36], n: 10, colors: ['wood', 'peach'], seed: 3 }, { kind: 'amphora', zone: [-60, 4, -24, 36], n: 8, colors: ['coral', 'gold'], seed: 4 },
+    { kind: 'barrel', zone: [-60, 37, -13, 56], n: 16, colors: ['wood', 'brick', 'coral'], seed: 5 }, { kind: 'crateS', zone: [-60, 37, -13, 56], n: 16, colors: ['wood', 'peach', 'sand'], seed: 6 }, { kind: 'sack', zone: [-60, 37, -13, 56], n: 8, colors: ['cream', 'sand'], seed: 7 },
+    { kind: 'drum', zone: [13, 37, 60, 56], n: 18, colors: ['cyan', 'coral', 'gold'], seed: 8 }, { kind: 'crateS', zone: [13, 37, 60, 56], n: 14, colors: ['wood', 'cyan', 'peach'], seed: 9 }, { kind: 'cone', zone: [13, 37, 60, 56], n: 10, colors: ['coral'], seed: 10, hug: 1.6 },
+    { kind: 'drum', zone: [24, 4, 60, 36], n: 12, colors: ['cyan', 'coral', 'gold'], seed: 11 }, { kind: 'cone', zone: [24, 4, 60, 36], n: 14, colors: ['coral', 'gold'], seed: 12, hug: 1.8 }, { kind: 'crateS', zone: [24, 4, 60, 36], n: 8, colors: ['wood', 'cyan'], seed: 13 },
+    { kind: 'amphora', zone: [-24, -60, 24, -34], n: 16, colors: ['gold', 'peach', 'coral'], seed: 14 }, { kind: 'pot', zone: [-24, -60, 24, -34], n: 10, colors: ['peach', 'cyan'], seed: 15 }, { kind: 'rock', zone: [-24, -60, 24, -34], n: 10, colors: ['sand', 'stone'], seed: 16 },
+    { kind: 'rock', zone: [-60, -60, -24, -43], n: 18, colors: ['stone', 'sand'], seed: 17 }, { kind: 'amphora', zone: [-60, -60, -24, -43], n: 10, colors: ['peach', 'gold'], seed: 18 }, { kind: 'pot', zone: [-60, -60, -24, -43], n: 8, colors: ['coral', 'peach'], seed: 19 },
+    { kind: 'crateS', zone: [24, -60, 60, -43], n: 10, colors: ['wood', 'peach'], seed: 20 }, { kind: 'sack', zone: [24, -60, 60, -43], n: 10, colors: ['gold', 'sand'], seed: 21 }, { kind: 'barrel', zone: [24, -60, 60, -43], n: 6, colors: ['wood'], seed: 22 }, { kind: 'bush', zone: [24, -60, 60, -43], n: 8, colors: ['green', 'mint'], seed: 23 },
+    { kind: 'bush', zone: [-40, -42, -24, -24], n: 14, colors: ['green', 'mint'], seed: 24 }, { kind: 'flower', zone: [-40, -42, -24, -24], n: 40, colors: ['rose', 'gold', 'coral', 'cream', 'lilac'], seed: 25, gap: .3, hug: .8, r: .2, scale: [.8, 1.2] },
+    { kind: 'bush', zone: [24, -42, 40, -24], n: 14, colors: ['green', 'mint'], seed: 26 }, { kind: 'flower', zone: [24, -42, 40, -24], n: 40, colors: ['rose', 'gold', 'coral', 'cream', 'lilac'], seed: 27, gap: .3, hug: .8, r: .2, scale: [.8, 1.2] },
+    { kind: 'rock', zone: [-60, -20, -40, 4], n: 10, colors: ['sand', 'stone'], seed: 28 }, { kind: 'bush', zone: [-60, -20, -40, 4], n: 8, colors: ['green', 'mint'], seed: 29 }, { kind: 'pot', zone: [-60, -20, -40, 4], n: 6, colors: ['coral', 'cyan'], seed: 30 },
+    { kind: 'pot', zone: [40, -20, 60, 4], n: 10, colors: ['coral', 'cyan', 'gold'], seed: 31 }, { kind: 'crateS', zone: [40, -20, 60, 4], n: 8, colors: ['wood'], seed: 32 }, { kind: 'flower', zone: [40, -20, 60, 4], n: 20, colors: ['rose', 'gold', 'cream'], seed: 33, gap: .3, hug: .8, r: .2 }, { kind: 'bush', zone: [40, -20, 60, 4], n: 6, colors: ['green'], seed: 34 },
+    { kind: 'flower', zone: [-60, -42, -40, -20], n: 24, colors: ['rose', 'gold', 'cream', 'lilac'], seed: 35, gap: .3, hug: .8, r: .2 }, { kind: 'bush', zone: [-60, -42, -40, -20], n: 8, colors: ['green', 'mint'], seed: 36 }, { kind: 'pot', zone: [-60, -42, -40, -20], n: 6, colors: ['mint', 'coral'], seed: 37 },
+    { kind: 'flower', zone: [40, -42, 60, -20], n: 24, colors: ['rose', 'gold', 'cream', 'lilac'], seed: 38, gap: .3, hug: .8, r: .2 }, { kind: 'bush', zone: [40, -42, 60, -20], n: 8, colors: ['green', 'mint'], seed: 39 }, { kind: 'pot', zone: [40, -42, 60, -20], n: 6, colors: ['cyan', 'coral'], seed: 40 },
+    { kind: 'flower', zone: [-12, 41, 12, 56], n: 16, colors: ['rose', 'gold', 'coral'], seed: 41, gap: .3, hug: .8, r: .2 }, { kind: 'pot', zone: [-12, 41, 12, 56], n: 8, colors: ['coral', 'gold'], seed: 42 }, { kind: 'bush', zone: [-12, 41, 12, 56], n: 6, colors: ['green'], seed: 43 },
+    { kind: 'pot', zone: [-24, -24, 24, 18], n: 12, colors: ['gold', 'coral', 'peach'], seed: 44 }, { kind: 'amphora', zone: [-24, -24, 24, 18], n: 8, colors: ['gold', 'peach'], seed: 45 }, { kind: 'pot', zone: [-6, 18, 6, 41], n: 8, colors: ['coral', 'cyan'], seed: 46 }, { kind: 'flower', zone: [-6, 18, 6, 41], n: 12, colors: ['rose', 'gold'], seed: 47, gap: .3, hug: .8, r: .2 },
+    { kind: 'post', zone: [-60, 37, -13, 56], n: 6, seed: 48, gap: 5, hug: .7 }, { kind: 'post', zone: [13, 37, 60, 56], n: 6, seed: 49, gap: 5, hug: .7 }, { kind: 'post', zone: [-60, -20, -40, 4], n: 5, seed: 50, gap: 5, hug: .7 }, { kind: 'post', zone: [40, -20, 60, 4], n: 5, seed: 51, gap: 5, hug: .7 }, { kind: 'post', zone: [-6, 18, 6, 41], n: 4, seed: 52, gap: 5, hug: .7 },
+  ],
+  garlands: [[-60, 10, -25, 12, 4.4, 1.2], [-58, 22, -37, 20, 4.3, 1.0], [-6, 22, 6, 22, 4.4, 1.0], [-6, 28, 6, 28, 4.4, 1.0], [-34, 39, -14, 41, 4.2, 1.2], [-58, 44, -47, 44, 4.0, 1.0], [14, 41, 34, 39, 4.2, 1.2],
+    [41, -8, 59, -10, 4.3, 1.1], [-59, -16, -41, -14, 4.3, 1.1], [-12, 45, 12, 45, 4.4, 1.2], [26, 20, 34, 30, 4.0, .9]],
+  flags: [[-20, -34.5, 6.8, 0, 'coral'], [-12, -34.5, 6.8, 0, 'gold'], [12, -34.5, 6.8, Math.PI, 'gold'], [20, -34.5, 6.8, Math.PI, 'coral'], [-24.5, -44, 6.8, -Math.PI / 2, 'cyan'], [-24.5, -56, 6.8, -Math.PI / 2, 'mint'],
+    [24.5, -44, 6.8, Math.PI / 2, 'cyan'], [24.5, -56, 6.8, Math.PI / 2, 'mint'], [-9.5, 38.5, 6.8, 0, 'coral'], [9.5, 38.5, 6.8, Math.PI, 'coral']],
+  birds: [0, -2, 14],
   // sponsor slots for this map (ads.js): boards hang on walls facing the lanes, flags stand in open ground (no fake cover)
   ads: { boards: [['billboard-1', -24, 55.3, Math.PI, 4.4], ['billboard-2', 24, 55.3, Math.PI, 4.4], ['billboard-3', -36, -41.3, 0, 4.4], ['billboard-4', 36, -41.3, 0, 4.4], ['billboard-5', 0, 55.3, Math.PI, 4.4]],
     flags: [['banner-1', -59.3, -2], ['banner-2', 59.3, 1], ['banner-3', -59.3, 13], ['banner-4', 59.3, 13], ['banner-5', -13.7, 39.5], ['banner-6', 13.7, 39.5]] },
@@ -804,6 +935,12 @@ export function compactPlaza(L, k = .72, core = [-24, -24, 24, 18]) {
     palms: (L.palms || []).map((p) => [fx(p[0]), fz(p[1]), ...p.slice(2)]), landmarks: L.landmarks.map(lm),
     signs: L.signs.map((q) => [q[0], fx(q[1]), q[2], fz(q[3]), ...q.slice(4)]), callouts: L.callouts.map((c) => [c[0], fx(c[1]), fz(c[2])]),
     ads: L.ads && { boards: L.ads.boards.map(([n, x, z, r, w]) => [n, fx(x), fz(z), r, w]), flags: L.ads.flags.map(([n, x, z]) => [n, fx(x), fz(z)]) },
+    pads: (L.pads || []).map((q) => [...keep(q.slice(0, 4)), ...q.slice(4)]),
+    scatter: (L.scatter || []).map((sc) => ({ ...sc, zone: sc.zone && rect(sc.zone), pts: sc.pts && sc.pts.map(([x, z, ...r]) => [fx(x), fz(z), ...r]) })),
+    garlands: (L.garlands || []).map(([x0, z0, x1, z1, ...r]) => [fx(x0), fz(z0), fx(x1), fz(z1), ...r]), flags: (L.flags || []).map(([x, z, ...r]) => [fx(x), fz(z), ...r]), birds: L.birds && [fx(L.birds[0]), fz(L.birds[1]), L.birds[2]],
+    ladders: (L.ladders || []).map(([x0, z0, x1, z1, y0, y1, wall]) => { const w = x1 - x0, d = z1 - z0, cx = fx((x0 + x1) / 2), cz = fz((z0 + z1) / 2);
+      if (wall === 'N') { const f = fz(z0); return [r3(cx - w / 2), f, r3(cx + w / 2), r3(f + d), y0, y1, wall]; } if (wall === 'S') { const f = fz(z1); return [r3(cx - w / 2), r3(f - d), r3(cx + w / 2), f, y0, y1, wall]; }
+      if (wall === 'W') { const f = fx(x0); return [f, r3(cz - d / 2), r3(f + w), r3(cz + d / 2), y0, y1, wall]; } const f = fx(x1); return [r3(f - w), r3(cz - d / 2), f, r3(cz + d / 2), y0, y1, wall]; }),
   };
 }
 export const LAYOUTS = { a: () => scaleLayout(KITE_GARDEN_V4), b: () => compactPlaza(KITE_PLAZA) };
