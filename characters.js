@@ -81,7 +81,7 @@ export function createCharacter(THREE, opts = {}) {
   const SPECS = specs();
   const id = SPECS[opts.id] ? opts.id : CHARACTER_IDS[Math.abs(opts.seed | 0) % CHARACTER_IDS.length];
   const sp = SPECS[id];
-  let team = opts.team === 'T' ? 'T' : 'CT';
+  let team = opts.team === 'T' ? 'T' : 'CT'; let rawTeam = team;
   const pal = () => sp.pal[team];
   const seed = (opts.seed ?? (id.charCodeAt(0) * 7.31)) % 100;
   const V3 = THREE.Vector3, Q = THREE.Quaternion;
@@ -411,7 +411,7 @@ export function createCharacter(THREE, opts = {}) {
       if (state.pitch !== undefined) S.pitch = state.pitch;
       if (state.weapon) setWeapon(state.weapon);
       if (state.distance !== undefined) { const on = state.distance < 26; if (on !== outlineOn) { outlineOn = on; for (const o of outlines) o.visible = on; } }
-      if (state.team && state.team !== team) setTeam(state.team);
+      if (state.team && state.team !== rawTeam) setTeam(state.team);
       if (state.reloading !== undefined) { if (state.reloading && !S.reloadingPrev && reloadP < 0) { reloadP = 0; reloadDur = state.reloadDuration ?? reloadDur; } if (!state.reloading && S.reloadingPrev) reloadP = -1; S.reloadingPrev = !!state.reloading; }
       if (state.alive === false && !isDead) killNow(); else if (state.alive === true && isDead) reset();
     }
@@ -513,9 +513,9 @@ export function createCharacter(THREE, opts = {}) {
   }
 
   function setTeam(tm2) {
-    team = tm2 === 'T' ? 'T' : 'CT';
+    rawTeam = tm2; team = tm2 === 'T' ? 'T' : 'CT'; const zt = tm2 === 'Z';
     for (const m of teamParts) m.color.setHex(pal()[m.userData.slot]);
-    group.traverse((o) => { if (o.name === 'visorGlow') o.material = glow(team === 'CT' ? 0x7fe8ff : 0xff9a4a); });
+    group.traverse((o) => { if (o.name === 'visorGlow') o.material = glow(zt ? 0x7dff9a : team === 'CT' ? 0x7fe8ff : 0xff9a4a); });
   }
 
   // world-space hit zones in hitscan.js format (follow the pose: crouch, lean; [] when dead)
@@ -562,4 +562,4 @@ export function createViewmodelHand(THREE, o = {}) {
   add(L.rrect(0.07, 0.066, 0.03, 0.01), cm, 0, 0, 0.055);
   add(L.rrect(0.066, 0.062, 0.34, 0.02), sm, 0, -0.004, 0.23, [0.0, 0, 0]);
   return g;
-}
+                                                                                                                                                 }
