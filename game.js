@@ -19,6 +19,7 @@ import { addAds } from './ads.js';
 import { recordRound } from './stats.js';
 import { createEconomy, WEAPON_STATS } from './economy.js';
 import { createDestruction } from './destruction.js';
+import { createBombBeacon } from './bombbeacon.js';
 import { createGrenades } from './grenades.js';
 import { playIntro } from './intro.js';
 import { buildMenu } from './menu.js';
@@ -153,6 +154,7 @@ export class Game {
     this.bomb = { planted: false, pos: new THREE.Vector3(), t: 0, site: '', defuseT: 0, beepT: 0 };
     this.bombMesh = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.25, 0.35), new THREE.MeshLambertMaterial({ color: 0x222222, emissive: 0xff0000, emissiveIntensity: 0.7 }));
     this.bombMesh.visible = false; this.scene.add(this.bombMesh);
+    try { this.beacon = createBombBeacon(THREE, this.scene, root); } catch (e) { console.warn('beacon failed', e); }
     this.eDown = false; this.plantT = 0; this.stepT = 0; this.score = 0; this.kills = 0; this.heads = 0;
     initAudio({ volume: 0.7, ambient: true }); this.loadSettings(); this.applySettings();
     { const kick = () => { ['pointerdown', 'keydown'].forEach((ev) => window.removeEventListener(ev, kick, true)); setTimeout(() => { try { startMusic(this.musicMode || 'menu'); this.applySettings(); } catch (e) {} }, 80); }; ['pointerdown', 'keydown'].forEach((ev) => window.addEventListener(ev, kick, true)); }
@@ -583,6 +585,7 @@ export class Game {
     else if (this.state !== 'pause') { this.bots.update(dt * (this.state === 'over' ? 1 : 0), { playerEye: this.ctrl.state.eye, playerAlive: false, bomb: null }); this.ctrl.applyToCamera(this.camera); this.anim.update(dt, { bots: [] }); }
     this.kc.applyCamera(); this.killfx.applyCamera(this.camera); if (this.deathCam) this.deathCamApply(real);
     if (this.shake > 0.01) { const s = this.shake; this.camera.position.x += (Math.random() - .5) * 0.5 * s; this.camera.position.y += (Math.random() - .5) * 0.5 * s; this.camera.rotation.z += (Math.random() - .5) * 0.05 * s; this.shake *= Math.pow(0.02, dt); }
+    if (this.beacon) try { this.beacon.update(this.bomb, this.camera, real); } catch (e) {}
     if (this.look) this.look.render(this.camera); else this.renderer.render(this.scene, this.camera);
     this.kc.afterRender();
   }
