@@ -77,12 +77,12 @@ export class NetClient {
   applyPredicted(inp) {
     aimTo(this.ctrl, inp.yaw, inp.pitch);
     const m = this.phase !== 'match_end' && this.alive;
-    this.ctrl.update(DT, m ? { forward: inp.f, right: inp.r, jump: inp.j, crouch: inp.c, sprint: false } : { forward: 0, right: 0, jump: false, crouch: inp.c, sprint: false });
+    this.ctrl.update(DT, m ? { forward: inp.f, right: inp.r, jump: inp.j, crouch: inp.c, sprint: false, knife: !!inp.kn } : { forward: 0, right: 0, jump: false, crouch: inp.c, sprint: false, knife: !!inp.kn });
     if (this.phase === 'freeze' && this.sz) { const ps = this.ctrl.state.position, cx = Math.max(this.sz[0] - 2.5, Math.min(this.sz[0] + 2.5, ps.x)), cz = Math.max(this.sz[1] - 2.5, Math.min(this.sz[1] + 2.5, ps.z)); if (cx !== ps.x || cz !== ps.z) this.ctrl.teleport({ x: cx, y: ps.y, z: cz }, { yaw: this.ctrl.state.yaw, pitch: this.ctrl.state.pitch }); }
   }
   stepTick() {
     const i = this.input;
-    const inp = { t: 'in', seq: ++this.seq, f: i.f, r: i.r, j: i.j, c: i.c, yaw: round(this.yaw, 4), pitch: round(this.pitch, 4),
+    const inp = { t: 'in', seq: ++this.seq, f: i.f, r: i.r, j: i.j, c: i.c, kn: i.kn ? 1 : 0, yaw: round(this.yaw, 4), pitch: round(this.pitch, 4),
       fire: i.fire || this.pendingFire, aim: i.aim, rl: i.rl, use: i.use, w: i.w, vt: round(this.renderTick(), 2) };
     this.pendingFire = false;
     if (inp.w === this.me.weapon) inp.w = -1;
@@ -150,7 +150,7 @@ export class NetClient {
     this.lobby = !!m.ls; this.phase = m.ph; this.phaseLeft = m.pt; this.score = m.sc; this.round = m.rd; this.bomb = m.bomb ? { site: m.bomb[0], x: m.bomb[1], y: m.bomb[2], z: m.bomb[3], t: m.bomb[4] } : null;
     const mine = pl.get(this.id), me = m.me;
     if (mine && me) {
-      this.alive = mine.alive; this.sz = me.sz || null; Object.assign(this.me, { mag: me.mag, res: me.res, rl: me.rl, hp: mine.hp, weapon: mine.weapon, pp: me.pp, dp: me.dp, m: me.m, inv: me.inv }); if (m.av) this.avg = m.av;
+      this.alive = mine.alive; this.sz = me.sz || null; Object.assign(this.me, { mag: me.mag, res: me.res, rl: me.rl, hp: mine.hp, weapon: mine.weapon, pp: me.pp, dp: me.dp, m: me.m, inv: me.inv, gr: me.gr, ar: me.ar, he: me.he }); if (m.av) this.avg = m.av;
       this.reconcile(me, mine);
     }
     this.emit('snap', m);
