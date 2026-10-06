@@ -128,7 +128,7 @@ export class NetClient {
     let m; try { m = JSON.parse(raw); } catch { return; }
     switch (m.t) {
       case 'welcome':
-        this.id = m.id; this.token = m.token; this.room = m.room; this.team = m.team; this.tickRate = m.tickRate; this.snapDiv = m.snapDiv; this.dropAt = 0;
+        this.id = m.id; this.token = m.token; this.room = m.room; this.team = m.team; this.mode = m.mode || '1v1'; this.tickRate = m.tickRate; this.snapDiv = m.snapDiv; this.dropAt = 0;
         if (m.resumed) { this.pending = []; this.pred.clear(); }
         this.emit('welcome', m); break;
       case 'roster': this.roster.clear(); for (const r of m.list) this.roster.set(r.id, r); this.emit('roster', m); break;
