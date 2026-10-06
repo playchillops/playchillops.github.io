@@ -24,7 +24,7 @@ export function addDecor(THREE, map, parent) {
   for (const w of L.walls || []) {
     const [x0, z0, x1, z1, o = {}] = w, h = o.h || 3, lenX = x1 - x0, lenZ = z1 - z0, alongX = lenX >= lenZ, len = alongX ? lenX : lenZ, th = alongX ? lenZ : lenX;
     const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2; const y0 = o.y0 ?? Math.max(0, ground(alongX ? cx : x0 - 1, alongX ? z0 - 1 : cz));
-    if (h < 1.5 || len < 2.5) continue;
+    if (h < 1.5 || len < 2.5 || o.plain) continue;
     if ((L.buildings || []).some((bb) => cx > bb.x0 + 0.3 && cx < bb.x1 - 0.3 && cz > bb.z0 + 0.3 && cz < bb.z1 - 0.3)) continue; // interior partitions: no decor (flicker)
     // trim: cap + baseboard
     if (alongX) { box(0xfff3da, cx, y0 + h + 0.09, cz, len + 0.3, 0.18, th + 0.3); box(0xb9a98e, cx, y0 + 0.28, cz, len + 0.12, 0.56, th + 0.12); }
@@ -69,13 +69,15 @@ export function addDecor(THREE, map, parent) {
   // ---- bunting between market rows and across the T-court gate ----
   const bunt = (x0, y0, z0, x1, y1, z1, sag) => { const n = Math.max(6, Math.round(Math.hypot(x1 - x0, z1 - z0) / 0.9)); const cols = [0xff846e, 0xffda8d, 0x68e3db, 0xf2a9b8, 0xc8b3cb]; const ang = Math.atan2(x1 - x0, z1 - z0);
     for (let i = 0; i <= n; i++) { const t = i / n, x = x0 + (x1 - x0) * t, z = z0 + (z1 - z0) * t, y = y0 + (y1 - y0) * t - sag * 4 * t * (1 - t); put(boxG, 0x333a55, x, y, z, 0.05, 0.05, Math.hypot(x1 - x0, z1 - z0) / n + 0.02, ang); put(cone, cols[i % 5], x, y - 0.22, z, 0.34, 0.45, 0.08, ang, Math.PI); } };
+  if (L.name === 'Kite Garden') { // bunting + decals are placed for Kite Garden's plaza
   bunt(-6, 3.55, 21, 6, 3.55, 21, 1.0); bunt(-6, 3.4, 11, 7, 3.4, 11, 0.8); bunt(-10, 4.4, 30.5, 10, 4.4, 30.5, 1.4);
-  // ---- ground decals (flat, just above floor) ----
-  const dec = (c, x, z, w, d, a = 1, ry = 0) => box(c, x, ground(x, z) + 0.045, z, w, 0.012, d, ry, 0, a);
-  for (let i = -3; i <= 3; i++) { dec(0xfff3da, i * 1.1, 26.6, 0.6, 1.7, 0.9); }
-  for (const sx of [-1, 1]) for (let k = 0; k < 7; k++) dec(k % 2 ? 0xffda8d : 0xff846e, sx * 15 + (k - 3) * 0.9, 17.2, 0.6, 0.8, 0.8);
-  put(new THREE.RingGeometry(0.42, 0.5, 40).rotateX(-Math.PI / 2), 0xfff3da, 0, ground(0, 11) + 0.05, 11, 11, 1, 11, 0, 0, 0.9);
-  put(new THREE.RingGeometry(0.30, 0.34, 40).rotateX(-Math.PI / 2), 0xff846e, 0, ground(0, 11) + 0.052, 11, 15, 1, 15, 0, 0, 0.9);
+    // ---- ground decals (flat, just above floor) ----
+    const dec = (c, x, z, w, d, a = 1, ry = 0) => box(c, x, ground(x, z) + 0.045, z, w, 0.012, d, ry, 0, a);
+    for (let i = -3; i <= 3; i++) { dec(0xfff3da, i * 1.1, 26.6, 0.6, 1.7, 0.9); }
+    for (const sx of [-1, 1]) for (let k = 0; k < 7; k++) dec(k % 2 ? 0xffda8d : 0xff846e, sx * 15 + (k - 3) * 0.9, 17.2, 0.6, 0.8, 0.8);
+    put(new THREE.RingGeometry(0.42, 0.5, 40).rotateX(-Math.PI / 2), 0xfff3da, 0, ground(0, 11) + 0.05, 11, 11, 1, 11, 0, 0, 0.9);
+    put(new THREE.RingGeometry(0.30, 0.34, 40).rotateX(-Math.PI / 2), 0xff846e, 0, ground(0, 11) + 0.052, 11, 15, 1, 15, 0, 0, 0.9);
+  }
   // ---- scattered barrels / sacks hugging walls (visual only) ----
   for (const w of (L.walls || []).filter((x) => (x[4] && x[4].h) >= 3 && Math.max(x[2] - x[0], x[3] - x[1]) >= 6)) {
     if (rnd() < 0.45) continue; const [x0, z0, x1, z1] = w, alongX = x1 - x0 >= z1 - z0, a = (alongX ? x0 : z0) + 1 + rnd() * ((alongX ? x1 - x0 : z1 - z0) - 2), sd = rnd() < 0.5 ? -1 : 1;
