@@ -3,11 +3,11 @@ const root = document.getElementById('game');
 const g = new Game(root);
 window.__g = g;
 const fsEl = () => document.fullscreenElement || document.webkitFullscreenElement;
-function goFS() { const el = document.documentElement; const f = el.requestFullscreen || el.webkitRequestFullscreen; if (f && !fsEl()) { try { const p = f.call(el); p && p.catch && p.catch(() => {}); try { navigator.keyboard && navigator.keyboard.lock && navigator.keyboard.lock(['Escape']); } catch (e) {} } catch (e) {} } }
+function goFS() { const el = document.documentElement; const f = el.requestFullscreen || el.webkitRequestFullscreen; if (f && !fsEl()) { try { const p = f.call(el); p && p.catch && p.catch(() => {}); try { navigator.keyboard && navigator.keyboard.lock && navigator.keyboard.lock(['Escape']).catch(() => {}); } catch (e) {} } catch (e) {} } }
 function exitFS() { (document.exitFullscreen || document.webkitExitFullscreen).call(document); }
 const btn = document.getElementById('fs');
 btn.onclick = (e) => { e.stopPropagation(); fsEl() ? exitFS() : goFS(); };
-document.addEventListener('fullscreenchange', () => { btn.textContent = fsEl() ? 'Exit fullscreen' : 'Fullscreen'; try { if (fsEl()) navigator.keyboard && navigator.keyboard.lock && navigator.keyboard.lock(['Escape']); else navigator.keyboard && navigator.keyboard.unlock && navigator.keyboard.unlock(); } catch (e) {} });
+document.addEventListener('fullscreenchange', () => { btn.textContent = fsEl() ? 'Exit fullscreen' : 'Fullscreen'; try { if (fsEl()) navigator.keyboard && navigator.keyboard.lock && navigator.keyboard.lock(['Escape']).catch(() => {}); else navigator.keyboard && navigator.keyboard.unlock && navigator.keyboard.unlock(); } catch (e) {} });
 btn.style.display = 'block'; btn.textContent = 'Fullscreen';
 const lockNow = () => { try { const c = g.canvas; if (c && g.state === 'play' && !window.__pauseOpen && document.pointerLockElement !== c && c.requestPointerLock) { const p = c.requestPointerLock(); p && p.catch && p.catch(() => {}); } } catch (e) {} };
 document.addEventListener('fullscreenchange', () => { btn.textContent = fsEl() ? 'Exit fullscreen' : 'Fullscreen'; setTimeout(lockNow, 150); });
