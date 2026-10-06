@@ -471,7 +471,7 @@ function tickBot(bot, bots, world, dt, now, brain) {
   if (bot.memory && now - bot.memory.t > 8) bot.memory = null;
   if (bot.target) { const e = bot.target.e; e._spd = Math.hypot(e.x - (bot.target.px ?? e.x), e.z - (bot.target.pz ?? e.z)) / Math.max(dt, 1e-3); bot.target.px = e.x; bot.target.pz = e.z; }
 
-  const attack = bot.team === (world.attackTeam || 'T');
+  const attack = world.isAttacker ? !!world.isAttacker(bot) : bot.team === (world.attackTeam || 'T');   // ffa3: the attacking side changes every round, so the room decides
   const bomb = world.bomb || { state: 'none' };
   const planted = bomb.state === 'planted';
   const visible = bot.vis.length > 0;
