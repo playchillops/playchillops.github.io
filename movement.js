@@ -115,7 +115,7 @@ export function createController(initialColliders=[], options={}) {
     crouched=wantsCrouch||!clearAt(p.y,opt.height);
     height=crouched?opt.crouchHeight:opt.height;
     const sprint=false; // no sprint: Shift = crouch
-    const speed=crouched?opt.crouchSpeed:sprint?opt.sprintSpeed:opt.speed;
+    const speed=(crouched?opt.crouchSpeed:sprint?opt.sprintSpeed:opt.speed)*(i.knife?(opt.knifeSpeedMul||1.22):1);
     const len=Math.max(1,Math.hypot(f,r));
     const tx=(-Math.sin(yaw)*f+Math.cos(yaw)*r)/len*speed;
     const tz=(-Math.cos(yaw)*f-Math.sin(yaw)*r)/len*speed;
