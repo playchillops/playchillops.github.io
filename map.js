@@ -261,7 +261,7 @@ export function buildMap(THREE, layout = scaleLayout(KITE_GARDEN_V4)) {
   // palm trees: shared by the renderer (graphics.js), the server and bots so trunks block players, cars and bullets
   const palmSpots = []; { const wp = new THREE.Vector3(); let ci = 0; group.traverse((o) => { if (o.isMesh && o.geometry && o.geometry.type === 'ConeGeometry') { if (o.name === 'plant' && ci % 2 === 0) { o.getWorldPosition(wp); palmSpots.push({ x: wp.x, z: wp.z, s: 1.05, y0: 0 }); } ci++; } });
     const fr = (n) => { const v = Math.sin(n * 12.9898 + 78.233) * 43758.5453; return v - Math.floor(v); };
-    for (let i = 0; i < 14; i++) { const a = (i / 14) * 6.2832 + (fr(i + 1) - .5) * .3, rad = 55 + fr(i + 20) * 6; palmSpots.push({ x: Math.cos(a) * rad, z: Math.sin(a) * rad, s: .9 + fr(i + 40) * .6, y0: -.35 }); }
+    for (let i = 0; i < 14; i++) { const a = (i / 14) * 6.2832 + (fr(i + 1) - .5) * .3, rad = H + 13 + fr(i + 20) * 6; palmSpots.push({ x: Math.cos(a) * rad, z: Math.sin(a) * rad, s: .9 + fr(i + 40) * .6, y0: -.35 }); }
     for (const p of palmSpots) { const hw = .32 * p.s, b = new THREE.Box3(new THREE.Vector3(p.x - hw, p.y0, p.z - hw), new THREE.Vector3(p.x + hw, p.y0 + 4.2 * p.s, p.z + hw)); b.name = 'palm trunk'; b.structural = true; b.breakable = false; colliders.push(b); } }
   const physicsColliders = [...colliders, ...rampColliders];
   return { layout: L, palmSpots, stairs: stairsList, callouts: L.callouts.map(([name, x, z]) => ({ name, position: V3(x, getHeight(x, z), z) })), group, lights, colliders, physicsColliders, floors, ramps, getHeight,
@@ -376,14 +376,31 @@ export function scaleLayout(L, S = MAP_SCALE) {
     callouts: L.callouts.map((c) => [c[0], f(c[1]), f(c[2])]),
   };
 }
-// ---- second map: Kite Plaza. Bigger (x1.5 on top of the base layout), three sites A / B / C (C = raised central plaza), 1v1v1 friendly.
-export const KITE_PLAZA = {
-  ...KITE_GARDEN_V4, name: 'Kite Plaza', version: 5,
-  sites: { ...KITE_GARDEN_V4.sites, C: { x: 0, y: 1.6, z: -5 } },
-  spawns: { ...KITE_GARDEN_V4.spawns, Z: [[-30, 4], [-30, 6], [-28, 4], [-28, 6], [-30, 2]] },
-  blocks: [...KITE_GARDEN_V4.blocks, [-5, -9, 5, -1, 1.6, 'edge', 'tile', 'C platform']],
-  ramps: [...KITE_GARDEN_V4.ramps, [-2, -1, 2, 3, 'z', 1.6, 0, 'purple'], [-2, -13, 2, -9, 'z', 0, 1.6, 'purple']],
-};
-export const PLAZA_SCALE = 1.5;
-export const LAYOUTS = { a: () => scaleLayout(KITE_GARDEN_V4), b: () => scaleLayout(KITE_PLAZA, PLAZA_SCALE) };
+// ---- second map: Kite Plaza = Kite Garden (kept intact, same scale) + a walled-in WEST EXTENSION with the third spawn and site C.
+// The original arena sits in the middle; a perimeter wall with two gates (long lane SW, court NW) joins it to the new west zone.
+export function extendPlaza(E) {
+  const W = (x0, z0, x1, z1, o = {}) => [x0, z0, x1, z1, { h: 7, color: 'cream', name: 'perimeter', ...o }];
+  return {
+    ...E, name: 'Kite Plaza', version: 5, half: 63,
+    sites: { ...E.sites, C: { x: -55, y: 0, z: -22 } },
+    spawns: { ...E.spawns, Z: [[-56, 24], [-52, 24], [-56, 28], [-52, 28], [-56, 20]] },
+    paths: [...E.paths, [-62, -42, -43, 42]],
+    walls: [...E.walls,
+      W(-43, -43, -42, 43, { open: [[-39, -32], [3, 11]] }), W(42, -43, 43, 43), W(-43, -43, 43, -42), W(-43, 42, 43, 43),
+      // west zone cover: market lanes between the gates, boat shed wall near the Z spawn
+      [-60, -6, -50, -5, { h: 3.2, color: 'peach', name: 'west stall' }], [-60, 6, -50, 7, { h: 3.2, color: 'peach', name: 'west stall' }],
+      [-62, 34, -52, 35, { h: 3.2, color: 'gold', name: 'west stall' }],
+    ],
+    buildings: [...E.buildings,
+      { name: 'harbor house', x0: -61, z0: -14, x1: -50, z1: -8, h: 4.6, color: 'coral', roof: 'roof', awning: 'gold', doors: { E: [[-12, -10]], W: [[-12, -10]], N: [[-57, -55]] }, windows: { S: [[-58, -56]] } },
+      { name: 'boat shed', x0: -61, z0: 40, x1: -50, z1: 50, h: 4.2, color: 'cyan', roof: 'roof', awning: 'coral', doors: { E: [[43, 46]], N: [[-57, -54]] }, windows: { W: [[44, 46]] } },
+    ],
+    covers: [...E.covers, [-52, -26, 2.4, 1.6, 1.2], [-58, -18, 1.6, 2.4, 1.2], [-47, -20, 1.6, 2.4, 1.2], [-55, -30, 2.4, 1.6, 1.2], [-47, 16, 2.4, 1.6, 1.2], [-58, 14, 2.4, 1.6, 1.2], [-47, 34, 1.6, 2.4, 1.2]],
+    crates: [...E.crates, [-50, -14, 1.4, 1.4, 1.2, 0], [-59, 20, 1.4, 1.4, 1.2, 0]],
+    landmarks: [...E.landmarks, { type: 'tree', x: -48, z: -38 }, { type: 'tree', x: -59, z: -36 }, { type: 'tree', x: -48, z: 4 }, { type: 'tree', x: -58, z: 56 }, { type: 'lantern', x: -45, z: -36 }, { type: 'lantern', x: -45, z: 7 }, { type: 'lantern', x: -54, z: 31 }, { type: 'kite', x: -56, y: 18, z: -22, size: 3.6, color: 'gold' }],
+    signs: [...E.signs, ['WEST GATE', -42.4, 3.4, 7, 'gold', 3.6, Math.PI / 2], ['C SITE', -42.4, 3.4, -35.5, 'cream', 3.2, Math.PI / 2]],
+    callouts: [...E.callouts, ['Z SPAWN', -54, 24], ['C SITE', -55, -22], ['WEST GATE', -42, 7], ['NORTH GATE', -42, -36], ['HARBOR', -56, -11], ['BOAT SHED', -56, 45]],
+  };
+}
+export const LAYOUTS = { a: () => scaleLayout(KITE_GARDEN_V4), b: () => extendPlaza(scaleLayout(KITE_GARDEN_V4)) };
 export default buildMap;
