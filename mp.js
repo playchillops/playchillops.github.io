@@ -225,6 +225,18 @@ export function createMultiplayer(game, THREE) {
       mp.net.on('roster', () => { try { const r = mp.net.roster.get(mp.net.id); if (r && r.team) mp.net.team = r.team; } catch (e) {} });
       const tt = setInterval(() => { let show = false; try { const n = mp.net; show = !!(mp.active && n && n.connected && game.state !== 'menu' && (n.phase === 'waiting' || n.phase === 'end')); if (show) { const ts = n.mode === 'ffa3' ? ['T', 'CT', 'Z'] : ['T', 'CT']; for (const k2 of Object.keys(tbs)) { const [b, nm] = tbs[k2]; b.style.display = ts.includes(k2) ? '' : 'none'; b.textContent = nm; b.style.borderColor = n.team === k2 ? '#fff' : 'transparent'; b.style.opacity = n.team === k2 ? '1' : '.75'; } } } catch (e) {} tb.style.display = show ? 'flex' : 'none'; }, 400);
       binds.push([{ removeEventListener() { tb.remove(); clearInterval(tt); } }, 'x', null, null]); }
+    { // always-visible minimap (map layout only, no player positions)
+      const cv = document.createElement('canvas'); cv.width = 168; cv.height = 168; cv.style.cssText = 'position:fixed;left:12px;top:46px;width:168px;height:168px;z-index:5;display:none;border-radius:12px;border:2px solid rgba(255,255,255,.35);background:rgba(10,24,40,.55);pointer-events:none';
+      document.body.appendChild(cv); let drawn = null;
+      const draw = () => { const m = game.map, ng = m && m.navGrid; if (!ng) return; drawn = m; const ctx = cv.getContext('2d'), W = cv.width; ctx.clearRect(0, 0, W, W);
+        const off = document.createElement('canvas'); off.width = ng.cols; off.height = ng.rows; const ox = off.getContext('2d'), im = ox.createImageData(ng.cols, ng.rows);
+        let hmax = 1; for (let i = 0; i < ng.walkable.length; i++) if (ng.walkable[i] && ng.height[i] > hmax) hmax = ng.height[i];
+        for (let i = 0; i < ng.walkable.length; i++) { const o = i * 4; if (ng.walkable[i]) { const t = Math.min(1, Math.max(0, ng.height[i] / hmax)), v = 150 + 90 * t; im.data[o] = v; im.data[o + 1] = v + 10; im.data[o + 2] = v - 20; im.data[o + 3] = 235; } else { im.data[o + 3] = 0; } }
+        ox.putImageData(im, 0, 0); ctx.imageSmoothingEnabled = true; ctx.drawImage(off, 4, 4, W - 8, W - 8);
+        ctx.font = '700 14px Fredoka,system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        for (const key of Object.keys(m.bombsites || {})) { const c = m.bombsites[key].center, px = 4 + (c.x - ng.originX) / ng.cols * (W - 8), py = 4 + (c.z - ng.originZ) / ng.rows * (W - 8); ctx.fillStyle = 'rgba(255,120,60,.9)'; ctx.beginPath(); ctx.arc(px, py, 9, 0, 7); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillText(key, px, py + 1); } };
+      const mt = setInterval(() => { let show = false; try { show = !!(mp.active && mp.net && mp.net.connected && game.state !== 'menu'); if (show && drawn !== game.map) draw(); } catch (e) {} cv.style.display = show ? 'block' : 'none'; }, 500);
+      binds.push([{ removeEventListener() { cv.remove(); clearInterval(mt); } }, 'x', null, null]); }
     const pm = { el: null, t: 0 };   // Esc pause menu: stays fullscreen (keyboard lock in the browser), releases the mouse
     function closePause(relock) { if (pm.el) { pm.el.remove(); pm.el = null; } window.__pauseOpen = false; pm.t = performance.now(); if (relock) { try { game.canvas.requestPointerLock(); } catch (e) {} } }
     function openPause() {
@@ -234,6 +246,10 @@ export function createMultiplayer(game, THREE) {
       const bs = 'display:block;width:260px;margin:10px auto;padding:13px 0;border:0;border-radius:12px;font:600 17px Fredoka,system-ui,sans-serif;letter-spacing:.08em;cursor:pointer;color:#10162b;background:#ffb347';
       el.innerHTML = `<div style="text-align:center;color:#fff;padding:26px 34px;border-radius:18px;background:#0b1020ee;box-shadow:0 10px 50px #000a;border:1px solid #ffffff22"><div style="font:700 26px Fredoka,system-ui,sans-serif;letter-spacing:.12em;margin-bottom:8px">PAUSED</div><div style="font-size:12px;opacity:.6;margin-bottom:10px">The match keeps running</div><button data-a="res" style="${bs}">RESUME</button><button data-a="set" style="${bs};background:#7fe3ff">SETTINGS</button><button data-a="leave" style="${bs};background:#ff8a8a">LEAVE ROOM / BACK TO MENU</button></div>`;
       el.addEventListener('mousedown', (e) => e.stopPropagation());
+      { const card = el.firstChild, leave = el.querySelector('[data-a=leave]'), row = document.createElement('div'), n = mp.net, ts = n.mode === 'ffa3' ? [['T', 'Orange', '#ff9a3c'], ['CT', 'Cyan', '#46d9ff'], ['Z', 'Green', '#6fe07a']] : [['T', 'Orange', '#ff9a3c'], ['CT', 'Cyan', '#46d9ff']], can = n.phase === 'waiting' || n.phase === 'end';
+        row.style.cssText = 'margin:12px 0 4px;font:600 13px Fredoka,system-ui,sans-serif'; const cap = document.createElement('div'); cap.style.cssText = 'opacity:.7;margin-bottom:6px'; cap.textContent = can ? 'SWITCH TEAM' : 'SWITCH TEAM (lobby / between rounds only)'; row.appendChild(cap);
+        for (const [tm, nm, col] of ts) { const b = document.createElement('button'); b.textContent = nm; b.disabled = !can; b.style.cssText = 'font:inherit;border:2px solid ' + (n.team === tm ? '#fff' : 'transparent') + ';border-radius:10px;padding:6px 12px;margin:0 4px;cursor:' + (can ? 'pointer' : 'not-allowed') + ';color:#10162b;background:' + col + ';opacity:' + (can ? (n.team === tm ? 1 : .8) : .4); b.onclick = (e) => { e.stopPropagation(); if (can && n.team !== tm) { n.sendRaw({ t: 'team', team: tm }); setTimeout(() => { closePause(true); }, 150); } }; row.appendChild(b); }
+        card.insertBefore(row, leave); }
       el.querySelector('[data-a=res]').onclick = () => closePause(true);
       el.querySelector('[data-a=set]').onclick = () => { el.style.display = 'none'; game.openSettings(); };
       el.querySelector('[data-a=leave]').onclick = () => { closePause(false); game.showMenu(); };
@@ -269,7 +285,8 @@ export function createMultiplayer(game, THREE) {
     g.bots.syncRemote(net.remotes());
     const ph = net.phase === 'freeze' ? 'freeze' : (net.phase === 'live' || net.phase === 'planted' || (net.phase === 'waiting' && net.lobby)) ? 'live' : 'ended', inv = net.me.inv || [];
     g.eco.remote({ grenades: net.me.gr, armor: net.me.ar, helmet: net.me.he, money: net.me.m, primary: inv[0], secondary: inv[1], team: (net.mode === 'ffa3' && net.sd ? (net.sd[{ T: 0, CT: 1, Z: 2 }[net.team]] ? 'T' : 'CT') : net.team), alive: net.alive, phase: ph, freezeRemaining: ph === 'freeze' ? net.phaseLeft : 0 });
-    if (net.bomb && net.bomb.x != null) { g.bomb.planted = true; g.bomb.t = net.bomb.t; g.bomb.site = net.bomb.site || ''; g.bomb.pos.set(net.bomb.x, net.bomb.y, net.bomb.z); g.bombMesh.position.set(net.bomb.x, net.bomb.y + 0.13, net.bomb.z); g.bombMesh.visible = true; }
+    if (net.bomb && net.bomb.x != null) { g.bomb.planted = net.phase === 'planted';   // beacon only while the fuse runs: after a defuse or a round end the server keeps the bomb record until the next round
+      g.bomb.t = net.bomb.t; g.bomb.site = net.bomb.site || ''; g.bomb.pos.set(net.bomb.x, net.bomb.y, net.bomb.z); g.bombMesh.position.set(net.bomb.x, net.bomb.y + 0.13, net.bomb.z); g.bombMesh.visible = true; }
     else { g.bomb.planted = false; g.bombMesh.visible = false; }
     g.plantT = busy ? 1 : 0;
   };
