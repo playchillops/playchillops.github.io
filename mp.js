@@ -235,7 +235,8 @@ export function createMultiplayer(game, THREE) {
         ox.putImageData(im, 0, 0); ctx.imageSmoothingEnabled = true; ctx.drawImage(off, 4, 4, W - 8, W - 8);
         ctx.font = '700 14px Fredoka,system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         for (const key of Object.keys(m.bombsites || {})) { const c = m.bombsites[key].center, px = 4 + (c.x - ng.originX) / ng.cols * (W - 8), py = 4 + (c.z - ng.originZ) / ng.rows * (W - 8); ctx.fillStyle = 'rgba(255,120,60,.9)'; ctx.beginPath(); ctx.arc(px, py, 9, 0, 7); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillText(key, px, py + 1); } };
-      const mt = setInterval(() => { let show = false; try { show = !!(mp.active && mp.net && mp.net.connected && game.state !== 'menu'); if (show && drawn !== game.map) draw(); } catch (e) {} cv.style.display = show ? 'block' : 'none'; }, 500);
+      const mt = setInterval(() => { let show = false; try { show = !!(mp.active && mp.net && mp.net.connected && game.state !== 'menu'); if (show && drawn !== game.map) draw(); } catch (e) {} cv.style.display = show ? 'block' : 'none'; try { const fb = document.getElementById('fs'); if (fb) fb.style.display = show ? 'none' : 'block'; } catch (e) {} }, 300);   // fullscreen button leaves the HUD during multiplayer play (it covered the money); it lives in the Esc menu
+      binds.push([{ removeEventListener() { const fb = document.getElementById('fs'); if (fb) fb.style.display = 'block'; } }, 'x', null, null]);
       binds.push([{ removeEventListener() { cv.remove(); clearInterval(mt); } }, 'x', null, null]); }
     const pm = { el: null, t: 0 };   // Esc pause menu: stays fullscreen (keyboard lock in the browser), releases the mouse
     function closePause(relock) { if (pm.el) { pm.el.remove(); pm.el = null; } window.__pauseOpen = false; pm.t = performance.now(); if (relock) { try { game.canvas.requestPointerLock(); } catch (e) {} } }
@@ -249,7 +250,9 @@ export function createMultiplayer(game, THREE) {
       { const card = el.firstChild, leave = el.querySelector('[data-a=leave]'), row = document.createElement('div'), n = mp.net, ts = n.mode === 'ffa3' ? [['T', 'Orange', '#ff9a3c'], ['CT', 'Cyan', '#46d9ff'], ['Z', 'Green', '#6fe07a']] : [['T', 'Orange', '#ff9a3c'], ['CT', 'Cyan', '#46d9ff']], can = n.phase === 'waiting' || n.phase === 'end';
         row.style.cssText = 'margin:12px 0 4px;font:600 13px Fredoka,system-ui,sans-serif'; const cap = document.createElement('div'); cap.style.cssText = 'opacity:.7;margin-bottom:6px'; cap.textContent = can ? 'SWITCH TEAM' : 'SWITCH TEAM (lobby / between rounds only)'; row.appendChild(cap);
         for (const [tm, nm, col] of ts) { const b = document.createElement('button'); b.textContent = nm; b.disabled = !can; b.style.cssText = 'font:inherit;border:2px solid ' + (n.team === tm ? '#fff' : 'transparent') + ';border-radius:10px;padding:6px 12px;margin:0 4px;cursor:' + (can ? 'pointer' : 'not-allowed') + ';color:#10162b;background:' + col + ';opacity:' + (can ? (n.team === tm ? 1 : .8) : .4); b.onclick = (e) => { e.stopPropagation(); if (can && n.team !== tm) { n.sendRaw({ t: 'team', team: tm }); setTimeout(() => { closePause(true); }, 150); } }; row.appendChild(b); }
-        card.insertBefore(row, leave); }
+        card.insertBefore(row, leave);
+        const fsb = document.createElement('button'); fsb.textContent = (document.fullscreenElement || document.webkitFullscreenElement) ? 'EXIT FULLSCREEN' : 'FULLSCREEN'; fsb.style.cssText = bs + ';background:#c9b8ff'; fsb.onclick = (e) => { e.stopPropagation(); const fb = document.getElementById('fs'); if (fb) fb.click(); setTimeout(() => { fsb.textContent = (document.fullscreenElement || document.webkitFullscreenElement) ? 'EXIT FULLSCREEN' : 'FULLSCREEN'; }, 300); };
+        card.insertBefore(fsb, leave); }
       el.querySelector('[data-a=res]').onclick = () => closePause(true);
       el.querySelector('[data-a=set]').onclick = () => { el.style.display = 'none'; game.openSettings(); };
       el.querySelector('[data-a=leave]').onclick = () => { closePause(false); game.showMenu(); };
