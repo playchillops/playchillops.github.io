@@ -127,7 +127,8 @@ export function createMultiplayer(game, THREE) {
     net.on('dropgone', (m) => { try { const g = game, d = (g.drops || []).find((x) => x.drop.dropId === m.id); if (d) { g.scene.remove(d.mesh); g.drops.splice(g.drops.indexOf(d), 1); if (g.ws.ammo) { play('ui_click'); } } } catch (e) {} });
     net.on('dropsclear', () => { try { const g = game; for (const d of g.drops || []) g.scene.remove(d.mesh); g.drops = []; } catch (e) {} });
     net.on('swap', () => banner('Switching sides', 3));
-    net.on('round_start', () => { bodies.clear(); play('round_start'); banner('Round start', 1.6); try { const g = game; if (g.deathCam) { g.deathCam.banner.remove(); g.deathCam = null; g.hud.root.style.display = ''; g.vm.group.visible = true; g.camera.fov = 75; g.camera.updateProjectionMatrix(); } g.killfx.reset(); g.kc.clear(); g.streaks.cancel('round'); g.player.reset(); g.ws.refill(); g.pick('secondary'); g.hud.setHealth(100); } catch (e) {} });
+    net.on('gnade', (m) => { try { if (!m || m.by === net.id || !Array.isArray(m.o) || !Array.isArray(m.d)) return; game.grenades.throwGrenade(m.id === 'frag' || m.id === 'smoke' || m.id === 'flash' ? m.id : 'frag', { position: { x: m.o[0], y: m.o[1], z: m.o[2] }, direction: { x: m.d[0], y: m.d[1], z: m.d[2] }, owner: 'remote:' + m.by, team: m.team, consume: false }); } catch (e) {} });
+    net.on('round_start', (m) => { bodies.clear(); play('round_start'); banner('Round start - press B to open the shop', 4.5); try { matchPoint(m && m.score); } catch (e) {} try { const g = game; if (g.deathCam) { g.deathCam.banner.remove(); g.deathCam = null; g.hud.root.style.display = ''; g.vm.group.visible = true; g.camera.fov = 75; g.camera.updateProjectionMatrix(); } g.killfx.reset(); g.kc.clear(); g.streaks.cancel('round'); g.player.reset(); g.ws.refill(); g.pick('secondary'); g.hud.setHealth(100); } catch (e) {} });
     net.on('round_end', (m) => { banner('Round over', 2.5); try { play(m && m.winner === net.team ? 'round_win' : 'round_lose'); } catch (e) {} });
     net.on('planted', () => { banner('Bomb planted', 2); play('bomb_plant'); });
     net.on('defused', () => { banner('Bomb defused', 2); play('bomb_defuse'); });
@@ -148,6 +149,14 @@ export function createMultiplayer(game, THREE) {
 
   let isHostNow = () => false;
   function banner(t, secs) { lastMsg = t; msgT = secs; }
+  let mpEl = null, mpTimer = 0;
+  function matchPoint(sc) {   // a team one round from winning (best of 5 = 3 wins)
+    if (!sc || !mp.net) return; const t = Array.isArray(sc) ? sc : [sc.T, sc.CT]; const mine = mp.net.team === 'T' ? 0 : 1, me = t[mine] | 0, them = t[1 - mine] | 0;
+    if (me < 2 && them < 2) return; if (me >= 3 || them >= 3) return;
+    const text = me >= 2 && them >= 2 ? 'MATCH POINT - BOTH TEAMS' : me >= 2 ? 'MATCH POINT - ONE ROUND TO WIN' : 'MATCH POINT FOR THE OTHER TEAM';
+    if (!mpEl) { mpEl = document.createElement('div'); mpEl.style.cssText = 'position:fixed;left:50%;top:24%;transform:translateX(-50%);z-index:55;pointer-events:none;font:800 34px Fredoka,system-ui,sans-serif;letter-spacing:.08em;color:#fff;text-shadow:0 3px 0 #c0392b,0 0 22px #ff7a3a;padding:8px 22px;border-radius:14px;background:#00000066;white-space:nowrap;transition:opacity .4s'; document.body.appendChild(mpEl); }
+    mpEl.textContent = text; mpEl.style.opacity = '1'; clearTimeout(mpTimer); mpTimer = setTimeout(() => { if (mpEl) mpEl.style.opacity = '0'; }, 4000);
+  }
 
   function begin(w) {
     try { game.setMusicMode('match'); } catch (e) {} clear(); mp.active = true; game.state = 'play'; game.mode = 'bomb'; game.over = false;
@@ -159,7 +168,7 @@ export function createMultiplayer(game, THREE) {
     try { game.newEconomy(); game.eco.setRemote((id) => mp.net && mp.net.sendRaw({ t: 'buy', id })); } catch (e) {}
     try { if (!game._mpHooks) { game._mpHooks = true;
       game.streaks.on('called', ({ id }) => { if (mp.active && mp.net) mp.net.sendRaw({ t: 'scall', id }); });
-      game.eco.on && 0; } game.eco.on('grenade', ({ id }) => { if (mp.active && mp.net) mp.net.sendRaw({ t: 'gren', id }); }); } catch (e) {}
+      game.eco.on && 0; } game.eco.on('grenade', ({ id }) => { if (mp.active && mp.net) { const e = game.ctrl.state.eye, d = game.ctrl.getDirection(); mp.net.sendRaw({ t: 'gren', id, o: [e.x, e.y, e.z], d: [d.x, d.y, d.z] }); } }); } catch (e) {}
     mp._sk = null; hud.querySelector('.rc').textContent = 'ROOM ' + w.room + ' - share the link or code. M = leave room';
     bind(); game.canvas.requestPointerLock && game.canvas.requestPointerLock();
   }
@@ -211,7 +220,7 @@ export function createMultiplayer(game, THREE) {
     const g = game, st = g.ctrl.state, k = keys;
     if (!net.cur) return;
     if (mp._re !== net.respawns) { mp._re = net.respawns; g.ctrl.teleport({ x: net.cur.x, y: net.cur.y, z: net.cur.z }, { yaw: net.yaw, pitch: net.pitch }); } else { net.yaw = st.yaw; net.pitch = st.pitch; }
-    net.setInput({ f: (k.KeyW ? 1 : 0) - (k.KeyS ? 1 : 0), r: (k.KeyD ? 1 : 0) - (k.KeyA ? 1 : 0), j: !!k.Space, c: !!(k.ShiftLeft || k.ShiftRight), rl: !!k.KeyR, use: !!k.KeyE, aim: !!g.ws.aiming, w: Math.max(0, WEAPON_ORDER.indexOf(g.ws.current)) });
+    net.setInput({ kn: !!g.knifeOn, f: (k.KeyW ? 1 : 0) - (k.KeyS ? 1 : 0), r: (k.KeyD ? 1 : 0) - (k.KeyA ? 1 : 0), j: !!k.Space, c: !!(k.ShiftLeft || k.ShiftRight), rl: !!k.KeyR, use: !!k.KeyE, aim: !!g.ws.aiming, w: Math.max(0, WEAPON_ORDER.indexOf(g.ws.current)) });
     const busy = (net.me.pp > 0 || net.me.dp > 0) && net.alive; if (busy || !net.alive) net.setInput({ fire: false });
     if (!net.alive || busy) g.ws.setTrigger(false);
     net.update(dt);
@@ -271,7 +280,7 @@ export function createMultiplayer(game, THREE) {
     if (document.pointerLockElement) document.exitPointerLock();
     try { game.vm.group.visible = false; } catch (e) {}
   }
-  try { const V = '1005c', vd = document.createElement('div'); vd.textContent = 'v' + V; vd.style.cssText = 'position:fixed;right:10px;bottom:6px;z-index:5;font:600 11px Fredoka,system-ui,sans-serif;letter-spacing:.08em;color:#fff;opacity:.4;pointer-events:none;text-shadow:0 1px 3px #000'; document.body.appendChild(vd); let first = null, newer = false; const chk = () => fetch(location.pathname + '?nv=' + Date.now(), { cache: 'no-store' }).then((r) => r.text()).then((t) => { const m = /main\.js\?v=([0-9a-z]+)/.exec(t); if (!m) return; if (first === null) first = m[1]; else if (m[1] !== first && !newer) { newer = true; vd.textContent = 'v' + V + '  \u2022 new version available - refresh'; vd.style.opacity = '.85'; vd.style.color = '#ffd86b'; } }).catch(() => {}); chk(); setInterval(chk, 90000); setInterval(() => { vd.style.display = game.state === 'menu' ? '' : 'none'; }, 700); } catch (e) {}
+  try { const V = '1005d', vd = document.createElement('div'); vd.textContent = 'v' + V; vd.style.cssText = 'position:fixed;right:10px;bottom:6px;z-index:5;font:600 11px Fredoka,system-ui,sans-serif;letter-spacing:.08em;color:#fff;opacity:.4;pointer-events:none;text-shadow:0 1px 3px #000'; document.body.appendChild(vd); let first = null, newer = false; const chk = () => fetch(location.pathname + '?nv=' + Date.now(), { cache: 'no-store' }).then((r) => r.text()).then((t) => { const m = /main\.js\?v=([0-9a-z]+)/.exec(t); if (!m) return; if (first === null) first = m[1]; else if (m[1] !== first && !newer) { newer = true; vd.textContent = 'v' + V + '  \u2022 new version available - refresh'; vd.style.opacity = '.85'; vd.style.color = '#ffd86b'; } }).catch(() => {}); chk(); setInterval(chk, 90000); setInterval(() => { vd.style.display = game.state === 'menu' ? '' : 'none'; }, 700); } catch (e) {}
   mp.stop = stop; mp.open = lobby;
   mp.solo = () => { let n = 'Player'; try { n = localStorage.getItem('sc_name') || 'Player'; } catch (e) {} connect({ room: 'new', name: n, solo: true }); };
   mp.autoJoin = () => { const m = /[?&]room=([A-Za-z0-9]+)/.exec(location.search); if (m) { lobby(m[1].toUpperCase()); return true; } return false; };
