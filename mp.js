@@ -80,7 +80,7 @@ export function createMultiplayer(game, THREE) {
     const q = (i) => s.querySelector('#' + i), nm = () => (q('mpn').value.trim() || 'Player').slice(0, 14);
     const setMode = (m) => { mode = m; q('m1').classList.toggle('alt', m !== '1v1'); q('m2').classList.toggle('alt', m !== '2v2'); q('m3').classList.toggle('alt', m !== 'ffa3'); };
     setMode(mode);
-    try { const pend = sessionStorage.getItem('sc_mp_pending'); if (pend && /[?&]mpgo=1/.test(location.search)) { sessionStorage.removeItem('sc_mp_pending'); const o = JSON.parse(pend); mode = o.mode || mode; setMode(mode); setTimeout(() => connect({ room: o.room, name: o.name || nm() }), 300); } } catch (e) {}
+    try { const pend = sessionStorage.getItem('sc_mp_pending'); if (pend && /[?&]mpgo=1/.test(location.search)) { sessionStorage.removeItem('sc_mp_pending'); const o = JSON.parse(pend); mode = o.mode || mode; setMode(mode); setTimeout(() => connect({ room: o.room, name: o.name || nm(), solo: !!o.solo }), 300); } } catch (e) {}
     const setMap = (m) => { mapSel = m; q('ma').classList.toggle('alt', m !== 'a'); q('mb').classList.toggle('alt', m !== 'b'); }; setMap(mapSel); q('ma').onclick = () => { setMap('a'); if (mode === 'ffa3') setMode('1v1'); }; q('mb').onclick = () => setMap('b');
     q('m1').onclick = () => setMode('1v1'); q('m2').onclick = () => setMode('2v2'); q('m3').onclick = () => { setMode('ffa3'); setMap('b'); };
     q('mpf').onclick = () => { setName(nm()); connect({ room: 'MATCH', name: nm() }); };
@@ -111,18 +111,19 @@ export function createMultiplayer(game, THREE) {
     poll();
   }
 
+  const keepQ = () => { const m = /[?&](mphost=[\w.:-]+)/.exec(location.search); return m ? '&' + m[1] : ''; }; // dev: keep the local server across map reloads
   function connect(p) {
-    if ((p.room === 'new' || p.room === 'MATCH') && game.mapId && mapSel !== game.mapId) { try { sessionStorage.setItem('sc_mp_pending', JSON.stringify({ room: p.room, mode, name: p.name })); } catch (e) {} show(`<div class="mp-c"><div class="mp-spin"></div><h2 style="font-size:22px">Loading map...</h2></div>`); setTimeout(() => location.replace(location.pathname + '?map=' + mapSel + '&mpgo=1'), 250); return; }
+    if ((p.room === 'new' || p.room === 'MATCH') && game.mapId && mapSel !== game.mapId) { try { sessionStorage.setItem('sc_mp_pending', JSON.stringify({ room: p.room, mode, name: p.name, solo: !!p.solo })); } catch (e) {} show(`<div class="mp-c"><div class="mp-spin"></div><h2 style="font-size:22px">Loading map...</h2></div>`); setTimeout(() => location.replace(location.pathname + '?map=' + mapSel + '&mpgo=1' + keepQ()), 250); return; }
     wakeScreen(p, 0);
   }
 
   async function open(p) {
     show(`<div class="mp-c"><div class="mp-spin"></div><h2 style="font-size:22px">Connecting...</h2></div>`);
     try { await Promise.race([ACC.ensure(), new Promise((r) => setTimeout(r, 5000))]); } catch (e) {}
-    const url = WS + '?room=' + encodeURIComponent(p.room) + '&name=' + encodeURIComponent(p.name) + (p.solo ? '&mode=solo&bots=' + Math.max(1, Math.min(4, (game.set && game.set.bots) || 4)) + '&diff=' + encodeURIComponent(game.diff || 'hard') : p.room === 'new' || p.room === 'MATCH' ? '&mode=' + mode + '&map=' + mapSel : '') + (ACC.hasAccount() ? '&acct=' + encodeURIComponent(ACC.token()) : '');
+    const url = WS + '?room=' + encodeURIComponent(p.room) + '&name=' + encodeURIComponent(p.name) + (p.solo ? '&mode=solo&bots=' + Math.max(1, Math.min(4, (game.set && game.set.bots) || 4)) + '&diff=' + encodeURIComponent(game.diff || 'hard') + '&map=' + mapSel : p.room === 'new' || p.room === 'MATCH' ? '&mode=' + mode + '&map=' + mapSel : '') + (ACC.hasAccount() ? '&acct=' + encodeURIComponent(ACC.token()) : '');
     const net = new NetClient({ createController, colliders: game.phys, url });
     mp.net = net; let welcomed = false, tries = 0;
-    net.on('welcome', (w) => { if (w.map && game.mapId && w.map !== game.mapId) { try { net.close(); } catch (e) {} show(`<div class="mp-c"><div class="mp-spin"></div><h2 style="font-size:22px">Loading map...</h2></div>`); setTimeout(() => location.replace(location.pathname + '?map=' + w.map + '&room=' + w.room + '&go=1'), 250); return; } welcomed = true; if (!mp.active) begin(w); else recovered(); try { history.replaceState(0, '', '?room=' + w.room); } catch (e) {} });
+    net.on('welcome', (w) => { if (w.map && game.mapId && w.map !== game.mapId) { try { net.close(); } catch (e) {} show(`<div class="mp-c"><div class="mp-spin"></div><h2 style="font-size:22px">Loading map...</h2></div>`); setTimeout(() => location.replace(location.pathname + '?map=' + w.map + '&room=' + w.room + '&go=1' + keepQ()), 250); return; } welcomed = true; if (!mp.active) begin(w); else recovered(); try { history.replaceState(0, '', '?room=' + w.room); } catch (e) {} });
     net.on('error', (m) => { if (!welcomed) { stop(); show(`<div class="mp-c"><h2 style="font-size:22px">Could not join</h2><p>${esc(m.msg || m.code || 'Room unavailable')}</p><div class="mp-row"><button class="mp-btn" id="mpr">BACK</button></div></div>`).querySelector('#mpr').onclick = () => lobby(); } });
     const diag = (o) => { try { fetch(HEALTH.replace('/healthz', '/diag'), { method: 'POST', mode: 'cors', keepalive: true, headers: { 'content-type': 'text/plain' }, body: JSON.stringify({ room: net.room, vis: document.visibilityState, net: (navigator.connection && navigator.connection.effectiveType) || '', rtt: Math.round(net.rttMs || 0), ...o }) }).catch(() => {}); } catch (e) {} };
     const recovered = () => { clearTimeout(mp._rcT); mp._rcT = 0; const down = mp._dropT ? Math.round(performance.now() - mp._dropT) : 0; mp._dropT = 0; if (lastMsg.indexOf('Connection lost') === 0) banner('Reconnected', 1.5); if (down) diag({ c: 'recovered', down }); };
@@ -225,19 +226,23 @@ export function createMultiplayer(game, THREE) {
       mp.net.on('roster', () => { try { const r = mp.net.roster.get(mp.net.id); if (r && r.team) mp.net.team = r.team; } catch (e) {} });
       const tt = setInterval(() => { let show = false; try { const n = mp.net; show = !!(mp.active && n && n.connected && game.state !== 'menu' && (n.phase === 'waiting' || n.phase === 'end')); if (show) { const ts = n.mode === 'ffa3' ? ['T', 'CT', 'Z'] : ['T', 'CT']; for (const k2 of Object.keys(tbs)) { const [b, nm] = tbs[k2]; b.style.display = ts.includes(k2) ? '' : 'none'; b.textContent = nm; b.style.borderColor = n.team === k2 ? '#fff' : 'transparent'; b.style.opacity = n.team === k2 ? '1' : '.75'; } } } catch (e) {} tb.style.display = show ? 'flex' : 'none'; }, 400);
       binds.push([{ removeEventListener() { tb.remove(); clearInterval(tt); } }, 'x', null, null]); }
-    { // always-visible minimap (map layout only, no player positions)
+    { // always-visible minimap (map layout + local player arrow only)
       const cv = document.createElement('canvas'); cv.width = 168; cv.height = 168; cv.style.cssText = 'position:fixed;left:12px;top:46px;width:168px;height:168px;z-index:5;display:none;border-radius:12px;border:2px solid rgba(255,255,255,.35);background:rgba(10,24,40,.55);pointer-events:none';
-      document.body.appendChild(cv); let drawn = null;
-      const draw = () => { const m = game.map, ng = m && m.navGrid; if (!ng) return; drawn = m; const ctx = cv.getContext('2d'), W = cv.width; ctx.clearRect(0, 0, W, W);
+      document.body.appendChild(cv); let drawn = null, base = null, geo = null;
+      const draw = () => { const m = game.map, ng = m && m.navGrid; if (!ng) return; drawn = m; const ctx = cv.getContext('2d'), W = cv.width; geo = ng; ctx.clearRect(0, 0, W, W);
         const off = document.createElement('canvas'); off.width = ng.cols; off.height = ng.rows; const ox = off.getContext('2d'), im = ox.createImageData(ng.cols, ng.rows);
         let hmax = 1; for (let i = 0; i < ng.walkable.length; i++) if (ng.walkable[i] && ng.height[i] > hmax) hmax = ng.height[i];
         for (let i = 0; i < ng.walkable.length; i++) { const o = i * 4; if (ng.walkable[i]) { const t = Math.min(1, Math.max(0, ng.height[i] / hmax)), v = 150 + 90 * t; im.data[o] = v; im.data[o + 1] = v + 10; im.data[o + 2] = v - 20; im.data[o + 3] = 235; } else { im.data[o + 3] = 0; } }
         ox.putImageData(im, 0, 0); ctx.imageSmoothingEnabled = true; ctx.drawImage(off, 4, 4, W - 8, W - 8);
         ctx.font = '700 14px Fredoka,system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        for (const key of Object.keys(m.bombsites || {})) { const c = m.bombsites[key].center, px = 4 + (c.x - ng.originX) / ng.cols * (W - 8), py = 4 + (c.z - ng.originZ) / ng.rows * (W - 8); ctx.fillStyle = 'rgba(255,120,60,.9)'; ctx.beginPath(); ctx.arc(px, py, 9, 0, 7); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillText(key, px, py + 1); } };
+        for (const key of Object.keys(m.bombsites || {})) { const c = m.bombsites[key].center, px = 4 + (c.x - ng.originX) / ng.cols * (W - 8), py = 4 + (c.z - ng.originZ) / ng.rows * (W - 8); ctx.fillStyle = 'rgba(255,120,60,.9)'; ctx.beginPath(); ctx.arc(px, py, 9, 0, 7); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillText(key, px, py + 1); }
+        base = document.createElement('canvas'); base.width = W; base.height = W; base.getContext('2d').drawImage(cv, 0, 0); };
+      const dot = () => { if (!base || !geo) return; const ctx = cv.getContext('2d'), W = cv.width, p = mp.net && mp.net.cur ? mp.net.eye().feet : null; if (!p) return; ctx.clearRect(0, 0, W, W); ctx.drawImage(base, 0, 0); const yaw = game.ctrl.state.yaw || 0, px = 4 + (p.x - geo.originX) / geo.cols * (W - 8), py = 4 + (p.z - geo.originZ) / geo.rows * (W - 8), dx = -Math.sin(yaw), dy = -Math.cos(yaw);
+        ctx.save(); ctx.translate(px, py); ctx.rotate(Math.atan2(dy, dx)); ctx.fillStyle = '#2ee6ff'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(-6, 6); ctx.lineTo(-3, 0); ctx.lineTo(-6, -6); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); };
       const mt = setInterval(() => { let show = false; try { show = !!(mp.active && mp.net && mp.net.connected && game.state !== 'menu'); if (show && drawn !== game.map) draw(); } catch (e) {} cv.style.display = show ? 'block' : 'none'; try { const fb = document.getElementById('fs'); if (fb) fb.style.display = show ? 'none' : 'block'; } catch (e) {} }, 300);   // fullscreen button leaves the HUD during multiplayer play (it covered the money); it lives in the Esc menu
       binds.push([{ removeEventListener() { const fb = document.getElementById('fs'); if (fb) fb.style.display = 'block'; } }, 'x', null, null]);
-      binds.push([{ removeEventListener() { cv.remove(); clearInterval(mt); } }, 'x', null, null]); }
+      const dt2 = setInterval(() => { try { if (cv.style.display !== 'none') dot(); } catch (e) {} }, 80);
+      binds.push([{ removeEventListener() { cv.remove(); clearInterval(mt); clearInterval(dt2); } }, 'x', null, null]); }
     const pm = { el: null, t: 0 };   // Esc pause menu: stays fullscreen (keyboard lock in the browser), releases the mouse
     function closePause(relock) { if (pm.el) { pm.el.remove(); pm.el = null; } window.__pauseOpen = false; pm.t = performance.now(); if (relock) { try { game.canvas.requestPointerLock(); } catch (e) {} } }
     function openPause() {
@@ -287,7 +292,7 @@ export function createMultiplayer(game, THREE) {
     g.player.hp = Math.max(0, net.me.hp || 0); g.player.alive = net.alive;
     g.bots.syncRemote(net.remotes());
     const ph = net.phase === 'freeze' ? 'freeze' : (net.phase === 'live' || net.phase === 'planted' || (net.phase === 'waiting' && net.lobby)) ? 'live' : 'ended', inv = net.me.inv || [];
-    g.eco.remote({ grenades: net.me.gr, armor: net.me.ar, helmet: net.me.he, money: net.me.m, primary: inv[0], secondary: inv[1], team: (net.mode === 'ffa3' && net.sd ? (net.sd[{ T: 0, CT: 1, Z: 2 }[net.team]] ? 'T' : 'CT') : net.team), alive: net.alive, phase: ph, freezeRemaining: ph === 'freeze' ? net.phaseLeft : 0 });
+    g.eco.remote({ ...(net.me.ks != null ? { knifeskin: !!(net.me.ks & 1), butterfly: !!(net.me.ks & 2) } : {}), grenades: net.me.gr, armor: net.me.ar, helmet: net.me.he, money: net.me.m, primary: inv[0], secondary: inv[1], team: (net.mode === 'ffa3' && net.sd ? (net.sd[{ T: 0, CT: 1, Z: 2 }[net.team]] ? 'T' : 'CT') : net.team), alive: net.alive, phase: ph, freezeRemaining: ph === 'freeze' ? net.phaseLeft : 0 });
     if (net.bomb && net.bomb.x != null) { g.bomb.planted = net.phase === 'planted';   // beacon only while the fuse runs: after a defuse or a round end the server keeps the bomb record until the next round
       g.bomb.t = net.bomb.t; g.bomb.site = net.bomb.site || ''; g.bomb.pos.set(net.bomb.x, net.bomb.y, net.bomb.z); g.bombMesh.position.set(net.bomb.x, net.bomb.y + 0.13, net.bomb.z); g.bombMesh.visible = true; }
     else { g.bomb.planted = false; g.bombMesh.visible = false; }
@@ -340,7 +345,7 @@ export function createMultiplayer(game, THREE) {
   }
   try { const V = '1006h', vd = document.createElement('div'); vd.textContent = 'v' + V; vd.style.cssText = 'position:fixed;right:10px;bottom:6px;z-index:5;font:600 11px Fredoka,system-ui,sans-serif;letter-spacing:.08em;color:#fff;opacity:.4;pointer-events:none;text-shadow:0 1px 3px #000'; document.body.appendChild(vd); let first = null, newer = false; const chk = () => fetch(location.pathname + '?nv=' + Date.now(), { cache: 'no-store' }).then((r) => r.text()).then((t) => { const m = /main\.js\?v=([0-9a-z]+)/.exec(t); if (!m) return; if (first === null) first = m[1]; else if (m[1] !== first && !newer) { newer = true; vd.textContent = 'v' + V + '  \u2022 new version available - refresh'; vd.style.opacity = '.85'; vd.style.color = '#ffd86b'; } }).catch(() => {}); chk(); setInterval(chk, 90000); setInterval(() => { vd.style.display = game.state === 'menu' ? '' : 'none'; }, 700); } catch (e) {}
   mp.stop = stop; mp.open = lobby;
-  mp.solo = () => { let n = 'Player'; try { n = localStorage.getItem('sc_name') || 'Player'; } catch (e) {} connect({ room: 'new', name: n, solo: true }); };
+  mp.solo = (m) => { if (m === 'a' || m === 'b') mapSel = m; let n = 'Player'; try { n = localStorage.getItem('sc_name') || 'Player'; } catch (e) {} connect({ room: 'new', name: n, solo: true }); };
   mp.autoJoin = () => { const m = /[?&]room=([A-Za-z0-9]+)/.exec(location.search); if (m) { lobby(m[1].toUpperCase()); if (/[?&]go=1/.test(location.search)) { let n = 0; const iv = setInterval(() => { const b = document.querySelector('#mpg'); if (b && !mp.net) { clearInterval(iv); b.click(); } else if (++n > 40) clearInterval(iv); }, 400); } return true; } return false; };
   return mp;
       }
