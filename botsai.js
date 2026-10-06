@@ -152,7 +152,11 @@ function lineClear(g, ax, az, bx, bz, w = 0.35) {
 
 // ------------------------------------------------------------------ A*
 export function findPath(g, ax, az, bx, bz) {
-  if (g.customPath) return g.customPath(ax, az, bx, bz);
+  if (g.customPath) {   // map-supplied pathfinder: memoize by 1-unit start/goal cells (bots share spawns and goals), shared across rooms of the same map
+    const cp = g.customPath, C = cp._c || (cp._c = new Map()), key = Math.round(ax) + ',' + Math.round(az) + '>' + Math.round(bx) + ',' + Math.round(bz);
+    if (C.has(key)) return C.get(key);
+    const r = cp(ax, az, bx, bz); if (C.size > 600) C.clear(); C.set(key, r); return r;
+  }
   const nav = navOf(g), W = g.w;
   const s = snapFree(g, nav, cxOf(g, ax), czOf(g, az)), e = snapFree(g, nav, cxOf(g, bx), czOf(g, bz));
   if (!s || !e) return null;
@@ -317,8 +321,12 @@ function goTo(bot, world, gx, gz, dt, speedMul = 1, arrive = 0.6) {
   if (dGoal < arrive) { bot.path = null; return true; }
   bot.repathT -= dt;
   if (!bot.path || !bot.pathGoal || Math.hypot(bot.pathGoal.x - gx, bot.pathGoal.z - gz) > 1.5 || bot.repathT <= 0 && bot.pi >= bot.path.length) {
+    if (world._pb !== undefined && world._pb <= 0) { if (!bot.path) return false; }   // path budget used up this tick: keep the old path (or wait one tick), repath on a later tick
+    else {
+    if (world._pb !== undefined) world._pb--;
     bot.path = findPath(g, bot.x, bot.z, gx, gz); bot.pi = 0; bot.pathGoal = { x: gx, z: gz }; bot.repathT = 1.5;
     if (!bot.path) { bot.pathGoal = null; return false; }
+    }
   }
   while (bot.pi < bot.path.length && Math.hypot(bot.path[bot.pi].x - bot.x, bot.path[bot.pi].z - bot.z) < 0.35) bot.pi++;
   if (bot.pi >= bot.path.length) { bot.path = null; return dGoal < arrive + 1.2; }
@@ -715,6 +723,7 @@ export function update(bots, dt, world) {
   const rnd = world.rng || Math.random;
   const brain = brainOf(world, rnd);
   brain.t += dt;
+  world._pb = 1;   // at most one A* search per room per tick (CPU spikes on the small server)
   autoSounds(bots, dt, world, brain);
   for (const b of bots) b._world = world;
   // separation so bots don't stack
