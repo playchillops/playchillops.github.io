@@ -212,7 +212,7 @@ export function buildMap(THREE, layout = scaleLayout(KITE_GARDEN_V4)) {
   for (const [x, z, r] of [[-60, -80, 30], [45, -85, 40], [-90, 10, 35], [90, 10, 30], [60, 70, 32], [-50, 85, 30]]) mesh(new THREE.SphereGeometry(r, 16, 8), material(0x92baa1), x, -r * .6, z, false, 'hill');
   const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
   const spawnPoints = [];
-  for (const team of ['T', 'CT']) for (const [x, z] of L.spawns[team]) spawnPoints.push({ position: V3(x, 0, z), yaw: team === 'T' ? 0 : Math.PI, team });
+  for (const team of ['T', 'CT', 'Z']) for (const [x, z] of (L.spawns[team] || [])) spawnPoints.push({ position: V3(x, 0, z), yaw: team === 'T' ? 0 : team === 'CT' ? Math.PI : Math.atan2(x, z), team });
   const lights = new THREE.Group(); lights.add(new THREE.HemisphereLight(0xcceeff, 0x8cad72, 2));
   const sun = new THREE.DirectionalLight(0xfff3df, 2); sun.position.set(-30, 55, 20); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
   Object.assign(sun.shadow.camera, { left: -56, right: 56, top: 56, bottom: -56, near: 1, far: 150 }); sun.shadow.bias = -.001; sun.shadow.normalBias = .025; lights.add(sun); group.add(lights);
@@ -256,8 +256,8 @@ export function buildMap(THREE, layout = scaleLayout(KITE_GARDEN_V4)) {
     }
   };
   // site discs, decor and callouts need heights
-  const Av = V3(A.x, A.y, A.z), Bv = V3(B.x, B.y, B.z); discLabel('A', Av, 'coral'); discLabel('B', Bv, 'cyan');
-  const bombsites = {}; for (const [k, v] of Object.entries({ A: Av, B: Bv })) bombsites[k] = { center: v.clone(), radius: 4, box: new THREE.Box3(V3(v.x - 4, v.y - 1, v.z - 4), V3(v.x + 4, v.y + 3, v.z + 4)) };
+  const Av = V3(A.x, A.y, A.z), Bv = V3(B.x, B.y, B.z); discLabel('A', Av, 'coral'); discLabel('B', Bv, 'cyan'); const Cv = L.sites.C ? V3(L.sites.C.x, L.sites.C.y, L.sites.C.z) : null; if (Cv) discLabel('C', Cv, 'gold');
+  const bombsites = {}; for (const [k, v] of Object.entries(Cv ? { A: Av, B: Bv, C: Cv } : { A: Av, B: Bv })) bombsites[k] = { center: v.clone(), radius: 4, box: new THREE.Box3(V3(v.x - 4, v.y - 1, v.z - 4), V3(v.x + 4, v.y + 3, v.z + 4)) };
   // palm trees: shared by the renderer (graphics.js), the server and bots so trunks block players, cars and bullets
   const palmSpots = []; { const wp = new THREE.Vector3(); let ci = 0; group.traverse((o) => { if (o.isMesh && o.geometry && o.geometry.type === 'ConeGeometry') { if (o.name === 'plant' && ci % 2 === 0) { o.getWorldPosition(wp); palmSpots.push({ x: wp.x, z: wp.z, s: 1.05, y0: 0 }); } ci++; } });
     const fr = (n) => { const v = Math.sin(n * 12.9898 + 78.233) * 43758.5453; return v - Math.floor(v); };
@@ -376,4 +376,14 @@ export function scaleLayout(L, S = MAP_SCALE) {
     callouts: L.callouts.map((c) => [c[0], f(c[1]), f(c[2])]),
   };
 }
+// ---- second map: Kite Plaza. Bigger (x1.5 on top of the base layout), three sites A / B / C (C = raised central plaza), 1v1v1 friendly.
+export const KITE_PLAZA = {
+  ...KITE_GARDEN_V4, name: 'Kite Plaza', version: 5,
+  sites: { ...KITE_GARDEN_V4.sites, C: { x: 0, y: 1.6, z: -5 } },
+  spawns: { ...KITE_GARDEN_V4.spawns, Z: [[-30, 4], [-30, 6], [-28, 4], [-28, 6], [-30, 2]] },
+  blocks: [...KITE_GARDEN_V4.blocks, [-5, -9, 5, -1, 1.6, 'edge', 'tile', 'C platform']],
+  ramps: [...KITE_GARDEN_V4.ramps, [-2, -1, 2, 3, 'z', 1.6, 0, 'purple'], [-2, -13, 2, -9, 'z', 0, 1.6, 'purple']],
+};
+export const PLAZA_SCALE = 1.5;
+export const LAYOUTS = { a: () => scaleLayout(KITE_GARDEN_V4), b: () => scaleLayout(KITE_PLAZA, PLAZA_SCALE) };
 export default buildMap;
