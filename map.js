@@ -148,8 +148,9 @@ export function buildMap(THREE, layout = scaleLayout(KITE_GARDEN_V4)) {
     ctx.fillStyle = '#182839'; ctx.fillRect(0, 0, 512, 160); ctx.fillStyle = '#' + col(color).toString(16).padStart(6, '0'); ctx.fillRect(0, 0, 12, 160);
     ctx.font = 'bold 66px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, 262, 82);
     const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; textures.push(tex);
-    const m = new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide }); mats.add(m);
-    const o = mesh(new THREE.PlaneGeometry(width, width * 160 / 512), m, x, y, z, false, 'wayfinding'); o.rotation.y = rotation;
+    const m = new THREE.MeshBasicMaterial({ map: tex }); mats.add(m); // two single-sided faces back to back: the text reads right from both sides (no mirrored signs)
+    const pg = new THREE.PlaneGeometry(width, width * 160 / 512), o = mesh(pg, m, x, y, z, false, 'wayfinding'); o.rotation.y = rotation;
+    const back = mesh(pg, m, x - Math.sin(rotation) * .004, y, z - Math.cos(rotation) * .004, false, 'wayfinding'); back.rotation.y = rotation + Math.PI;
   }
   function discLabel(letter, v, color) {
     mesh(new THREE.CylinderGeometry(4, 4, .06, 32), material(col(color)), v.x, v.y + .04, v.z, false, 'site ' + letter);
@@ -763,6 +764,9 @@ export const KITE_PLAZA = {
     ['BAKERY', -23.9, 3.9, -6, 'gold', 3, Math.PI / 2], ['CLOCK HALL', 23.9, 3.9, -6, 'coral', 3.6, -Math.PI / 2], ['OASIS', -47, 3.8, -20.1, 'mint', 3, Math.PI],
     ['OLD TOWN', 47, 3.8, -20.1, 'cyan', 3.2, Math.PI], ['NECROPOLIS', -55.5, 3.8, -41.9, 'mint', 3.8], ['WINDMILL YARD', 55.5, 3.8, -41.9, 'cream', 4.4],
     ['HARBOR', -11.9, 3.8, 48, 'cyan', 3, Math.PI / 2], ['DOCKS', 11.9, 3.8, 48, 'coral', 3, -Math.PI / 2]],
+  // sponsor slots for this map (ads.js): boards hang on walls facing the lanes, flags stand in open ground (no fake cover)
+  ads: { boards: [['billboard-1', -24, 55.3, Math.PI, 4.4], ['billboard-2', 24, 55.3, Math.PI, 4.4], ['billboard-3', -36, -41.3, 0, 4.4], ['billboard-4', 36, -41.3, 0, 4.4], ['billboard-5', 0, 55.3, Math.PI, 4.4]],
+    flags: [['banner-1', -59.3, -2], ['banner-2', 59.3, 1], ['banner-3', -59.3, 13], ['banner-4', 59.3, 13], ['banner-5', -13.7, 39.5], ['banner-6', 13.7, 39.5]] },
   callouts: [['T SPAWN', 0, 50], ['SUN GATE', 0, 38], ['AVENUE', 0, 25], ['PYRAMID', 0, -2], ['TOMB', 0, -5], ['SUMMIT', -3, -6.5], ['WEST STEPS', -17, -9], ['EAST STEPS', 17, 5],
     ['SOUTH DOOR', 2.5, 13], ['NORTH DOOR', -2.5, -17], ['WEST DOOR', -15, .5], ['EAST DOOR', 15, -4.5], ['INN', -15, 27], ['MISSION', 15, 27], ['BAKERY', -32, -10], ['CLOCK HALL', 32, -10],
     ['A SITE', -42, 20], ['TEA TERRACE', -55, 31], ['BAZAAR HALL', -31.5, 27.5], ['WELL', -50, 18], ['BAZAAR GATE', -24, 6.5],
@@ -799,6 +803,7 @@ export function compactPlaza(L, k = .72, core = [-24, -24, 24, 18]) {
     covers: L.covers.map((c) => [fx(c[0]), fz(c[1]), ...c.slice(2)]), crates: L.crates.map((c) => [fx(c[0]), fz(c[1]), ...c.slice(2)]),
     palms: (L.palms || []).map((p) => [fx(p[0]), fz(p[1]), ...p.slice(2)]), landmarks: L.landmarks.map(lm),
     signs: L.signs.map((q) => [q[0], fx(q[1]), q[2], fz(q[3]), ...q.slice(4)]), callouts: L.callouts.map((c) => [c[0], fx(c[1]), fz(c[2])]),
+    ads: L.ads && { boards: L.ads.boards.map(([n, x, z, r, w]) => [n, fx(x), fz(z), r, w]), flags: L.ads.flags.map(([n, x, z]) => [n, fx(x), fz(z)]) },
   };
 }
 export const LAYOUTS = { a: () => scaleLayout(KITE_GARDEN_V4), b: () => compactPlaza(KITE_PLAZA) };
