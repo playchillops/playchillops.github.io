@@ -127,7 +127,7 @@ export class Game {
     this.streaks.on('explosion', ({ position, radius, source }) => this.destruction.damage(position, radius, source === 'rc' ? 150 : 200, { source }));
     this.grenades = createGrenades(THREE, { scene: this.scene, map: m, colliders: this.world,
       raycast, destruction: this.destruction, getTargets: () => this.bots.list,
-      onDamage: (b, amount) => { if (this.mp && this.mp.active) { this.mp.xdmg(b, amount); return; } const alive = b.alive; this.bots.damage(b, Math.max(0, b.health - amount), false);
+      onDamage: (b, amount, meta) => { if (meta && meta.owner && meta.owner !== 'player') return; if (this.mp && this.mp.active) { this.mp.xdmg(b, amount); return; } const alive = b.alive; this.bots.damage(b, Math.max(0, b.health - amount), false);
         if (alive && !b.alive) { this.eco.recordKill({ id: b.id, weapon: 'frag' }); this.streaks.registerKill({ headshot: false }); this.kills++; this.score += 100; } },
       onFlash: (b, seconds) => { b.grenadeFlash = Math.max(b.grenadeFlash || 0, seconds); },
       onEvent: (e) => { try { if (e && e.type === 'detonate' && e.position) { const p = { x: e.position.x, y: e.position.y, z: e.position.z }; play(e.grenade === 'frag' ? 'bomb_explode' : 'impact', p); } } catch (er) {} }
@@ -290,7 +290,8 @@ export class Game {
   throwGrenade(type) {
     const s = this.eco.getState();
     if (this.state !== 'play' || s.phase !== 'live' || s.menuOpen || !this.player.alive || this.streaks.controlling) return;
-    this.grenades.throwGrenade(type, { position: this.ctrl.state.eye, direction: this.ctrl.getDirection(), owner: 'player', team: s.team });
+    if (!this.eco.consumeGrenade(type)) return;   // fires the 'grenade' event (multiplayer relays it to the server)
+    this.grenades.throwGrenade(type, { position: this.ctrl.state.eye, direction: this.ctrl.getDirection(), owner: 'player', team: s.team, consume: false });
   }
   endMatchEffects(id) { this.destruction.reset(id); this.grenades.reset(id); }
   onWeaponEvent(n, d) {
@@ -524,7 +525,7 @@ export class Game {
       return;
     }
     const MP = !!(this.mp && this.mp.active);
-    if (!MP) c.update(dt);
+    if (!MP) c.update(dt, { knife: !!this.knifeOn });
     if (!MP && es.phase === 'freeze' && this.zone) { const z = this.zone, p = st.position; const cx = Math.max(z.x - z.h, Math.min(z.x + z.h, p.x)), cz = Math.max(z.z - z.h, Math.min(z.z + z.h, p.z)); if (cx !== p.x || cz !== p.z) c.teleport({ x: cx, y: p.y, z: cz }, { yaw: st.yaw, pitch: st.pitch }); }
     const k = this.ws.consumeLook(); if (k.pitch || k.yaw) c.look(-k.yaw / 0.0022, -k.pitch / 0.0022);
     if (MP) { this.mp.drive(this._real || dt); c.applyToCamera(this.camera); this.mp.fixCam(this.camera); } else c.applyToCamera(this.camera);
@@ -586,4 +587,4 @@ export class Game {
     this.kc.afterRender();
   }
   destroy() { this.running = false; this.ro && this.ro.disconnect(); this.ctrl.dispose(); this.renderer.dispose(); }
-      }
+                        }
