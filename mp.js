@@ -180,7 +180,7 @@ export function createMultiplayer(game, THREE) {
     try { if (!game._mpHooks) { game._mpHooks = true;
       game.streaks.on('called', ({ id }) => { if (mp.active && mp.net) mp.net.sendRaw({ t: 'scall', id }); });
       game.eco.on && 0; } game.eco.on('grenade', ({ id }) => { if (mp.active && mp.net) { const e = game.ctrl.state.eye, d = game.ctrl.getDirection(); mp.net.sendRaw({ t: 'gren', id, o: [e.x, e.y, e.z], d: [d.x, d.y, d.z] }); } }); } catch (e) {}
-    mp._sk = null; hud.querySelector('.rc').textContent = 'ROOM ' + w.room + ' - share the link or code. M = leave room';
+    mp._sk = null; hud.querySelector('.rc').textContent = 'ROOM ' + w.room + ' - share the link or code. Esc = menu';
     bind(); game.canvas.requestPointerLock && game.canvas.requestPointerLock();
   }
 
@@ -216,9 +216,25 @@ export function createMultiplayer(game, THREE) {
       document.body.appendChild(box); let hinted = false;
       binds.push([{ removeEventListener() { box.remove(); clearInterval(bt); } }, 'x', null, null]);
       const bt = setInterval(() => { let show = false; try { show = !!(mp.active && mp.net && mp.net.connected && canBot()); } catch (e) {} box.style.display = show ? 'flex' : 'none'; sbtn.style.display = mp.net && mp.net.lobby ? '' : 'none'; if (show && !hinted) { hinted = true; banner('Host: K enemy bot, L ally bot, U remove bots', 4); } if (!show && mp.net && mp.net.phase === 'live') hinted = true; }, 500); }
-    on(document, 'keydown', (e) => { if (!mp.active) return; if (e.code === 'Escape') return; if (e.code === 'KeyM') { game.showMenu(); return; } keys[e.code] = true; if (['Space', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault(); });
+    const pm = { el: null, t: 0 };   // Esc pause menu: stays fullscreen (keyboard lock in the browser), releases the mouse
+    function closePause(relock) { if (pm.el) { pm.el.remove(); pm.el = null; } window.__pauseOpen = false; pm.t = performance.now(); if (relock) { try { game.canvas.requestPointerLock(); } catch (e) {} } }
+    function openPause() {
+      if (pm.el || !mp.active) return; window.__pauseOpen = true; for (const k of Object.keys(keys)) delete keys[k]; try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) {}
+      const el = document.createElement('div'); pm.el = el; el.setAttribute('data-pm', '1');
+      el.style.cssText = 'position:fixed;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;background:rgba(5,10,24,.55);font-family:Fredoka,system-ui,sans-serif';
+      const bs = 'display:block;width:260px;margin:10px auto;padding:13px 0;border:0;border-radius:12px;font:600 17px Fredoka,system-ui,sans-serif;letter-spacing:.08em;cursor:pointer;color:#10162b;background:#ffb347';
+      el.innerHTML = `<div style="text-align:center;color:#fff;padding:26px 34px;border-radius:18px;background:#0b1020ee;box-shadow:0 10px 50px #000a;border:1px solid #ffffff22"><div style="font:700 26px Fredoka,system-ui,sans-serif;letter-spacing:.12em;margin-bottom:8px">PAUSED</div><div style="font-size:12px;opacity:.6;margin-bottom:10px">The match keeps running</div><button data-a="res" style="${bs}">RESUME</button><button data-a="set" style="${bs};background:#7fe3ff">SETTINGS</button><button data-a="leave" style="${bs};background:#ff8a8a">LEAVE ROOM / BACK TO MENU</button></div>`;
+      el.addEventListener('mousedown', (e) => e.stopPropagation());
+      el.querySelector('[data-a=res]').onclick = () => closePause(true);
+      el.querySelector('[data-a=set]').onclick = () => { el.style.display = 'none'; game.openSettings(); };
+      el.querySelector('[data-a=leave]').onclick = () => { closePause(false); game.showMenu(); };
+      document.body.appendChild(el);
+    }
+    if (!game._csWrapped) { game._csWrapped = true; const cs = game.closeSettings.bind(game); game.closeSettings = () => { cs(); pm.t = performance.now(); if (pm.el) pm.el.style.display = 'flex'; }; }
+    on(document, 'pointerlockchange', () => { if (!mp.active || document.pointerLockElement || pm.el) return; setTimeout(() => { try { if (mp.active && !pm.el && !document.pointerLockElement && !(game.eco && game.eco.getState().menuOpen) && (!game.setOv || game.setOv.style.display === 'none') && game.state === 'play') openPause(); } catch (e) {} }, 120); });
+    on(document, 'keydown', (e) => { if (!mp.active) return; if (e.code === 'Escape') { if (performance.now() - (pm.t || 0) < 150) return; if (game.setOv && game.setOv.style.display !== 'none') return; e.preventDefault(); pm.el ? closePause(true) : openPause(); return; } if (pm.el) return; keys[e.code] = true; if (['Space', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault(); });
     on(document, 'keyup', (e) => { keys[e.code] = false; });
-    on(game.canvas, 'mousedown', (e) => { if (!mp.active) return; if (document.pointerLockElement !== game.canvas) { game.canvas.requestPointerLock(); return; } if (game.eco && game.eco.getState().menuOpen) return; if (e.button === 0) { if (!(mp.net.me.pp > 0 || mp.net.me.dp > 0)) { mp.net.setInput({ fire: true }); mp.net.tap(); } } });
+    on(game.canvas, 'mousedown', (e) => { if (!mp.active || pm.el) return; if (document.pointerLockElement !== game.canvas) { game.canvas.requestPointerLock(); return; } if (game.eco && game.eco.getState().menuOpen) return; if (e.button === 0) { if (!(mp.net.me.pp > 0 || mp.net.me.dp > 0)) { mp.net.setInput({ fire: true }); mp.net.tap(); } } });
     on(document, 'mouseup', (e) => { if (mp.active && e.button === 0) mp.net.setInput({ fire: false }); });
     on(window, 'blur', () => { keys = {}; });
   }
@@ -283,6 +299,7 @@ export function createMultiplayer(game, THREE) {
   };
 
   function stop() {
+    window.__pauseOpen = false; document.querySelectorAll('[data-pm]').forEach((e) => e.remove());
     try { game.setMusicMode('menu'); } catch (e) {}
     mp.active = false; remotes.forEach((r) => { game.scene.remove(r.ch.group); }); remotes.clear();
     if (mp.net) { try { mp.net.closing = true; mp.net.ws && mp.net.ws.close(); } catch (e) {} mp.net = null; }
@@ -291,9 +308,9 @@ export function createMultiplayer(game, THREE) {
     if (document.pointerLockElement) document.exitPointerLock();
     try { game.vm.group.visible = false; } catch (e) {}
   }
-  try { const V = '1006e', vd = document.createElement('div'); vd.textContent = 'v' + V; vd.style.cssText = 'position:fixed;right:10px;bottom:6px;z-index:5;font:600 11px Fredoka,system-ui,sans-serif;letter-spacing:.08em;color:#fff;opacity:.4;pointer-events:none;text-shadow:0 1px 3px #000'; document.body.appendChild(vd); let first = null, newer = false; const chk = () => fetch(location.pathname + '?nv=' + Date.now(), { cache: 'no-store' }).then((r) => r.text()).then((t) => { const m = /main\.js\?v=([0-9a-z]+)/.exec(t); if (!m) return; if (first === null) first = m[1]; else if (m[1] !== first && !newer) { newer = true; vd.textContent = 'v' + V + '  \u2022 new version available - refresh'; vd.style.opacity = '.85'; vd.style.color = '#ffd86b'; } }).catch(() => {}); chk(); setInterval(chk, 90000); setInterval(() => { vd.style.display = game.state === 'menu' ? '' : 'none'; }, 700); } catch (e) {}
+  try { const V = '1006f', vd = document.createElement('div'); vd.textContent = 'v' + V; vd.style.cssText = 'position:fixed;right:10px;bottom:6px;z-index:5;font:600 11px Fredoka,system-ui,sans-serif;letter-spacing:.08em;color:#fff;opacity:.4;pointer-events:none;text-shadow:0 1px 3px #000'; document.body.appendChild(vd); let first = null, newer = false; const chk = () => fetch(location.pathname + '?nv=' + Date.now(), { cache: 'no-store' }).then((r) => r.text()).then((t) => { const m = /main\.js\?v=([0-9a-z]+)/.exec(t); if (!m) return; if (first === null) first = m[1]; else if (m[1] !== first && !newer) { newer = true; vd.textContent = 'v' + V + '  \u2022 new version available - refresh'; vd.style.opacity = '.85'; vd.style.color = '#ffd86b'; } }).catch(() => {}); chk(); setInterval(chk, 90000); setInterval(() => { vd.style.display = game.state === 'menu' ? '' : 'none'; }, 700); } catch (e) {}
   mp.stop = stop; mp.open = lobby;
   mp.solo = () => { let n = 'Player'; try { n = localStorage.getItem('sc_name') || 'Player'; } catch (e) {} connect({ room: 'new', name: n, solo: true }); };
   mp.autoJoin = () => { const m = /[?&]room=([A-Za-z0-9]+)/.exec(location.search); if (m) { lobby(m[1].toUpperCase()); if (/[?&]go=1/.test(location.search)) { let n = 0; const iv = setInterval(() => { const b = document.querySelector('#mpg'); if (b && !mp.net) { clearInterval(iv); b.click(); } else if (++n > 40) clearInterval(iv); }, 400); } return true; } return false; };
   return mp;
-}
+      }
