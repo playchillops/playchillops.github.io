@@ -22,7 +22,7 @@ export function createDestruction(THREE,o={}){
  function editCollider(c,active){for(const a of arrays){const i=a.indexOf(c);if(active&&i<0)a.push(c);else if(!active&&i>=0)a.splice(i,1);}}
  function rebuildNav(){const n=map.navGrid;if(n?.walkable&&n.height){const good=[];for(let r=0;r<n.rows;r++)for(let c=0;c<n.cols;c++){
    const i=r*n.cols+c,x=n.originX+(c+.5)*n.cellSize,z=n.originZ+(r+.5)*n.cellSize,y=n.height[i];
-   n.walkable[i]=Number.isFinite(y)&&!(map.colliders||[]).some(b=>b.enabled!==false&&b.min&&x>b.min.x-.45&&x<b.max.x+.45&&z>b.min.z-.45&&z<b.max.z+.45&&b.max.y>y+.5&&b.min.y<y+1.8)?1:0;
+   n.walkable[i]=Number.isFinite(y)&&!(map.colliders||[]).some(b=>b.enabled!==false&&b.solid!==false&&b.min&&x>b.min.x-.45&&x<b.max.x+.45&&z>b.min.z-.45&&z<b.max.z+.45&&b.max.y>y+.5&&b.min.y<y+1.8)?1:0;
    if(n.walkable[i])good.push(i);
   }n.randomWalkable=()=>{if(!good.length)return null;const i=good[Math.floor(Math.random()*good.length)];return n.cellToWorld(i%n.cols,Math.floor(i/n.cols));};}
   navVersion++;o.onCollidersChanged?.({version:navVersion,colliderArrays:arrays,navGrid:map.navGrid});
