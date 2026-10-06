@@ -212,7 +212,7 @@ export class Game {
   unKnife() { if (!this.knifeOn) return; this.knifeOn = false; this.knife.visible = false; this.vm.group.visible = true; this.hudAmmo(); }
   hudAmmo() { try { if (this.knifeOn) { const t = this.knifeType(); this.hud.setAmmo(null, null, t === 'butterfly' ? 'Butterfly' : t === 'kite' ? 'Kite Cutter' : 'Knife'); return; }
     const a = this.ws.ammo[this.ws.current], w = WEAPONS[this.ws.current]; if (a) this.hud.setAmmo(a.mag, a.reserve, (w && w.name) || this.ws.current, false); } catch (e) {} }
-  inspect() { if (this.knifeOn) this.kvm.inspect(); }
+  inspect() { if (this.knifeOn) this.kvm.inspect(); else if (this.state === 'play' && this.player.alive !== false && !this.ws.reloading) this.vm.inspect(); }
   stab() { this.slash(true); }   // right click: heavy stab (slower, hits harder)
   slash(heavy = false) {
     if (!this.player.alive || this.knifeCd > 0 || this.state !== 'play') return;
