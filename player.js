@@ -151,7 +151,7 @@ export function createViewmodels(THREE) {
 
   const st = {
     current: 'pistol', recoil: 0, flash: 0, reloadT: -1, reloadDur: 1, aim: 0, aimTarget: 0,
-    bob: 0, swap: 1, kick: 0, time: 0,
+    bob: 0, swap: 1, kick: 0, time: 0, inspT: -1,
   };
   const api = {
     group, models,
@@ -159,11 +159,13 @@ export function createViewmodels(THREE) {
     setWeapon(id) {
       if (!models[id] || id === st.current && models[id].g.visible) return;
       models[st.current].g.visible = false;
-      st.current = id; models[id].g.visible = true; st.swap = 0; st.reloadT = -1; st.flash = 0;
+      st.current = id; models[id].g.visible = true; st.swap = 0; st.reloadT = -1; st.flash = 0; st.inspT = -1;
     },
     fire() { const w = WEAPONS[st.current]; st.recoil = Math.min(1.6, st.recoil + 1); st.flash = 0.06; st.kick = w.recoil.kick;
       models[st.current].flash.rotation.z = Math.random() * 6.28; },
-    reload(dur) { st.reloadT = 0; st.reloadDur = dur ?? WEAPONS[st.current].reloadTime; },
+    inspect() { if (st.reloadT >= 0 || st.inspT >= 0 || st.aimTarget > 0 || st.recoil > 0.15 || st.swap < 1) return false; st.inspT = 0; return true; },
+    get inspecting() { return st.inspT >= 0; },
+    reload(dur) { st.inspT = -1; st.reloadT = 0; st.reloadDur = dur ?? WEAPONS[st.current].reloadTime; },
     setAim(on) { st.aimTarget = on ? 1 : 0; },
     get aimAmount() { return st.aim; },
     get reloading() { return st.reloadT >= 0; },
@@ -195,6 +197,13 @@ export function createViewmodels(THREE) {
         m.g.rotation.x += dip * 0.7; m.g.rotation.z += Math.sin(t * Math.PI * 2) * 0.25 * dip;
         if (t >= 1) st.reloadT = -1;
       }
+      // inspect: slow turn of the weapon in front of the camera (cancelled by fire, reload, aim)
+      if (st.inspT >= 0) {
+        if (st.recoil > 0.05 || st.aimTarget > 0 || st.reloadT >= 0) st.inspT = -1;
+        else { st.inspT += dt; const t = Math.min(1, st.inspT / 2.2), e = Math.sin(Math.PI * Math.min(1, t * 1.05)), e2 = e * e * (3 - 2 * e);
+          m.g.position.x -= e2 * 0.07; m.g.position.y += e2 * 0.035; m.g.position.z += e2 * 0.07;
+          m.g.rotation.y += e2 * 0.95 * Math.cos(t * Math.PI * 1.5); m.g.rotation.x -= e2 * 0.3; m.g.rotation.z += Math.sin(t * Math.PI * 2) * 0.4 * e2;
+          if (t >= 1) st.inspT = -1; } }
       // muzzle flash
       st.flash = Math.max(0, st.flash - dt);
       const fl = m.flash; fl.visible = st.flash > 0 && !(w.scope && st.aim > 0.8);
