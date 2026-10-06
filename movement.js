@@ -67,6 +67,17 @@ export function createController(initialColliders=[], options={}) {
       if(top<=fromY+maxRise+EPS&&top>best)best=top;
     }return best;
   }
+  // jump pad under the feet: a solid box carrying pad={vy,dx,dz}; ladder: a non-solid volume with ladder=true (W up, S down)
+  function padAt(x,z,y) {
+    for(const c of colliders){if(!c||!c.pad||c.enabled===false)continue;const b=bounds(c);if(!b)continue;
+      if(x>=b.min.x&&x<=b.max.x&&z>=b.min.z&&z<=b.max.z&&Math.abs(b.max.y-y)<.04)return c.pad;}
+    return null;
+  }
+  function onLadder(x,z,y) {
+    for(const c of colliders){if(!c||!c.ladder||c.enabled===false||!c.min)continue;
+      if(x+opt.radius>c.min.x&&x-opt.radius<c.max.x&&z+opt.radius>c.min.z&&z-opt.radius<c.max.z&&y>=c.min.y-.05&&y<c.max.y)return c;}
+    return null;
+  }
   function moveAxis(axis,delta,wasGrounded) {
     if(!delta)return;
     p[axis]+=delta;
@@ -124,8 +135,18 @@ export function createController(initialColliders=[], options={}) {
       const floor=support(p.x,p.z,p.y,.025);
       if(v.y<=0&&p.y>=floor-EPS&&p.y-floor<=.025){p.y=floor;grounded=true;v.y=0;}
       if(grounded)coyote=.1;else coyote=Math.max(0,coyote-h);
+      if(grounded&&v.y<=0){const pd=padAt(p.x,p.z,p.y);if(pd){v.y=pd.vy;v.x=pd.dx||0;v.z=pd.dz||0;grounded=false;coyote=0;jumpBuffer=0;}}
       if(jumpBuffer>0&&coyote>0){v.y=opt.jumpSpeed;grounded=false;coyote=0;jumpBuffer=0;}
       jumpBuffer=Math.max(0,jumpBuffer-h);
+      const lad=onLadder(p.x,p.z,p.y);
+      if(lad){ // climbing: forward input climbs, back goes down, no gravity; sideways/forward moves are slower (forward presses into the wall, over the top you walk off)
+        const ca=1-Math.exp(-14*h);v.x+=(tx*.6-v.x)*ca;v.z+=(tz*.6-v.z)*ca;v.y=f>0?3.2:f<0?-3.2:0;
+        moveAxis('x',v.x*h,false);moveAxis('z',v.z*h,false);
+        const oy=p.y;p.y+=v.y*h;grounded=false;
+        if(v.y<0){const fl=support(p.x,p.z,oy,.025);if(p.y<=fl){p.y=fl;v.y=0;grounded=true;}}
+        else if(v.y>0){for(const c of colliders){const b=bounds(c);if(!b||!horizontalOverlap(b))continue;const bt=bottom(c,b,p.x,p.z);if(oy+height<=bt+EPS&&p.y+height>=bt){p.y=bt-height;v.y=0;}}}
+        continue;
+      }
       const wasGrounded=grounded;
       const accel=grounded?(f||r?opt.acceleration:opt.friction):opt.airAcceleration;
       const alpha=1-Math.exp(-accel*h);
