@@ -344,7 +344,7 @@ export function createHUD(container = document.body) {
       fill.style.background = f > 0.6 ? '#52f0a0' : f > 0.3 ? '#ffd24a' : '#ff5566'; num.textContent = Math.ceil(hp);
     },
     setAmmo(mag, reserve, name, reloading) {
-      ammoN.innerHTML = `${mag} <small>/ ${reserve}</small>`; ammoW.textContent = name || '';
+      ammoN.innerHTML = mag == null ? '' : `${mag} <small>/ ${reserve}</small>`; ammoW.textContent = name || ''; // mag null = melee (knife): name only
       ammoBox.classList.toggle('low', mag <= 2); rel.style.opacity = reloading ? 1 : 0;
     },
     setScope(on, t = on ? 1 : 0) { scope.style.opacity = t; root.querySelector('.sc-hp').style.opacity = on ? 0.5 : 1; },
