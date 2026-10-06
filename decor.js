@@ -86,7 +86,7 @@ export function addDecor(THREE, map, parent) {
   // build meshes
   for (const [, b] of batches) {
     const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(b.p, 3)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(b.n, 3)); geo.setIndex(b.i);
-    const m = new THREE.MeshLambertMaterial({ color: b.color, flatShading: true, transparent: b.alpha < 1, opacity: b.alpha, depthWrite: b.alpha >= 1, polygonOffset: true, polygonOffsetFactor: b.alpha < 1 ? -4 : -2, polygonOffsetUnits: b.alpha < 1 ? -4 : -2 }); const mesh = new THREE.Mesh(geo, m); mesh.userData.decor = true; mesh.frustumCulled = true; g.add(mesh);
+    const m = new THREE.MeshLambertMaterial({ color: b.color, flatShading: true, transparent: b.alpha < 1, opacity: b.alpha, depthWrite: b.alpha >= 1, polygonOffset: true, polygonOffsetFactor: b.alpha < 1 ? -8 : -6, polygonOffsetUnits: b.alpha < 1 ? -8 : -6 }); const mesh = new THREE.Mesh(geo, m); mesh.userData.decor = true; mesh.frustumCulled = true; g.add(mesh);
   }
   g.scale.set(SC, 1, SC); parent.add(g); return g;
 }
