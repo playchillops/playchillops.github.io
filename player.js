@@ -31,21 +31,21 @@ export const WEAPON_ORDER = ['pistol', 'machinegun', 'sniper'];
 export const WEAPONS = {
   pistol: {
     id: 'pistol', name: 'Chill Pistol', auto: false, rpm: 360, mag: 12, reserve: 60, reloadTime: 1.2,
-    damage: { head: 100, body: 34, limb: 20 },
+    damage: { head: 60, body: 20, limb: 12 },
     range: 80, pellets: 1, spread: 0.004, spreadMove: 0.012, spreadPerShot: 0.004, spreadMax: 0.02, spreadRecover: 6,
     recoil: { pitch: 0.014, yaw: 0.004, kick: 0.05, recover: 10 },
     zoom: 1, scope: false, adsZoom: 1.25, color: 0x5ad1ff, flash: 0.8,
   },
   machinegun: {
     id: 'machinegun', name: 'Chill-O-Matic', auto: true, rpm: 780, mag: 30, reserve: 120, reloadTime: 1.8,
-    damage: { head: 100, body: 18, limb: 11 },
+    damage: { head: 38, body: 11, limb: 7 },
     range: 70, pellets: 1, spread: 0.007, spreadMove: 0.02, spreadPerShot: 0.0035, spreadMax: 0.05, spreadRecover: 5,
     recoil: { pitch: 0.007, yaw: 0.005, kick: 0.04, recover: 9 },
     zoom: 1, scope: false, adsZoom: 1.3, color: 0xffb347, flash: 1,
   },
   sniper: {
     id: 'sniper', name: 'Quiet Storm', auto: false, rpm: 48, mag: 5, reserve: 20, reloadTime: 2.6,
-    damage: { head: 200, body: 100, limb: 100 }, // one shot kills at 100 hp anywhere
+    damage: { head: 90, body: 55, limb: 40 }, // never one-shots at 100 hp: headshot 90 leaves 10, two hits kill
     range: 300, pellets: 1, spread: 0.03, spreadMove: 0.06, spreadPerShot: 0, spreadMax: 0.06, spreadRecover: 4,
     adsSpread: 0.0, // perfectly accurate when scoped and still
     recoil: { pitch: 0.05, yaw: 0.008, kick: 0.12, recover: 5 },
@@ -53,7 +53,7 @@ export const WEAPONS = {
   },
 };
 
-export const HEADSHOT_KILLS = true;
+export const HEADSHOT_KILLS = false;   // headshots hurt a lot but no longer one-shot (helmet cuts them further)
 export const PLAYER_MAX_HP = 100;
 
 export function computeDamage(weaponId, zone = 'body') {
