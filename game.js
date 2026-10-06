@@ -175,6 +175,7 @@ export class Game {
     const d = document, c = this.canvas;
     c.addEventListener('contextmenu', (e) => e.preventDefault());
     c.addEventListener('mousedown', (e) => {
+      if (this.mp && this.mp.spec && this.mp.spec.active) return;   // dead + spectating: clicks switch the spectated player (spectate.js)
       if (this.state !== 'play') return;
       if (this.streaks.controlling || (this.eco && this.eco.getState().menuOpen)) { return; }
       if (!this.ctrl.state.pointerLocked) this.ctrl.requestPointerLock();
@@ -364,7 +365,7 @@ export class Game {
   }
   updateDrops(dt) {
     for (const d of this.drops || []) d.t += dt;
-    const n = this.nearestDrop(); this.hint.textContent = n ? 'E · pick up ' + (WEAPON_STATS[n.drop.weapon] ? WEAPON_STATS[n.drop.weapon].name : n.drop.weapon) : '';
+    const n = this.player.alive ? this.nearestDrop() : null; this.hint.textContent = n ? 'E · pick up ' + (WEAPON_STATS[n.drop.weapon] ? WEAPON_STATS[n.drop.weapon].name : n.drop.weapon) : '';
   }
   pick(slot) { this.unKnife(); const inv = this.eco.getState().inventory; const id = slot === 'primary' ? inv.primary : inv.secondary; if (id && this.eco.selectWeapon(id)) this.ws.select(id); }
   overlay(html, btns) {
