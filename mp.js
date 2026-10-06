@@ -5,6 +5,8 @@ import { lobbyPanel } from './social.js';
 import { createController } from './movement.js';
 import { createCharacter, CHARACTER_IDS } from './characters.js';
 import { WEAPON_ORDER } from './player.js';
+import { createSpectator } from './spectate.js';
+import { profileComplete, requireProfile } from './profilegate.js';
 import { play, setListener, initAudio } from './audio.js';
 const SHOT = ['shot_pistol', 'shot_mg', 'shot_sniper'];
 const P3 = (a) => (a && a.length === 3 ? { x: a[0], y: a[1], z: a[2] } : undefined);
@@ -113,6 +115,7 @@ export function createMultiplayer(game, THREE) {
 
   const keepQ = () => { const m = /[?&](mphost=[\w.:-]+)/.exec(location.search); return m ? '&' + m[1] : ''; }; // dev: keep the local server across map reloads
   function connect(p) {
+    if (!profileComplete() && !/[?&]noonboard/.test(location.search)) { requireProfile(document.body, () => connect({ ...p, name: (localStorage.getItem('sc_name') || p.name) })); return; }   // name + company first (also for invite links)
     if ((p.room === 'new' || p.room === 'MATCH') && game.mapId && mapSel !== game.mapId) { try { sessionStorage.setItem('sc_mp_pending', JSON.stringify({ room: p.room, mode, name: p.name, solo: !!p.solo })); } catch (e) {} show(`<div class="mp-c"><div class="mp-spin"></div><h2 style="font-size:22px">Loading map...</h2></div>`); setTimeout(() => location.replace(location.pathname + '?map=' + mapSel + '&mpgo=1' + keepQ()), 250); return; }
     wakeScreen(p, 0);
   }
@@ -144,11 +147,11 @@ export function createMultiplayer(game, THREE) {
     net.on('kill', (m) => { if (!m) return;
       if (m.by === net.id && m.id !== net.id) { try { const hs = m.cause === 'headshot'; play('kill'); game.streaks.registerKill({ headshot: hs }); game.kf.textContent = hs ? 'HEADSHOT +150' : 'Kill +100'; game.kfT = 1.5; } catch (e) {} }
       if (m.id !== net.id) { try { const vb = game.bots.list.find((x) => x.netId === m.id); if (vb && vb.alive) { vb._kt = performance.now(); game.bots.damage(vb, 0, false); } } catch (e) {} }
-      if (m.id === net.id) { banner(m.rv ? 'You were killed. A teammate can revive you for ' + m.rv + 's' : '', 0.1); try { const g = game, kb = g.bots.list.find((b) => b.netId === m.by); play('death'); g.streaks.registerDeath(); g.killfx.playerDied(); g.hud.setHealth(0); if (kb) g.startDeathCam(kb.group.position, 'You were eliminated.'); } catch (e) {} }
+      if (m.id === net.id) { banner(m.rv ? 'You were killed. A teammate can revive you for ' + m.rv + 's' : '', 0.1); try { const g = game, kb = g.bots.list.find((b) => b.netId === m.by); play('death'); g.streaks.registerDeath(); g.killfx.playerDied(); g.hud.setHealth(0); mp._killer = m.by; } catch (e) {} }   // death cam + spectating: spectate.js
       if (m.rv) bodies.set(m.id, { x: m.x, y: m.y, z: m.z, t: performance.now() / 1000, rv: m.rv }); });
     net.on('buyr', (m) => { if (!m) return; try { if (m.ok) { play('buy'); banner('Purchased', 0.8); } else { play('buy_fail'); try { game.eco.cancelOpt(); } catch (e2) {} banner(m.reason || 'Cannot buy that', 1.6); } } catch (e) {} });
     net.on('revive', (m) => { if (!m) return; bodies.delete(m.id); banner(m.id === net.id ? 'You were revived' : 'Teammate revived', 1.6); });
-    net.on('shot', (m) => { if (!m || m.id === net.id) return; const b = game.bots.list.find((x) => x.netId === m.id); if (b) b.aimT = 0.5; try { const from = new THREE.Vector3(m.o[0], m.o[1], m.o[2]), to = new THREE.Vector3(m.e[0], m.e[1], m.e[2]); play(['shot_pistol', 'shot_mg', 'shot_sniper'][m.w | 0] || 'bot_shot', from); game.anim.onBotShot({ from, to, hit: false });
+    net.on('shot', (m) => { try { if (m && m.o && m.id !== net.id && mp._pings) { const pings = mp._pings, rt = net.roster.get(m.id), cl = { T: '#ff9a3c', CT: '#46d9ff', Z: '#6fe07a' }, c = cl[rt && rt.team] || '#ff5a5a'; for (let i = pings.length - 1; i >= 0; i--) if (pings[i].id === m.id) pings.splice(i, 1); pings.push({ id: m.id, x: m.o[0], z: m.o[2], t: performance.now(), c }); if (pings.length > 12) pings.shift(); } } catch (e) {} if (!m || m.id === net.id) return; const b = game.bots.list.find((x) => x.netId === m.id); if (b) b.aimT = 0.5; try { const from = new THREE.Vector3(m.o[0], m.o[1], m.o[2]), to = new THREE.Vector3(m.e[0], m.e[1], m.e[2]); play(['shot_pistol', 'shot_mg', 'shot_sniper'][m.w | 0] || 'bot_shot', from); game.anim.onBotShot({ from, to, hit: false });
       if (net.alive) { const e = net.eye(), dx = to.x - from.x, dy = to.y - from.y, dz = to.z - from.z, L2 = dx * dx + dy * dy + dz * dz || 1; let u = ((e.x - from.x) * dx + (e.y - from.y) * dy + (e.z - from.z) * dz) / L2; u = Math.max(0, Math.min(1, u)); const px = from.x + dx * u - e.x, py = from.y + dy * u - e.y, pz = from.z + dz * u - e.z, dd = Math.hypot(px, py, pz); if (dd < 3.2 && u > 0.02) play('whiz', { x: e.x + px, y: e.y + py, z: e.z + pz }); }
       play('impact', { x: to.x, y: to.y, z: to.z }); } catch (e) {} });
     net.on('hit', (m) => { if (!m || m.id !== net.id) return; play('hurt'); try { game.hud.damageFlash(); } catch (e) {} });
@@ -228,7 +231,7 @@ export function createMultiplayer(game, THREE) {
       binds.push([{ removeEventListener() { tb.remove(); clearInterval(tt); } }, 'x', null, null]); }
     { // always-visible minimap (map layout + local player arrow only)
       const cv = document.createElement('canvas'); cv.width = 168; cv.height = 168; cv.style.cssText = 'position:fixed;left:12px;top:46px;width:168px;height:168px;z-index:5;display:none;border-radius:12px;border:2px solid rgba(255,255,255,.35);background:rgba(10,24,40,.55);pointer-events:none';
-      document.body.appendChild(cv); let drawn = null, base = null, geo = null;
+      document.body.appendChild(cv); let drawn = null, base = null, geo = null; const pings = mp._pings = [];
       const draw = () => { const m = game.map, ng = m && m.navGrid; if (!ng) return; drawn = m; const ctx = cv.getContext('2d'), W = cv.width; geo = ng; ctx.clearRect(0, 0, W, W);
         const off = document.createElement('canvas'); off.width = ng.cols; off.height = ng.rows; const ox = off.getContext('2d'), im = ox.createImageData(ng.cols, ng.rows);
         let hmax = 1; for (let i = 0; i < ng.walkable.length; i++) if (ng.walkable[i] && ng.height[i] > hmax) hmax = ng.height[i];
@@ -238,6 +241,7 @@ export function createMultiplayer(game, THREE) {
         for (const key of Object.keys(m.bombsites || {})) { const c = m.bombsites[key].center, px = 4 + (c.x - ng.originX) / ng.cols * (W - 8), py = 4 + (c.z - ng.originZ) / ng.rows * (W - 8); ctx.fillStyle = 'rgba(255,120,60,.9)'; ctx.beginPath(); ctx.arc(px, py, 9, 0, 7); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillText(key, px, py + 1); }
         base = document.createElement('canvas'); base.width = W; base.height = W; base.getContext('2d').drawImage(cv, 0, 0); };
       const dot = () => { if (!base || !geo) return; const ctx = cv.getContext('2d'), W = cv.width, p = mp.net && mp.net.cur ? mp.net.eye().feet : null; if (!p) return; ctx.clearRect(0, 0, W, W); ctx.drawImage(base, 0, 0); const yaw = game.ctrl.state.yaw || 0, px = 4 + (p.x - geo.originX) / geo.cols * (W - 8), py = 4 + (p.z - geo.originZ) / geo.rows * (W - 8), dx = -Math.sin(yaw), dy = -Math.cos(yaw);
+        { const now = performance.now(); for (let i = pings.length - 1; i >= 0; i--) { const pg = pings[i], age = now - pg.t; if (age > 1600) { pings.splice(i, 1); continue; } const qx = 4 + (pg.x - geo.originX) / geo.cols * (W - 8), qy = 4 + (pg.z - geo.originZ) / geo.rows * (W - 8), k = age / 1600; ctx.globalAlpha = 1 - k; ctx.fillStyle = pg.c; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(qx, qy, 3 + 6 * k, 0, 7); ctx.stroke(); ctx.beginPath(); ctx.arc(qx, qy, 3.5, 0, 7); ctx.fill(); ctx.globalAlpha = 1; } }
         ctx.save(); ctx.translate(px, py); ctx.rotate(Math.atan2(dy, dx)); ctx.fillStyle = '#2ee6ff'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(-6, 6); ctx.lineTo(-3, 0); ctx.lineTo(-6, -6); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); };
       const mt = setInterval(() => { let show = false; try { show = !!(mp.active && mp.net && mp.net.connected && game.state !== 'menu'); if (show && drawn !== game.map) draw(); } catch (e) {} cv.style.display = show ? 'block' : 'none'; try { const fb = document.getElementById('fs'); if (fb) fb.style.display = show ? 'none' : 'block'; } catch (e) {} }, 300);   // fullscreen button leaves the HUD during multiplayer play (it covered the money); it lives in the Esc menu
       binds.push([{ removeEventListener() { const fb = document.getElementById('fs'); if (fb) fb.style.display = 'block'; } }, 'x', null, null]);
@@ -303,9 +307,11 @@ export function createMultiplayer(game, THREE) {
   mp.fixCam = (cam) => {
     const net = mp.net; if (!net) return;
     const e = net.eye(); cam.position.set(e.x, e.y, e.z);
-    let spec = null; if (!net.alive && net.phase !== 'waiting') { spec = game.bots.list.find((b) => b.net && b.net.team === net.team && b.alive && b.net.connected !== false) || null; }
-    mp._spec = spec;
-    if (spec) { cam.position.set(spec.net.x, spec.net.y + (spec.net.crouched ? 1.1 : 1.6), spec.net.z); cam.rotation.set(spec.net.pitch, spec.net.yaw, 0); }
+    if (!mp.spec) mp.spec = createSpectator(THREE, { camera: cam, root: game.root, world: game.world });
+    const on = mp.spec.update(game._real || 1 / 60, { dead: !net.alive, phase: net.phase, myId: net.id, myTeam: net.team, players: game.bots.list, eye: e, killerId: mp._killer });
+    mp._spec = on ? mp.spec.target() : null;
+    if (on) { game.vm.group.visible = false; if (game.knife) game.knife.visible = false; mp._specVM = true; }   // own hands/weapon hidden while dead
+    else if (mp._specVM) { mp._specVM = false; mp._killer = null; if (game.knifeOn) game.knife.visible = true; else game.vm.group.visible = true; }
   };
   mp.hud = (dt, hint) => {
     const net = mp.net; if (!net) return; const g = game;
@@ -330,7 +336,7 @@ export function createMultiplayer(game, THREE) {
     if (net.bomb && net.bomb.t != null && net.phase === 'planted') { bombBeepT -= dt; if (bombBeepT <= 0) { const left = Math.max(0, net.bomb.t); bombBeepT = left < 5 ? 0.25 : left < 10 ? 0.5 : left < 20 ? 0.8 : 1.1; play('bomb_beep', { x: net.bomb.x, y: net.bomb.y, z: net.bomb.z }); } }
     if (msgT > 0) { msgT -= dt; q('msg').textContent = msgT > 0 ? lastMsg : ''; } else if (lastMsg && msgT <= 0 && lastMsg.indexOf('Reconnecting') < 0) q('msg').textContent = '';
     else q('msg').textContent = lastMsg;
-    if (!net.alive && net.phase === 'live') q('msg').textContent = mp._spec ? 'Spectating ' + (mp._spec.name || '') : 'You are dead. Waiting for the round to end';
+    if (!net.alive && (net.phase === 'live' || net.phase === 'planted')) q('msg').textContent = mp._spec ? '' : 'You are dead. Waiting for the round to end';
   };
 
   function stop() {
