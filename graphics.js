@@ -164,7 +164,7 @@ export function applyLook(THREE, renderer, scene, map, opts = {}) {
     if (o.name === 'beach') { o.visible = false; return; }
     if (o.name === 'ground') { ground = o; o.material = toon({ map: grassTex, color: 0xffffff }); o.receiveShadow = true; o.castShadow = false; return; }
     if (o.name === 'siteA_marker' || o.name === 'siteB_marker') { markers.push(o); return; }
-    if (o.geometry && o.geometry.type === 'ConeGeometry') { palmCones.push(o); o.visible = false; return; }
+    if (o.geometry && o.geometry.type === 'ConeGeometry' && o.name === 'plant') { palmCones.push(o); o.visible = false; return; } // only planter cones become palms; roofs/noses stay
     if (o.material && o.material.isMeshLambertMaterial) {
       if (Math.abs(o.geometry.parameters?.width - 0.5) < 1e-3 && o.geometry.parameters?.depth === 0.5 && o.material.color.getHex() === 0x9c6b3f) palmTrunks.push(o);
       o.material = getMat(o.material, o);
