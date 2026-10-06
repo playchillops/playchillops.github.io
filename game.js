@@ -1,6 +1,6 @@
 // game.js - Sniper Chill: wires map, movement, hitscan, player/weapons, audio and bots together.
 import * as THREE from './three.module.min.js';
-import { buildMap } from './map.js';
+import { buildMap, LAYOUTS } from './map.js';
 import { createController } from './movement.js';
 import { raycast, wallBlocked } from './hitscan.js';
 import { createViewmodels, createWeaponSystem, createHUD, createPlayerState, applyDamage, WEAPON_ORDER } from './player.js';
@@ -88,7 +88,7 @@ export class Game {
     this.canvas = document.createElement('canvas'); this.canvas.className = 'main'; root.appendChild(this.canvas);
     this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true });
     this.scene = new THREE.Scene();
-    this.map = buildMap(THREE); this.scene.add(this.map.group); try { if (!/[?&]noads/.test(location.search)) addAds(THREE, this.scene, { ground: (x, z) => { const h = this.map.getHeight ? this.map.getHeight(x, z) : 0; return Number.isFinite(h) ? h : 0; } }); } catch (e) { console.warn('ads failed', e); } try { if (!/[?&]nodecor/.test(location.search)) addDecor(THREE, this.map, this.scene); } catch (e) { console.warn('decor failed', e); }
+    this.mapId = /[?&]map=b/.test(location.search) ? 'b' : 'a'; this.map = this.mapId === 'b' ? buildMap(THREE, LAYOUTS.b()) : buildMap(THREE); this.scene.add(this.map.group); try { if (!/[?&]noads/.test(location.search)) addAds(THREE, this.scene, { ground: (x, z) => { const h = this.map.getHeight ? this.map.getHeight(x, z) : 0; return Number.isFinite(h) ? h : 0; } }); } catch (e) { console.warn('ads failed', e); } try { if (!/[?&]nodecor/.test(location.search)) addDecor(THREE, this.map, this.scene); } catch (e) { console.warn('decor failed', e); }
     this.scene.background = new THREE.Color(this.map.sky.background);
     this.scene.fog = new THREE.Fog(this.map.sky.fog.color, this.map.sky.fog.near, this.map.sky.fog.far);
     this.camera = new THREE.PerspectiveCamera(75, 16 / 9, 0.1, 300); this.scene.add(this.camera);
@@ -161,7 +161,7 @@ export class Game {
     this.last = performance.now(); this.running = true; this.loop = this.loop.bind(this); requestAnimationFrame(this.loop);
     this.mp = createMultiplayer(this, THREE);
     this.showMenu(); if (!/[?&]nointro/.test(location.search)) playIntro(root, () => {});
-    if (/[?&]room=/.test(location.search)) setTimeout(() => this.openMP(), 50);
+    if (/[?&](room|mpgo)=/.test(location.search)) setTimeout(() => this.openMP(), 50);
   }
   resize() {
     const w = this.root.clientWidth || 640, h = this.root.clientHeight || 360;
