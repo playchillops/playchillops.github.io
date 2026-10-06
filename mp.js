@@ -70,7 +70,7 @@ export function createMultiplayer(game, THREE) {
     const s = show(`<h2>MULTIPLAYER</h2><p>Bomb mode. Best of 5, sides swap after round 3.</p>
 <label>YOUR NAME</label><input id="mpn" maxlength="14" value="${esc(getName())}" placeholder="Player">
 <label>MAP</label><div class="mp-row" style="margin-top:0"><button class="mp-btn" id="ma">Kite Garden</button><button class="mp-btn alt" id="mb">Kite Plaza (A/B/C)</button></div>
-<label>MODE</label><div class="mp-row" style="margin-top:0"><button class="mp-btn" id="m1">1v1</button><button class="mp-btn alt" id="m2">2v2</button><button class="mp-btn alt" id="m3">1v1v1</button></div>
+<label>MODE</label><div class="mp-row" style="margin-top:0"><button class="mp-btn" id="m1">1v1</button><button class="mp-btn alt" id="m2">2v2</button><button class="mp-btn alt" id="m3">1v1v1 (Plaza)</button></div>
 <div class="mp-row"><button class="mp-btn" id="mpf">FIND MATCH</button><button class="mp-btn alt" id="mpc">CREATE PRIVATE ROOM</button></div>
 <div id="mps" style="font-size:12px;letter-spacing:.14em;text-transform:uppercase;opacity:.8;margin:10px 0 0">Checking server...</div>
 <label>OPEN GAMES <a id="mpr" style="cursor:pointer;opacity:.8">refresh</a></label><div id="mpl" style="max-height:110px;overflow:auto;font-size:14px;opacity:.9">Loading...</div>
@@ -81,8 +81,8 @@ export function createMultiplayer(game, THREE) {
     const setMode = (m) => { mode = m; q('m1').classList.toggle('alt', m !== '1v1'); q('m2').classList.toggle('alt', m !== '2v2'); q('m3').classList.toggle('alt', m !== 'ffa3'); };
     setMode(mode);
     try { const pend = sessionStorage.getItem('sc_mp_pending'); if (pend && /[?&]mpgo=1/.test(location.search)) { sessionStorage.removeItem('sc_mp_pending'); const o = JSON.parse(pend); mode = o.mode || mode; setMode(mode); setTimeout(() => connect({ room: o.room, name: o.name || nm() }), 300); } } catch (e) {}
-    const setMap = (m) => { mapSel = m; q('ma').classList.toggle('alt', m !== 'a'); q('mb').classList.toggle('alt', m !== 'b'); }; setMap(mapSel); q('ma').onclick = () => setMap('a'); q('mb').onclick = () => setMap('b');
-    q('m1').onclick = () => setMode('1v1'); q('m2').onclick = () => setMode('2v2'); q('m3').onclick = () => setMode('ffa3');
+    const setMap = (m) => { mapSel = m; q('ma').classList.toggle('alt', m !== 'a'); q('mb').classList.toggle('alt', m !== 'b'); }; setMap(mapSel); q('ma').onclick = () => { setMap('a'); if (mode === 'ffa3') setMode('1v1'); }; q('mb').onclick = () => setMap('b');
+    q('m1').onclick = () => setMode('1v1'); q('m2').onclick = () => setMode('2v2'); q('m3').onclick = () => { setMode('ffa3'); setMap('b'); };
     q('mpf').onclick = () => { setName(nm()); connect({ room: 'MATCH', name: nm() }); };
     const loadList = async () => { const l = q('mpl'); try { const c = new AbortController(); setTimeout(() => c.abort(), 4000); const r = await (await fetch(HEALTH.replace('/healthz', '/rooms'), { cache: 'no-store', signal: c.signal })).json(); l.innerHTML = r.length ? r.map((g) => `<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0"><span>${g.mode.toUpperCase()} - ${g.players}/${g.max} - ${esc(g.phase)}</span><button class="mp-btn alt" style="flex:0 0 64px;padding:4px" data-c="${esc(g.code)}" ${g.full ? 'disabled' : ''}>${g.full ? 'FULL' : 'JOIN'}</button></div>`).join('') : 'No open games right now. Hit FIND MATCH to start one.'; l.querySelectorAll('button[data-c]').forEach((b) => { b.onclick = () => { setName(nm()); connect({ room: b.dataset.c, name: nm() }); }; }); } catch (e) { l.textContent = 'Server is asleep or unreachable. FIND MATCH will wake it up.'; } };
     const status = async () => { const e = q('mps'); if (!e) return; const t0 = performance.now(); try { const c = new AbortController(); const to = setTimeout(() => c.abort(), 6000); const r = await (await fetch(HEALTH.replace('/healthz', '/stats'), { cache: 'no-store', signal: c.signal })).json(); clearTimeout(to); if (e.isConnected) { e.style.color = '#7dffb0'; e.textContent = '\u25CF Server online \u00B7 ' + Math.round(performance.now() - t0) + ' ms \u00B7 ' + (r.players || 0) + ' playing \u00B7 ' + (r.rooms || 0) + ' rooms'; } } catch (er) { if (e.isConnected) { e.style.color = '#ffd24a'; e.textContent = '\u25CF Waking the server up... (free server, up to a minute)'; setTimeout(status, 4000); } } };
@@ -137,7 +137,7 @@ export function createMultiplayer(game, THREE) {
     net.on('gnade', (m) => { try { if (!m || m.by === net.id || !Array.isArray(m.o) || !Array.isArray(m.d)) return; game.grenades.throwGrenade(m.id === 'frag' || m.id === 'smoke' || m.id === 'flash' ? m.id : 'frag', { position: { x: m.o[0], y: m.o[1], z: m.o[2] }, direction: { x: m.d[0], y: m.d[1], z: m.d[2] }, owner: 'remote:' + m.by, team: m.team, consume: false }); } catch (e) {} });
     net.on('round_start', (m) => { bodies.clear(); play('round_start'); { const sd = m && m.sd, idx = { T: 0, CT: 1, Z: 2 }[net.team]; if (sd && idx != null) banner(sd[idx] ? 'ATTACK - plant the bomb at A, B or C (hold E). ' + (sd.reduce((a, b) => a + b, 0) === 2 ? '2 teams attack, 1 defends' : '1 team attacks, 2 defend') : 'DEFEND - stop the bomb at A, B and C. ' + (sd.reduce((a, b) => a + b, 0) === 2 ? 'Allied with 1 team vs 2 attackers' : 'Allied with 1 team vs 1 attacker'), 5.5); else banner('Round start - press B to open the shop', 4.5); } try { matchPoint(m && m.score); } catch (e) {} try { const g = game; if (g.deathCam) { g.deathCam.banner.remove(); g.deathCam = null; g.hud.root.style.display = ''; g.vm.group.visible = true; g.camera.fov = 75; g.camera.updateProjectionMatrix(); } g.killfx.reset(); g.kc.clear(); g.streaks.cancel('round'); g.player.reset(); g.ws.refill(); g.pick('secondary'); g.hud.setHealth(100); } catch (e) {} });
     net.on('round_end', (m) => { banner(net.mode === 'ffa3' && m && m.winner ? ({ T: 'ORANGE', CT: 'CYAN', Z: 'GREEN' }[m.winner] || '') + ' team wins the round' : 'Round over', 2.5); try { play(m && m.winner === net.team ? 'round_win' : 'round_lose'); } catch (e) {} });
-    net.on('planted', () => { banner('Bomb planted', 2); play('bomb_plant'); });
+    net.on('planted', (m) => { banner('Bomb planted' + (m && m.site ? ' at ' + m.site : ''), 2); play('bomb_plant'); });
     net.on('defused', () => { banner('Bomb defused', 2); play('bomb_defuse'); });
     net.on('explode', () => { banner('Bomb exploded', 2); play('bomb_explode'); });
     net.on('kill', (m) => { if (!m) return;
@@ -260,7 +260,7 @@ export function createMultiplayer(game, THREE) {
     g.bots.syncRemote(net.remotes());
     const ph = net.phase === 'freeze' ? 'freeze' : (net.phase === 'live' || net.phase === 'planted' || (net.phase === 'waiting' && net.lobby)) ? 'live' : 'ended', inv = net.me.inv || [];
     g.eco.remote({ grenades: net.me.gr, armor: net.me.ar, helmet: net.me.he, money: net.me.m, primary: inv[0], secondary: inv[1], team: (net.mode === 'ffa3' && net.sd ? (net.sd[{ T: 0, CT: 1, Z: 2 }[net.team]] ? 'T' : 'CT') : net.team), alive: net.alive, phase: ph, freezeRemaining: ph === 'freeze' ? net.phaseLeft : 0 });
-    if (net.bomb && net.bomb.x != null) { g.bomb.planted = true; g.bomb.t = net.bomb.t; g.bomb.pos.set(net.bomb.x, net.bomb.y, net.bomb.z); g.bombMesh.position.set(net.bomb.x, net.bomb.y + 0.13, net.bomb.z); g.bombMesh.visible = true; }
+    if (net.bomb && net.bomb.x != null) { g.bomb.planted = true; g.bomb.t = net.bomb.t; g.bomb.site = net.bomb.site || ''; g.bomb.pos.set(net.bomb.x, net.bomb.y, net.bomb.z); g.bombMesh.position.set(net.bomb.x, net.bomb.y + 0.13, net.bomb.z); g.bombMesh.visible = true; }
     else { g.bomb.planted = false; g.bombMesh.visible = false; }
     g.plantT = busy ? 1 : 0;
   };
@@ -314,4 +314,4 @@ export function createMultiplayer(game, THREE) {
   mp.solo = () => { let n = 'Player'; try { n = localStorage.getItem('sc_name') || 'Player'; } catch (e) {} connect({ room: 'new', name: n, solo: true }); };
   mp.autoJoin = () => { const m = /[?&]room=([A-Za-z0-9]+)/.exec(location.search); if (m) { lobby(m[1].toUpperCase()); if (/[?&]go=1/.test(location.search)) { let n = 0; const iv = setInterval(() => { const b = document.querySelector('#mpg'); if (b && !mp.net) { clearInterval(iv); b.click(); } else if (++n > 40) clearInterval(iv); }, 400); } return true; } return false; };
   return mp;
-}
+      }
