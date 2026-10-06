@@ -1,4 +1,5 @@
 import { Game } from './game.js';
+import { requireProfile } from './profilegate.js';
 const root = document.getElementById('game');
 const g = new Game(root);
 window.__g = g;
@@ -27,5 +28,7 @@ document.addEventListener('keydown', (e) => { if (e.code === 'KeyF' && g.state !
     document.body.appendChild(d); d.querySelector('#pp-x').onclick = () => d.remove(); }).catch(() => {}); }
 
 // first visit: onboarding (profile, then tutorial) as soon as the menu is up
-{ let seen = true; try { seen = !!localStorage.getItem('sc_tut'); } catch (e) {}
-  if (!seen && !/[?&](u|nostats|noonboard)=?/.test(location.search)) { let n = 0; const iv = setInterval(() => { if (g.state === 'menu' && g.menuStop || ++n > 120) { clearInterval(iv); if (g.state === 'menu') { g._tutDone = true; g.tutorial(() => g.showMenu()); } } }, 500); } }
+// every visit: name + company are required (profilegate.js), then the tutorial on the first visit
+{ const skip = /[?&](u|noonboard)=?/.test(location.search); let n = 0;
+  if (!skip) { const iv = setInterval(() => { if (g.state === 'menu' && g.menuStop || ++n > 120) { clearInterval(iv); if (g.state !== 'menu') return;
+    requireProfile(document.body, () => { try { const nm = document.querySelector('.mn-name'); if (nm) nm.textContent = localStorage.getItem('sc_name') || nm.textContent; } catch (e) {} let seen = true; try { seen = !!localStorage.getItem('sc_tut'); } catch (e) {} if (!seen && !/[?&]nostats/.test(location.search)) { g._tutDone = true; g.tutorial(() => g.showMenu()); } }); } }, 500); } }
