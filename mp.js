@@ -284,7 +284,8 @@ export function createMultiplayer(game, THREE) {
     const g = game, st = g.ctrl.state, k = keys;
     if (!net.cur) return;
     if (mp._re !== net.respawns) { mp._re = net.respawns; g.ctrl.teleport({ x: net.cur.x, y: net.cur.y, z: net.cur.z }, { yaw: net.yaw, pitch: net.pitch }); } else { net.yaw = st.yaw; net.pitch = st.pitch; }
-    net.setInput({ kn: !!g.knifeOn, f: (k.KeyW ? 1 : 0) - (k.KeyS ? 1 : 0), r: (k.KeyD ? 1 : 0) - (k.KeyA ? 1 : 0), j: !!k.Space, c: !!(k.ShiftLeft || k.ShiftRight), rl: !!k.KeyR, use: !!k.KeyE, aim: !!g.ws.aiming, w: Math.max(0, WEAPON_ORDER.indexOf(g.ws.current)) });
+    const drv = !!(g.streaks && g.streaks.cameraOverride);   // driving the RC car / guiding a missile: the body must stand still, only the car moves
+    net.setInput({ kn: !!g.knifeOn, f: drv ? 0 : (k.KeyW ? 1 : 0) - (k.KeyS ? 1 : 0), r: drv ? 0 : (k.KeyD ? 1 : 0) - (k.KeyA ? 1 : 0), j: !drv && !!k.Space, c: !drv && !!(k.ShiftLeft || k.ShiftRight), rl: !!k.KeyR, use: !!k.KeyE, aim: !!g.ws.aiming, w: Math.max(0, WEAPON_ORDER.indexOf(g.ws.current)) });
     const busy = (net.me.pp > 0 || net.me.dp > 0) && net.alive; if (busy || !net.alive) net.setInput({ fire: false });
     if (!net.alive || busy) g.ws.setTrigger(false);
     net.update(dt);
