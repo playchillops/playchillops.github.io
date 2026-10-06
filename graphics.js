@@ -265,14 +265,19 @@ export function applyLook(THREE, renderer, scene, map, opts = {}) {
   const blobMat = track(new THREE.MeshBasicMaterial({ map: blobTex, transparent: true, opacity: 0.32, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, color: 0x24305a }));
   const blobGeo = track(new THREE.PlaneGeometry(1, 1)); blobGeo.rotateX(-Math.PI / 2);
   const blocked = []; // xz boxes where vegetation must not spawn
-  (map.colliders || []).forEach((b) => {
-    const w = b.max.x - b.min.x, d = b.max.z - b.min.z;
-    if (b.name === 'edge') return;
-    if (b.max.y - b.min.y > 3.2 || b.min.y < -0.1 && false) return;
-    const blob = new THREE.Mesh(blobGeo, blobMat); blob.scale.set(w + 1.4, 1, d + 1.4);
-    blob.position.set((b.min.x + b.max.x) / 2, b.min.y + 0.02, (b.min.z + b.max.z) / 2); blob.renderOrder = 1; group.add(blob);
-  });
-  (map.colliders || []).forEach((b) => blocked.push([b.min.x - 0.5, b.max.x + 0.5, b.min.z - 0.5, b.max.z + 0.5]));
+  { // contact-shadow blobs: one merged mesh for all of them (was one draw call per collider)
+    const bp = [], bu = [];
+    (map.colliders || []).forEach((b) => {
+      if (b.solid === false || b.name === 'edge' || b.max.y - b.min.y > 3.2) return;
+      const hx = (b.max.x - b.min.x + 1.4) / 2, hz = (b.max.z - b.min.z + 1.4) / 2, cx = (b.min.x + b.max.x) / 2, cz = (b.min.z + b.max.z) / 2, y = b.min.y + 0.02;
+      bp.push(cx - hx, y, cz - hz, cx - hx, y, cz + hz, cx + hx, y, cz + hz, cx - hx, y, cz - hz, cx + hx, y, cz + hz, cx + hx, y, cz - hz);
+      bu.push(0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1, 1);
+    });
+    if (bp.length) { const bg = track(new THREE.BufferGeometry()); bg.setAttribute('position', new THREE.Float32BufferAttribute(bp, 3)); bg.setAttribute('uv', new THREE.Float32BufferAttribute(bu, 2));
+      bg.setAttribute('normal', new THREE.Float32BufferAttribute(new Array(bp.length).fill(0).map((_, i) => (i % 3 === 1 ? 1 : 0)), 3));
+      const blobs = new THREE.Mesh(bg, blobMat); blobs.renderOrder = 1; blobs.frustumCulled = false; blobs.name = 'contact blobs'; group.add(blobs); }
+  }
+  (map.colliders || []).forEach((b) => { if (b.solid !== false) blocked.push([b.min.x - 0.5, b.max.x + 0.5, b.min.z - 0.5, b.max.z + 0.5]); });
   (map.floors || []).forEach((f) => { if (f.y > 0.1) blocked.push([f.minX - 0.5, f.maxX + 0.5, f.minZ - 0.5, f.maxZ + 0.5]); });
   (map.ramps || []).forEach((r) => blocked.push([r.minX - 0.3, r.maxX + 0.3, r.minZ - 0.3, r.maxZ + 0.3]));
   ((map.layout && map.layout.sand) || []).forEach((r) => blocked.push([r[0], r[2], r[1], r[3]])); // paved / sandy ground: no grass tufts
@@ -374,19 +379,26 @@ export function applyLook(THREE, renderer, scene, map, opts = {}) {
   const trunkMat = toon({ color: P.trunk, vertexColors: true, flatShading: true });
   const nutGeo = track(new THREE.IcosahedronGeometry(0.17, 0)), nutMat = toon({ color: 0x6b4423, flatShading: true });
   const palms = [];
-  const palm = (x, z, sc = 1, y0 = 0) => {
-    const g = new THREE.Group(); g.position.set(x, y0, z); g.rotation.y = rnd() * 6.28; g.scale.setScalar(sc);
-    const tr = new THREE.Mesh(trunkGeo, trunkMat); tr.castShadow = true; tr.receiveShadow = true; g.add(tr);
-    const crown = new THREE.Group(); crown.position.set(0.55, 3.62, 0); g.add(crown);
-    const fr = new THREE.Mesh(frondGeo, frondMat); fr.castShadow = true; fr.rotation.y = rnd() * 6; crown.add(fr);
-    for (let i = 0; i < 3; i++) { const n = new THREE.Mesh(nutGeo, nutMat); n.position.set(Math.cos(i * 2.1) * 0.22, -0.18, Math.sin(i * 2.1) * 0.22); crown.add(n); }
-    group.add(g); palms.push({ crown, ph: rnd() * 6 });
-  };
+  // palms are instanced: all trunks, all frond crowns and all coconuts are three draw calls; crowns sway per instance (see palmSway)
+  const palmList = [];
+  const palm = (x, z, sc = 1, y0 = 0) => { palmList.push({ x, z, sc, y0, ry: rnd() * 6.28, fr: rnd() * 6, ph: rnd() * 6 }); };
   if (map.palmSpots) map.palmSpots.forEach((p) => palm(p.x, p.z, p.s, p.y0)); else {
   palmCones.forEach((c, i) => { if (i % 2 === 0) palm(c.position.x, c.position.z, 1.05); });
   // beach palms beyond the arena walls
   for (let i = 0; i < 14; i++) { const a = (i / 14) * 6.2832 + rr(-0.15, 0.15), rad = rr(55, 61); palm(Math.cos(a) * rad, Math.sin(a) * rad, rr(0.9, 1.5), -0.35); }
   }
+
+  const palmInst = (() => { const N = palmList.length; if (!N) return null;
+    const trunks = new THREE.InstancedMesh(trunkGeo, trunkMat, N), fronds = new THREE.InstancedMesh(frondGeo, frondMat, N), nuts = new THREE.InstancedMesh(nutGeo, nutMat, N * 3);
+    trunks.castShadow = fronds.castShadow = true; trunks.receiveShadow = true; for (const m of [trunks, fronds, nuts]) { m.frustumCulled = false; group.add(m); }
+    const base = palmList.map((p) => new THREE.Matrix4().compose(new THREE.Vector3(p.x, p.y0, p.z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, p.ry, 0)), new THREE.Vector3(p.sc, p.sc, p.sc)));
+    base.forEach((m, i) => trunks.setMatrixAt(i, m)); trunks.instanceMatrix.needsUpdate = true;
+    const crownM = new THREE.Matrix4(), tmpM = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), one = new THREE.Vector3(1, 1, 1), cpos = new THREE.Vector3(0.55, 3.62, 0), npos = [0, 1, 2].map((i) => new THREE.Vector3(Math.cos(i * 2.1) * 0.22, -0.18, Math.sin(i * 2.1) * 0.22));
+    const sway = (t) => { for (let i = 0; i < N; i++) { const p = palmList[i];
+        e.set(Math.cos(t * 0.6 + p.ph) * 0.03, 0, Math.sin(t * 0.8 + p.ph) * 0.03); crownM.compose(cpos, q.setFromEuler(e), one).premultiply(base[i]);
+        fronds.setMatrixAt(i, tmpM.makeRotationY(p.fr).premultiply(crownM)); for (let k = 0; k < 3; k++) nuts.setMatrixAt(i * 3 + k, tmpM.makeTranslation(npos[k].x, npos[k].y, npos[k].z).premultiply(crownM)); }
+      fronds.instanceMatrix.needsUpdate = true; nuts.instanceMatrix.needsUpdate = true; };
+    sway(0); return { sway }; })();
 
   // ---------------------------------------------------------------- floating pollen / petals
   const pn = 140, ppos = new Float32Array(pn * 3), pseed = new Float32Array(pn);
@@ -458,7 +470,7 @@ export function applyLook(THREE, renderer, scene, map, opts = {}) {
   let t0 = (typeof performance !== 'undefined' ? performance.now() : 0), tPrev = t0;
   function update(dt) {
     U.time.value += dt; const t = U.time.value;
-    palms.forEach((p) => { p.crown.rotation.z = Math.sin(t * 0.8 + p.ph) * 0.03; p.crown.rotation.x = Math.cos(t * 0.6 + p.ph) * 0.03; });
+    if (palmInst) palmInst.sway(t);
     pulses.forEach((p, i) => { const k = (Math.sin(t * 2 + i) + 1) / 2; p.ring.material.opacity = 0.5 + 0.4 * k; p.ring.scale.setScalar(1 + 0.03 * k); });
   }
   function render(camera) {
