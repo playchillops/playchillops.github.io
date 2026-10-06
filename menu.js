@@ -55,7 +55,7 @@ export function buildMenu(game, THREE, createCharacter, ROSTER) {
   const LV = ['rookie','chill','easy','medium','hard','veteran','elite','insane'];
   const cycleDiff = () => { const i = (LV.indexOf(game.diff) + 1) % LV.length; game.diff = LV[i]; try { const s = JSON.parse(localStorage.getItem('sc_settings') || '{}'); s.diff = game.diff; localStorage.setItem('sc_settings', JSON.stringify(s)); } catch (e) {} if (game.set) game.set.diff = game.diff; const b = list.querySelector('.mn-i.dif'); if (b) b.innerHTML = 'Difficulty<em>' + game.diff + '</em>'; };
   const items = [
-    { t: 'Play vs bots', a: () => game.openSolo() },
+    { t: 'Play vs bots', a: () => game.openSolo('a') }, { t: 'Plaza vs bots', a: () => game.openSolo('b') },
     { t: 'Multiplayer', a: () => game.openMP() }, { gap: 1 },
     { t: 'Difficulty', diff: 1, a: () => cycleDiff() }, { t: 'How to play', a: () => game.tutorial() }, { t: 'Profile', p: 'profile' }, { t: 'Leaderboard', p: 'board' }, { t: 'Streaks', p: 'streaks' }, { t: 'Help', p: 'help' }, { t: 'Settings', a: () => game.openSettings() },
   ];
