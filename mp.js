@@ -216,6 +216,15 @@ export function createMultiplayer(game, THREE) {
       document.body.appendChild(box); let hinted = false;
       binds.push([{ removeEventListener() { box.remove(); clearInterval(bt); } }, 'x', null, null]);
       const bt = setInterval(() => { let show = false; try { show = !!(mp.active && mp.net && mp.net.connected && canBot()); } catch (e) {} box.style.display = show ? 'flex' : 'none'; sbtn.style.display = mp.net && mp.net.lobby ? '' : 'none'; if (show && !hinted) { hinted = true; banner('Host: K enemy bot, L ally bot, U remove bots', 4); } if (!show && mp.net && mp.net.phase === 'live') hinted = true; }, 500); }
+    { const tb = document.createElement('div'); tb.style.cssText = 'position:fixed;left:50%;top:160px;transform:translateX(-50%);z-index:6;display:none;gap:8px;align-items:center;padding:8px 12px;border-radius:14px;background:rgba(10,24,40,.72);color:#fff;font:600 13px Fredoka,system-ui,sans-serif;backdrop-filter:blur(4px)';
+      const tl = document.createElement('span'); tl.textContent = 'Switch team:'; tl.style.opacity = '.8'; tb.appendChild(tl); const tbs = {};
+      const defs = [['T', 'Orange', '#ff9a3c'], ['CT', 'Cyan', '#46d9ff'], ['Z', 'Green', '#6fe07a']];
+      for (const [tm, nm, col] of defs) { const b = document.createElement('button'); b.style.cssText = 'font:inherit;color:#10162b;border:2px solid transparent;border-radius:10px;padding:5px 12px;cursor:pointer;background:' + col; b.onclick = (e) => { e.stopPropagation(); if (mp.net && mp.net.team !== tm) mp.net.sendRaw({ t: 'team', team: tm }); }; tbs[tm] = [b, nm]; tb.appendChild(b); }
+      document.body.appendChild(tb);
+      mp.net.on('teamr', (m) => { if (m && !m.ok) banner(m.reason || 'Cannot switch', 2.5); else if (m && m.team) mp.net.team = m.team; });
+      mp.net.on('roster', () => { try { const r = mp.net.roster.get(mp.net.id); if (r && r.team) mp.net.team = r.team; } catch (e) {} });
+      const tt = setInterval(() => { let show = false; try { const n = mp.net; show = !!(mp.active && n && n.connected && (n.phase === 'waiting' || n.phase === 'end')); if (show) { const ts = n.mode === 'ffa3' ? ['T', 'CT', 'Z'] : ['T', 'CT']; for (const k2 of Object.keys(tbs)) { const [b, nm] = tbs[k2]; b.style.display = ts.includes(k2) ? '' : 'none'; b.textContent = nm; b.style.borderColor = n.team === k2 ? '#fff' : 'transparent'; b.style.opacity = n.team === k2 ? '1' : '.75'; } } } catch (e) {} tb.style.display = show ? 'flex' : 'none'; }, 400);
+      binds.push([{ removeEventListener() { tb.remove(); clearInterval(tt); } }, 'x', null, null]); }
     const pm = { el: null, t: 0 };   // Esc pause menu: stays fullscreen (keyboard lock in the browser), releases the mouse
     function closePause(relock) { if (pm.el) { pm.el.remove(); pm.el = null; } window.__pauseOpen = false; pm.t = performance.now(); if (relock) { try { game.canvas.requestPointerLock(); } catch (e) {} } }
     function openPause() {
