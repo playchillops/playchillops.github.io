@@ -9,6 +9,7 @@ import { createSpectator } from './spectate.js';
 import { profileComplete, requireProfile } from './profilegate.js';
 import { play, setListener, initAudio } from './audio.js';
 import { initProgress } from './progress.js';
+import { loadingStart, loadingStep, loadingDone } from './loading.js';
 const SHOT = ['shot_pistol', 'shot_mg', 'shot_sniper'];
 const P3 = (a) => (a && a.length === 3 ? { x: a[0], y: a[1], z: a[2] } : undefined);
 
@@ -117,7 +118,7 @@ export function createMultiplayer(game, THREE) {
   const keepQ = () => { const m = /[?&](mphost=[\w.:-]+)/.exec(location.search); return m ? '&' + m[1] : ''; }; // dev: keep the local server across map reloads
   function connect(p) {
     if (!profileComplete() && !/[?&]noonboard/.test(location.search)) { requireProfile(document.body, () => connect({ ...p, name: (localStorage.getItem('sc_name') || p.name) })); return; }   // name + company first (also for invite links)
-    if ((p.room === 'new' || p.room === 'MATCH') && game.mapId && mapSel !== game.mapId) { try { sessionStorage.setItem('sc_mp_pending', JSON.stringify({ room: p.room, mode, name: p.name, solo: !!p.solo })); } catch (e) {} show(`<div class="mp-c"><div class="mp-spin"></div><h2 style="font-size:22px">Loading map...</h2></div>`); setTimeout(() => location.replace(location.pathname + '?map=' + mapSel + '&mpgo=1' + keepQ()), 250); return; }
+    if ((p.room === 'new' || p.room === 'MATCH') && game.mapId && mapSel !== game.mapId) { loadingStart({ map: mapSel, mode: p.solo ? 'solo' : 'mp' }); loadingStep('SWITCHING MAP', 30); try { sessionStorage.setItem('sc_mp_pending', JSON.stringify({ room: p.room, mode, name: p.name, solo: !!p.solo })); } catch (e) {} show(`<div class="mp-c"><div class="mp-spin"></div><h2 style="font-size:22px">Loading map...</h2></div>`); setTimeout(() => location.replace(location.pathname + '?map=' + mapSel + '&mpgo=1' + keepQ()), 250); return; }
     wakeScreen(p, 0);
   }
 
@@ -128,7 +129,7 @@ export function createMultiplayer(game, THREE) {
     const net = new NetClient({ createController, colliders: game.phys, url });
     mp.net = net; let welcomed = false, tries = 0;
     try { initProgress(net, { me: () => (ACC.getProfile() || {}).name }); } catch (e) {}
-    net.on('welcome', (w) => { if (w.map && game.mapId && w.map !== game.mapId) { try { net.close(); } catch (e) {} show(`<div class="mp-c"><div class="mp-spin"></div><h2 style="font-size:22px">Loading map...</h2></div>`); setTimeout(() => location.replace(location.pathname + '?map=' + w.map + '&room=' + w.room + '&go=1' + keepQ()), 250); return; } welcomed = true; if (!mp.active) begin(w); else recovered(); try { history.replaceState(0, '', '?room=' + w.room); } catch (e) {} });
+    net.on('welcome', (w) => { if (w.map && game.mapId && w.map !== game.mapId) { try { net.close(); } catch (e) {} loadingStart({ map: w.map, mode: w.solo ? 'solo' : 'mp' }); loadingStep('SWITCHING MAP', 30); show(`<div class="mp-c"><div class="mp-spin"></div><h2 style="font-size:22px">Loading map...</h2></div>`); setTimeout(() => location.replace(location.pathname + '?map=' + w.map + '&room=' + w.room + '&go=1' + keepQ()), 250); return; } welcomed = true; loadingStart({ map: w.map || 'a', mode: w.solo ? 'solo' : 'mp' }); loadingStep('JOINING ROOM', 60, 'link'); if (!mp.active) begin(w); else recovered(); loadingStep('SPAWNING PLAYERS', 92, 'room'); loadingDone(); try { history.replaceState(0, '', '?room=' + w.room); } catch (e) {} });
     net.on('error', (m) => { if (!welcomed) { stop(); show(`<div class="mp-c"><h2 style="font-size:22px">Could not join</h2><p>${esc(m.msg || m.code || 'Room unavailable')}</p><div class="mp-row"><button class="mp-btn" id="mpr">BACK</button></div></div>`).querySelector('#mpr').onclick = () => lobby(); } });
     const diag = (o) => { try { fetch(HEALTH.replace('/healthz', '/diag'), { method: 'POST', mode: 'cors', keepalive: true, headers: { 'content-type': 'text/plain' }, body: JSON.stringify({ room: net.room, vis: document.visibilityState, net: (navigator.connection && navigator.connection.effectiveType) || '', rtt: Math.round(net.rttMs || 0), ...o }) }).catch(() => {}); } catch (e) {} };
     const recovered = () => { clearTimeout(mp._rcT); mp._rcT = 0; const down = mp._dropT ? Math.round(performance.now() - mp._dropT) : 0; mp._dropT = 0; if (lastMsg.indexOf('Connection lost') === 0) banner('Reconnected', 1.5); if (down) diag({ c: 'recovered', down }); };
