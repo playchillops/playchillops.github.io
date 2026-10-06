@@ -23,6 +23,7 @@ import { createBombBeacon } from './bombbeacon.js';
 import { createKnifeVM } from './knifevm.js';
 import { createGrenades } from './grenades.js';
 import { playIntro } from './intro.js';
+import { loadingStart, loadingStep } from './loading.js';
 import { buildMenu } from './menu.js';
 import { createMultiplayer } from './mp.js';
 import { parkourColliders, parkourMeshes } from './parkour.js';
@@ -402,7 +403,7 @@ export class Game {
     this.camera.lookAt(pe.x, pe.y - 0.1 * k, pe.z); this.camera.fov = 75 - 20 * k; this.camera.updateProjectionMatrix();
     if (d.t > 2.4) { d.banner.remove(); this.deathCam = null; this.hud.root.style.display = ''; this.camera.fov = 75; this.camera.updateProjectionMatrix(); try { this.vm.group.visible = true; } catch (e) {} }
   }
-  openSolo(map) { let seen = false; try { seen = !!localStorage.getItem('sc_tut'); } catch (e) {} if (!seen) { this.tutorial(() => this.openSolo(map)); return; } if (this.menuStop) { this.menuStop(); this.menuStop = null; } this.ov.style.display = 'none'; play('ui_start'); this.mp.solo(map); }
+  openSolo(map) { let seen = false; try { seen = !!localStorage.getItem('sc_tut'); } catch (e) {} if (!seen) { this.tutorial(() => this.openSolo(map)); return; } if (this.menuStop) { this.menuStop(); this.menuStop = null; } this.ov.style.display = 'none'; play('ui_start'); loadingStart({ map: map || 'a', mode: 'solo' }); loadingStep('WAKING SERVER', 14); this.mp.solo(map); }
   openMP() { if (this.menuStop) { this.menuStop(); this.menuStop = null; } this.ov.style.display = 'none'; this.mp.open(); }
   renderMP() { if (this.look) this.look.render(this.camera); else this.renderer.render(this.scene, this.camera); }
   showMenu() {
