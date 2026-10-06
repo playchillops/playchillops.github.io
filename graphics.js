@@ -275,6 +275,7 @@ export function applyLook(THREE, renderer, scene, map, opts = {}) {
   (map.colliders || []).forEach((b) => blocked.push([b.min.x - 0.5, b.max.x + 0.5, b.min.z - 0.5, b.max.z + 0.5]));
   (map.floors || []).forEach((f) => { if (f.y > 0.1) blocked.push([f.minX - 0.5, f.maxX + 0.5, f.minZ - 0.5, f.maxZ + 0.5]); });
   (map.ramps || []).forEach((r) => blocked.push([r.minX - 0.3, r.maxX + 0.3, r.minZ - 0.3, r.maxZ + 0.3]));
+  ((map.layout && map.layout.sand) || []).forEach((r) => blocked.push([r[0], r[2], r[1], r[3]])); // paved / sandy ground: no grass tufts
   const sites = [map.bombsites && map.bombsites.A, map.bombsites && map.bombsites.B].filter(Boolean);
   const free = (x, z, pad = 0, keepSites = true) => {
     for (const q of blocked) if (x > q[0] - pad && x < q[1] + pad && z > q[2] - pad && z < q[3] + pad) return false;
