@@ -13,10 +13,11 @@ export function createAnnouncer({ volume = () => 1 } = {}) {
   let voice = null, busyUntil = 0, curPrio = 0, ac = null;
   const pickVoice = () => { if (!syn) return; const vs = syn.getVoices().filter((v) => /^en/i.test(v.lang)); voice = vs.find((v) => /Daniel|Google UK English Male|Arthur|Fred|Alex|Male/i.test(v.name)) || vs.find((v) => /en-GB/i.test(v.lang)) || vs[0] || null; };
   if (syn) { pickVoice(); try { syn.addEventListener('voiceschanged', pickVoice); } catch (e) {} }
-  function say(text, prio = 1) {
-    const vol = volume(); if (!syn || !text || vol <= 0) return;
+  /** o: { voice, pitch, rate, vol } for the legends' own voices (voices.js); default = the deep announcer */
+  function say(text, prio = 1, o = {}) {
+    const vol = volume() * (o.vol ?? 1); if (!syn || !text || vol <= 0) return;
     const now = performance.now(); if (now < busyUntil && prio <= curPrio) return;
-    try { syn.cancel(); const u = new SpeechSynthesisUtterance(text); if (voice) u.voice = voice; u.pitch = 0.62; u.rate = 1.06; u.volume = Math.min(1, vol * 1.1); syn.speak(u); } catch (e) { return; }
+    try { syn.cancel(); const u = new SpeechSynthesisUtterance(text); const v = o.voice || voice; if (v) u.voice = v; u.pitch = o.pitch ?? 0.62; u.rate = o.rate ?? 1.06; u.volume = Math.min(1, vol * 1.1); syn.speak(u); } catch (e) { return; }
     curPrio = prio; busyUntil = now + 380 + text.length * 70;
   }
   function medal(text, sub, color = '#ffd166', secs = 2.2) {
