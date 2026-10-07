@@ -4,7 +4,7 @@ import * as ACC from './account.js';
 import { lobbyPanel } from './social.js';
 import { createController } from './movement.js';
 import { createCharacter, CHARACTER_IDS } from './characters.js';
-import { WEAPON_ORDER, shotSound } from './player.js';
+import { WEAPON_ORDER, WEAPONS, shotSound } from './player.js';
 import { createSpectator } from './spectate.js';
 import { profileComplete, requireProfile } from './profilegate.js';
 import { play, setListener, initAudio } from './audio.js';
@@ -346,6 +346,10 @@ export function createMultiplayer(game, THREE) {
   mp.hud = (dt, hint) => {
     const net = mp.net; if (!net) return; const g = game;
     const q = (c) => hud.querySelector('.' + c);
+    // Draw authoritative ammo after local prediction, including server-only launcher shots and reloads.
+    const sw = WEAPON_ORDER[net.me.weapon];
+    if (!g.knifeOn && g.ws.current === sw && WEAPONS[sw] && net.me.mag != null)
+      g.hud.setAmmo(net.me.mag, net.me.res, WEAPONS[sw].name, net.me.rl > 0);
     try { mp.fx && mp.fx.update(dt); } catch (e) {}
     const dsc = mp.fx && mp.fx.score();
     if (dsc) { const key = 'dm' + dsc.p + ':' + dsc.b + ':' + dsc.label; if (mp._sk !== key) { mp._sk = key; g.match = { p: dsc.p, b: dsc.b, round: 0, dm: dsc.label }; g.renderSB(); } }
@@ -402,4 +406,4 @@ export function createMultiplayer(game, THREE) {
   mp.solo = (m, gm) => { if (m === 'a' || m === 'b') mapSel = m; let n = 'Player'; try { n = localStorage.getItem('sc_name') || 'Player'; } catch (e) {} connect({ room: 'new', name: n, solo: true, gm: DM[gm] ? gm : 'bomb' }); };
   mp.autoJoin = () => { const m = /[?&]room=([A-Za-z0-9]+)/.exec(location.search); if (m) { lobby(m[1].toUpperCase()); if (/[?&]go=1/.test(location.search)) { let n = 0; const iv = setInterval(() => { const b = document.querySelector('#mpg'); if (b && !mp.net) { clearInterval(iv); b.click(); } else if (++n > 40) clearInterval(iv); }, 400); } return true; } return false; };
   return mp;
-}
+      }
