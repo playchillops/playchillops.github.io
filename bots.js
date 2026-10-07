@@ -1,3 +1,4 @@
+import { WEAPON_ORDER } from './player.js';
 // bots.js - simple enemy bots for Sniper Chill (patrol, spot, chase, shoot, one defuser).
 // createBots(THREE, scene, map, { raycast, colliders }) -> manager
 //   manager.list            targets for hitscan {id, position:{x,y,z feet}, height, radius, health, alive}
@@ -137,10 +138,10 @@ export function createBots(THREE, scene, map, opts) {
       b._sp = (b._sp ?? sp) + (sp - (b._sp ?? sp)) * 0.3; speed = b._sp; aiming = b.seen > 0.3;
       const pe = lastEnv ? lastEnv.playerEye : null; if (aiming && pe) pitch = Math.atan2(pe.y - (b.group.position.y + 1.5), Math.hypot(pe.x - x, pe.z - z));
     }
-    b.ch.update(dt, { speed, aiming, pitch, reloading, weapon: weapon === 'machinegun' || weapon === 'pistol' || weapon === 'sniper' ? weapon : undefined, alive: true, distance: lastEnv && lastEnv.playerEye ? Math.hypot(lastEnv.playerEye.x - x, lastEnv.playerEye.z - z) : undefined });
+    b.ch.update(dt, { speed, aiming, pitch, reloading, weapon: WEAPON_ORDER.includes(weapon) ? weapon : undefined, alive: true, distance: lastEnv && lastEnv.playerEye ? Math.hypot(lastEnv.playerEye.x - x, lastEnv.playerEye.z - z) : undefined });
   }
   // ---- network opponents: same bot objects (character, hit zones, death/hit anims), driven by server snapshots instead of AI
-  const WN = ['pistol', 'machinegun', 'sniper']; let remote = false; const rmap = new Map();
+  const WN = WEAPON_ORDER; let remote = false; const rmap = new Map();
   function setRemote(on) { if (remote === !!on) return; remote = !!on; clear(); rmap.clear(); }
   function syncRemote(players) {
     const seen = new Set();
