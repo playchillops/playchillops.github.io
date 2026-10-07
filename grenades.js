@@ -14,7 +14,7 @@ export const GRENADE_ITEMS=Object.freeze({
  smoke:{name:'Pocket Cloud',price:300,category:4,desc:'Thick smoke for 18 s · max 1'},
  flash:{name:'Disco Blink',price:200,category:4,desc:'Cartoon flash · max 2'}
 });
-export const GRENADE_CONFIG=Object.freeze({frag:{fuse:1.6,radius:10,damage:150},smoke:{fuse:1.8,radius:5,height:3.2,duration:18},flash:{fuse:1.25,radius:14,duration:2.5}});
+export const GRENADE_CONFIG=Object.freeze({frag:{fuse:1.6,radius:10,damage:150},smoke:{fuse:1.8,radius:5,height:3.2,duration:18},flash:{fuse:1.25,radius:32,duration:2.5}});
 // hold to throw farther: a tap lobs it (speed 9, ~9 m), a full ~1 s hold throws it ~2.2x as far (speed 17, ~19 m); 0.4 = the old fixed throw
 export const THROW={min:9,max:17,lift:2.2,tap:.15,full:1};
 export const chargeOf=(heldSeconds)=>Math.max(0,Math.min(1,(heldSeconds-THROW.tap)/(THROW.full-THROW.tap)));
