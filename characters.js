@@ -1,3 +1,4 @@
+import { weaponClass } from './player.js';
 // characters.js - procedural stylized characters for Sniper Chill (no external assets).
 //
 //   import { createCharacter, ROSTER, createViewmodelHand } from './characters.js';
@@ -332,7 +333,7 @@ export function createCharacter(THREE, opts = {}) {
     g.add(fl); o.flash = fl; geos.push(c.geometry, p1.geometry); allMats.push(flashMat); flashMat.emissive = null;
     return o;
   }
-  const wkind = (w) => (w === 'pistol' ? 'pistol' : w === 'sniper' ? 'sniper' : 'machinegun');
+  const wkind = (w) => { const c = weaponClass(w); return c === 'pistol' || c === 'hpistol' ? 'pistol' : c === 'sniper' ? 'sniper' : 'machinegun'; };   // every arsenal gun maps to a third-person silhouette
   let curW = null;
   function setWeapon(w) {
     const k = wkind(w); if (curW && curW.kind === k) return;
@@ -562,4 +563,4 @@ export function createViewmodelHand(THREE, o = {}) {
   add(L.rrect(0.07, 0.066, 0.03, 0.01), cm, 0, 0, 0.055);
   add(L.rrect(0.066, 0.062, 0.34, 0.02), sm, 0, -0.004, 0.23, [0.0, 0, 0]);
   return g;
-                                                                                                                                                 }
+}
