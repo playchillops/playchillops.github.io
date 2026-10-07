@@ -84,6 +84,7 @@ function specs() {
     bezos: { civ: 1, leg: 0.74, torso: 0.54, headR: 0.2, bulk: 1.3, depth: 1.15, shoulder: 0.27, skin: 0xe2ae8a, arm: 0.6, armC: 0x9cc3e6, pal: civ(0x1f2b44, 0x3a4a6a, 0x2a2220, 0x1a1512, 0xe2ae8a), brow: -0.05, mouth: 'grin', eye: 1 },
     jensen: { civ: 1, leg: 0.74, torso: 0.52, headR: 0.2, bulk: 0.98, depth: 0.95, shoulder: 0.23, skin: 0xe0b48e, arm: 0.6, pal: civ(0x26201f, 0x1c1c22, 0x18181c, 0x2e2e34, 0xe0b48e), brow: 0.05, mouth: 'smile', eye: 1 },
     gates: { civ: 1, leg: 0.76, torso: 0.5, headR: 0.2, bulk: 0.9, depth: 0.9, shoulder: 0.21, skin: 0xf1c7a8, arm: 0.6, pal: civ(0x5b6b8c, 0xb59f78, 0x4a3426, 0x2a1f18, 0xf1c7a8), brow: 0.18, mouth: 'smile', eye: 1 },
+    hawking: { civ: 1, leg: .76, torso: .5, headR: .2, bulk: .88, depth: .9, shoulder: .21, skin: 0xf1c7a8, arm: .6, pal: civ(0x373c4b, 0x292d38, 0x20232a, 0x11131a, 0xf1c7a8), brow: .1, mouth: 'smile', eye: 1 },
     lisa: { civ: 1, leg: 0.76, torso: 0.48, headR: 0.195, bulk: 0.78, depth: 0.82, shoulder: 0.2, skin: 0xe8c09a, arm: 0.58, pal: civ(0x9e2235, 0x1d1f27, 0x1d1f27, 0x101116, 0xe8c09a), brow: 0.1, mouth: 'smile', eye: 1.15 },
   };
 }
@@ -280,6 +281,9 @@ export function createCharacter(THREE, opts = {}) {
       badge();
     },
     // Lisa Su: deep red blazer over a black top, black slacks, sleek black bob with a fringe
+    hawking() {
+      const hair = mat(0x8d8175); hairCap(hair, .35, 1.05, .55, .04, .02); glasses(mat(0x3f4654), 'rect', {size:.24, thick:.025}); badge();
+    },
     lisa() {
       const hair = mat(0x16141a), top = mat(0x1b1b22), lap = mat(0x7e1828);
       hairCap(hair, 0.28, 1.08, 0.6, 0.06, 0.04);
@@ -417,6 +421,22 @@ export function createCharacter(THREE, opts = {}) {
     legs.push({ sx, hp, th, sh, ft });
   }
 
+  // Hawking's mobility chair: rigid seat/back, footrest, large side wheels and front casters.
+  const chair = id === 'hawking' ? node(group) : null, chairWheels = [];
+  if (chair) {
+    const frame = mat(0x74839a), seat = mat(0x202633), tyre = mat(0x151923);
+    rbox(chair,.58,.1,.6,.035,seat,0,hipBase-.1,.08);
+    rbox(chair,.6,.62,.08,.03,seat,0,hipBase+.26,.33);
+    rbox(chair,.52,.05,.25,.015,frame,0,.18,-.43);
+    for (const sx of [-1,1]) {
+      const wheel = node(chair,sx*.39,.4,.12); chairWheels.push(wheel);
+      torus(wheel,.34,.055,tyre,0,0,0,{rot:[0,Math.PI/2,0],seg:24});
+      torus(wheel,.28,.012,frame,0,0,0,{rot:[0,Math.PI/2,0],seg:24});
+      for (let j=0;j<8;j++) { const a=j*Math.PI/4; const spoke=rbox(wheel,.018,.62,.018,.005,frame,0,0,0);spoke.rotation.x=a; }
+      cyl(chair,.08,.08,.05,tyre,sx*.27,.11,-.32,{rot:[0,0,Math.PI/2],seg:10});
+      rbox(chair,.05,.05,.56,.015,frame,sx*.31,hipBase+.17,-.03);
+    }
+  }
   // ---------- weapon
   const weapon = node(chest);
   const wmodels = {};
@@ -554,18 +574,20 @@ export function createCharacter(THREE, opts = {}) {
     phase += dt * moveS * Math.PI * 2 / 1.5;
     const aimStance = aimW * (1 - mv * 0.7);
 
+    if (chair) { for (const w of chairWheels) w.rotation.x -= dt * moveS / .34; }
     // hips + legs
     const breathe = Math.sin(t * 1.8 + seed);
     hips.position.set(Math.sin(phase) * 0.012 * mv, hipBase - crouchW * legLen * 0.36 + Math.cos(phase * 2) * (0.012 + 0.02 * runW) * mv + breathe * 0.004 - hitT * 0.03, crouchW * 0.02);
     pelvis.rotation.set(0, Math.sin(phase) * 0.18 * mv, Math.sin(phase) * 0.04 * mv);
     for (let i = 0; i < 2; i++) {
-      const l = legs[i], ph = phase + (i === 0 ? 0 : Math.PI), A = (0.12 + 0.22 * spd) * mv;
+      const l = legs[i], ph = (chair ? 0 : phase) + (i === 0 ? 0 : Math.PI), A = (0.12 + 0.22 * spd) * mv;
       const fx = l.sx * (0.105 * B + 0.025 * crouchW + 0.03 * aimStance);
       const fz = -Math.cos(ph) * A + (l.sx < 0 ? -0.15 : 0.1) * aimStance + crouchW * (l.sx < 0 ? -0.07 : 0.05);
       const lift = Math.max(0, -Math.sin(ph)) * (0.06 + 0.09 * spd) * mv;
       _T.set(fx - l.sx * 0.1 * B, 0.08 + lift - hips.position.y + 0.01, fz);
       _pole.set(l.sx * 0.15, 0, -1);
       qW.setFromEuler(eW.set(Math.max(0, -Math.sin(ph)) * 0.35 * mv - Math.max(0, Math.sin(ph) - 0.5) * 0.4 * mv, -l.sx * 0.1 * aimStance, 0));
+      if (chair) { _T.set(l.sx*.015,-hipBase+.24,-.4);_pole.set(0,0,-1);qW.identity(); }
       ik(l.th, l.sh, _T, L1, L2, _pole, qW, l.ft);
     }
     // spine / chest / head
@@ -690,4 +712,4 @@ export function createViewmodelHand(THREE, o = {}) {
   add(L.rrect(0.07, 0.066, 0.03, 0.01), cm, 0, 0, 0.055);
   add(L.rrect(0.066, 0.062, 0.34, 0.02), sm, 0, -0.004, 0.23, [0.0, 0, 0]);
   return g;
-}
+           }
