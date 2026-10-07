@@ -8,6 +8,7 @@ const EXTRA = {
   streak: 'M38 6l6 16 16 2-12 10 4 16-14-9-14 9 4-16-12-10 16-2z',
   void: 'M38 8v40 M24 34l14 14 14-14 M14 64h48',
   bomb: 'M36 30a18 18 0 1 0 .1 0z M42 26l8-9 M50 17l7 1 M48 10l2 6',
+  starship: 'M38 4c9 9 10 24 6 38H32C28 28 29 13 38 4z M32 42l-8 10M44 42l8 10M34 50l4 16 4-16',
 };
 const HS = '<svg viewBox="0 0 32 32" width="20" height="20" fill="none" stroke="#ff5d5d" stroke-width="2.6" stroke-linecap="round"><circle cx="16" cy="13" r="7"/><path d="M11 25c1.5-2 3-3 5-3s3.5 1 5 3M16 1v6M16 19v3M2 13h7M23 13h7"/></svg>';
 const esc = (s) => String(s ?? '').replace(/[<>&"'`]/g, '');
