@@ -24,7 +24,7 @@ export function createFinalCam(THREE, { camera, world, play, onShot }) {
     const f = clip.f; let i = 0; while (i < f.length - 2 && f[i + 1].k <= k) i++;
     const a = f[i], b = f[Math.min(f.length - 1, i + 1)], u = b.k === a.k ? 0 : Math.max(0, Math.min(1, (k - a.k) / (b.k - a.k))), bm = new Map(b.p.map((e) => [e[0], e])), out = [];
     for (const ea of a.p) { const eb = bm.get(ea[0]) || ea, r = names(ea[0]);
-      out.push({ id: ea[0], name: r.name, team: r.team, x: ea[1] + (eb[1] - ea[1]) * u, y: ea[2] + (eb[2] - ea[2]) * u, z: ea[3] + (eb[3] - ea[3]) * u, yaw: lerpA(ea[4], eb[4], u), pitch: ea[5] + (eb[5] - ea[5]) * u,
+      out.push({ id: ea[0], name: r.name, team: r.team, ch: r.ch, x: ea[1] + (eb[1] - ea[1]) * u, y: ea[2] + (eb[2] - ea[2]) * u, z: ea[3] + (eb[3] - ea[3]) * u, yaw: lerpA(ea[4], eb[4], u), pitch: ea[5] + (eb[5] - ea[5]) * u,
         crouched: !!(ea[6] & 1), alive: !!((u < 0.5 ? ea : eb)[6] & 2), connected: true, hp: (u < 0.5 ? ea : eb)[7], weapon: (u < 0.5 ? ea : eb)[8] }); }
     return out;
   }
