@@ -2,7 +2,7 @@
 // (browser speech synthesis: pitch / rate / a different system voice when there are several) and a speech bubble over the speaker.
 // Parody one-liners, nothing official. The server picks the taunt index so everyone hears the same line ('taunt').
 import { legendOf, isFree } from './common.js';
-import { wallBlocked } from './hitscan.js';
+import { raycast } from './hitscan.js';
 export const LINES = {
   jobs: { taunt: ['One more thing.', 'Stay hungry. Stay foolish.', 'It just works.', 'Think different.'], kill: ['It just works.', 'Insanely great.', 'Boom. That is it.'], power: 'And one more thing.' },
   zuck: { taunt: ['Move fast and break things.', 'Senator, we run ads.', 'Welcome to the metaverse.', 'Is this the metaverse?'], kill: ['Move fast. Break things.', 'Connection removed.', 'Thanks for the data.'], power: 'Welcome to the metaverse.' },
@@ -58,7 +58,7 @@ export function createVoices({ game, net, an, THREE }) {
         const b = bubbles[i]; if (now > b.until) { b.el.remove(); bubbles.splice(i, 1); continue; }
         if (b.id === net.id) continue; const p = posOf(b.id); if (!p) { b.el.style.display = 'none'; continue; }
         v3.set(p.x, p.y + 2.35, p.z).project(cam); const eye = cam.position, target = {x:p.x,y:p.y + (p.crouch ? 0.8 : 1.2),z:p.z}, dir = {x:target.x-eye.x,y:target.y-eye.y,z:target.z-eye.z}, dist = Math.hypot(dir.x,dir.y,dir.z);
-        const blocked = !game.world || wallBlocked(eye, dir, dist, game.world, 0.02);
+        const blocked = !game.world || !!raycast(eye, dir, {colliders:game.world,maxDistance:Math.max(0, dist - 0.05)});
         const vis = !blocked && v3.z > -1 && v3.z < 1 && Math.abs(v3.x) < 1.1 && Math.abs(v3.y) < 1.1 && !p.cloak;
         b.el.style.display = vis ? '' : 'none'; if (vis) { b.el.style.left = ((v3.x + 1) / 2 * 100) + '%'; b.el.style.top = ((1 - v3.y) / 2 * 100) + '%'; }
       }
