@@ -65,7 +65,7 @@ function svgIcon(kind) {
 const MEDALS = {
   noscope: { label: 'NO-SCOPE', color: '#ff9f1c', bonus: 75 },
   longshot: { label: 'LONG SHOT', color: '#4cc9f0', bonus: 50 },
-  headshot: { label: 'HEADSHOT', color: '#ff5d73', bonus: 0 },
+  headshot: { label: 'HEADSHOT', color: '#39ff14', bonus: 0 },
   pointblank: { label: 'POINT BLANK', color: '#b8f35c', bonus: 25 },
   firstblood: { label: 'FIRST BLOOD', color: '#ff3860', bonus: 50 },
   headhunter: { label: 'HEAD HUNTER', color: '#b388ff', bonus: 100 },
@@ -155,7 +155,7 @@ export function createKillFX(THREE, opts = {}) {
   function showHitmarker(kind) {
     hm.t = 0; hm.kind = kind; hm.dur = kind === 'kill' ? 0.5 : kind === 'head' ? 0.38 : 0.22;
     if (!hasDOM) return;
-    hmEl.style.color = kind === 'kill' ? '#ff3860' : kind === 'head' ? '#ffb703' : '#ffffff';
+    hmEl.style.color = kind === 'kill' ? '#ff3860' : kind === 'head' ? '#39ff14' : '#ffffff';
     hmEl.style.filter = 'drop-shadow(0 0 3px #000)';
   }
   function pulseVignette(color, peak, dur) { vig.t = 0; vig.peak = peak; vig.dur = dur; if (hasDOM) vigEl.style.setProperty('--c', color); }
@@ -559,7 +559,7 @@ export function createKillFX(THREE, opts = {}) {
     emit('hit', info);
     const bot = info.bot;
     // generic hit feedback
-    showHitmarker(info.killed ? 'kill' : head ? 'head' : 'hit');
+    showHitmarker(head ? 'head' : info.killed ? 'kill' : 'hit');
     impactFlash(pos, head ? 0xffc94a : 0xffffff, info.killed ? 1.1 : 0.6);
     burst(pos, info.killed ? 16 : 8, { speed: info.killed ? 5 : 3.5, colors: SPARK[zone] || SPARK.body, size: 0.07, g: 10, life: 0.6, up: 0.4, dir: info.dir, bias: 2 });
     shake({ sniper: 0.4, shotgun: 0.3, hpistol: 0.2, rifle: 0.07, smg: 0.06, lmg: 0.08 }[weaponClass(info.weapon)] || 0.12);
@@ -606,7 +606,7 @@ export function createKillFX(THREE, opts = {}) {
     const fp = { x: pos.x, y: pos.y + 0.3, z: pos.z };
     floatText(fp, '+' + points, { size: head ? 40 : 34, color: head ? '#ffb703' : '#fff', rise: 70, life: 1.25, italic: true, dy: -34 });
     floatText(fp, '+$' + cash, { size: 26, color: '#6cff8a', rise: 60, life: 1.25, dx: 62, dy: -6 });
-    if (head) floatText(fp, 'HEADSHOT!', { size: 17, color: '#ffe08a', rise: 52, life: 1.1, dy: -72 });
+    if (head) floatText(fp, 'HEADSHOT!', { size: 17, color: '#39ff14', rise: 52, life: 1.1, dy: -72 });
     if (bonus && multi < 2) floatText(fp, '+' + bonus + ' BONUS', { size: 20, color: '#4cc9f0', rise: 50, life: 1.4, dx: -72, dy: 22 });
     sound('fx_cash', mid);
     emit('score', { points, bonus, cash, total: points + bonus, medals, multi, streak });
