@@ -2,6 +2,7 @@
 // (browser speech synthesis: pitch / rate / a different system voice when there are several) and a speech bubble over the speaker.
 // Parody one-liners, nothing official. The server picks the taunt index so everyone hears the same line ('taunt').
 import { legendOf, isFree } from './common.js';
+import { wallBlocked } from './hitscan.js';
 export const LINES = {
   jobs: { taunt: ['One more thing.', 'Stay hungry. Stay foolish.', 'It just works.', 'Think different.'], kill: ['It just works.', 'Insanely great.', 'Boom. That is it.'], power: 'And one more thing.' },
   zuck: { taunt: ['Move fast and break things.', 'Senator, we run ads.', 'Welcome to the metaverse.', 'Is this the metaverse?'], kill: ['Move fast. Break things.', 'Connection removed.', 'Thanks for the data.'], power: 'Welcome to the metaverse.' },
@@ -37,7 +38,7 @@ export function createVoices({ game, net, an, THREE }) {
     const p = posOf(id), me = id === net.id; let near = 1;
     if (!me && p) { const e = net.eye(); const d = Math.hypot(e.x - p.x, e.z - p.z); if (d > 45) return; near = Math.max(0.25, 1 - d / 45); }
     const [pitch, rate] = VOICE[ch] || [1, 1]; an.say(text, prio, { voice: voiceFor(ch), pitch, rate, vol: near });
-    const r = net.roster.get(id), el = document.createElement('div'); el.className = 'vb' + (me ? ' me' : ''); el.style.setProperty('--c', TEAMC[(r && r.team) || net.team] || '#7a3cff');
+    const r = net.roster.get(id), el = document.createElement('div'); el.className = 'vb' + (me ? ' me' : ''); if (!me) el.style.display = 'none'; el.style.setProperty('--c', TEAMC[(r && r.team) || net.team] || '#7a3cff');
     el.innerHTML = `<small>${esc(lg.name.toUpperCase())}${kind ? ' · ' + kind : ''}</small>${esc(text)}`; document.body.appendChild(el);
     bubbles.push({ el, id, until: performance.now() + 2600 + text.length * 40 }); while (bubbles.length > 4) bubbles.shift().el.remove();
   }
@@ -56,7 +57,9 @@ export function createVoices({ game, net, an, THREE }) {
       for (let i = bubbles.length - 1; i >= 0; i--) {
         const b = bubbles[i]; if (now > b.until) { b.el.remove(); bubbles.splice(i, 1); continue; }
         if (b.id === net.id) continue; const p = posOf(b.id); if (!p) { b.el.style.display = 'none'; continue; }
-        v3.set(p.x, p.y + 2.35, p.z).project(cam); const vis = v3.z < 1 && Math.abs(v3.x) < 1.1 && Math.abs(v3.y) < 1.1 && !p.cloak;
+        v3.set(p.x, p.y + 2.35, p.z).project(cam); const eye = cam.position, target = {x:p.x,y:p.y + (p.crouch ? 0.8 : 1.2),z:p.z}, dir = {x:target.x-eye.x,y:target.y-eye.y,z:target.z-eye.z}, dist = Math.hypot(dir.x,dir.y,dir.z);
+        const blocked = !game.world || wallBlocked(eye, dir, dist, game.world, 0.02);
+        const vis = !blocked && v3.z > -1 && v3.z < 1 && Math.abs(v3.x) < 1.1 && Math.abs(v3.y) < 1.1 && !p.cloak;
         b.el.style.display = vis ? '' : 'none'; if (vis) { b.el.style.left = ((v3.x + 1) / 2 * 100) + '%'; b.el.style.top = ((1 - v3.y) / 2 * 100) + '%'; }
       }
     },
