@@ -28,7 +28,7 @@ export class NetClient {
     this.yaw = 0; this.pitch = 0; this.input = { f: 0, r: 0, j: false, c: false, fire: false, aim: false, rl: false, use: false, w: -1 };
     this.pendingFire = false; this.acc = 0; this.seq = 0; this.pending = []; this.pred = new Map();
     this.snaps = []; this.roster = new Map(); this.phase = 'waiting'; this.alive = false; this.respawns = -1;
-    this.tickRate = TICK; this.snapDiv = 2; this.latestK = 0; this.latestRecv = 0; this.rttMs = 0;
+    this.tickRate = TICK; this.snapDiv = 2; this.latestK = 0; this.latestRecv = 0; this.rttMs = 0; this.hasPing = false; this.serverPerf = null;
     this.prev = null; this.cur = null; this.stats = { corrections: 0, maxErr: 0, snaps: 0 };
     this.closing = false; this.attempt = 0; this.dropAt = 0; this.pingTimer = null; this.connected = false;
     this.me = { mag: 0, res: 0, rl: 0, hp: 100, weapon: 0, pp: 0, dp: 0 }; this.score = [0, 0]; this.round = 1; this.phaseLeft = 0; this.bomb = null;
@@ -136,13 +136,14 @@ export class NetClient {
       case 'join': this.roster.set(m.id, { id: m.id, name: m.name, team: m.team, ch: m.ch, k: 0, d: 0 }); this.emit('join', m); break;
       case 'swap': if (m.teams) { if (m.teams[this.id]) this.team = m.teams[this.id]; for (const [id, t] of Object.entries(m.teams)) { const r = this.roster.get(+id); if (r) r.team = t; } } this.emit('swap', m); break;
       case 'leave': this.roster.delete(m.id); this.emit('leave', m); break;
-      case 'pong': this.rttMs = (this.o.now() - m.c) * 1000; break;
+      case 'pong': this.hasPing = true; this.rttMs = (this.o.now() - m.c) * 1000; break;
       case 's': this.onSnapshot(m); break;
       case 'error': if (m.code === 'room_not_found' && this.token && this.dropAt) break;   /* server may still be restoring the room: onclose retries */ this.closing = m.code !== 'x'; this.emit('error', m); break;
       default: this.emit(m.t, m);
     }
   }
   onSnapshot(m) {
+    this.serverPerf = Array.isArray(m.sp) ? m.sp : null;
     const pl = new Map();
     for (const e of m.pl) pl.set(e[0], { x: e[1], y: e[2], z: e[3], yaw: e[4], pitch: e[5], crouched: !!(e[6] & 1), alive: !!(e[6] & 2), grounded: !!(e[6] & 4), connected: !!(e[6] & 8), cloak: !!(e[6] & 16), stun: !!(e[6] & 32), pwr: !!(e[6] & 64), hp: e[7], weapon: e[8] });
     this.snaps.push({ k: m.k, pl }); this.snaps[this.snaps.length - 1].recv = this.o.now();
