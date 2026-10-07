@@ -1,4 +1,5 @@
 import { weaponClass } from './player.js';
+import { LEGENDS, LEGEND_IDS } from './common.js';
 // characters.js - procedural stylized characters for Sniper Chill (no external assets).
 //
 //   import { createCharacter, ROSTER, createViewmodelHand } from './characters.js';
@@ -19,8 +20,10 @@ export const ROSTER = [
   { id: 'zed', name: 'Zed', role: 'Sniper' },
   { id: 'pip', name: 'Pip', role: 'Rookie' },
   { id: 'rex', name: 'Rex', role: 'Punk' },
+  ...LEGENDS.map((l) => ({ id: l.id, name: l.name, role: l.co, legend: true })),
 ];
 export const CHARACTER_IDS = ROSTER.map((r) => r.id);
+export { LEGEND_IDS };
 
 const OUTLINE = 0x1a1428;
 const lib = new WeakMap();
@@ -73,7 +76,20 @@ function specs() {
       pal: { CT: { main: 0x1c1f2a, accent: 0x3dffb0, pants: 0x2b3f6b, boots: 0x14161d, gloves: 0x14161d, trim: 0x3dffb0 },
              T:  { main: 0x1c1f2a, accent: 0xff4f7b, pants: 0x5a2a2a, boots: 0x14161d, gloves: 0x14161d, trim: 0xff4f7b } },
       brow: -0.1, mouth: 'smirk', eye: 1 },
+    // ---- Silicon Valley legends (civ: no armour bits; accent = team colour: lanyard badge, armband, shoe stripe)
+    jobs: { civ: 1, leg: 0.8, torso: 0.52, headR: 0.2, bulk: 0.86, depth: 0.88, shoulder: 0.21, skin: 0xe9b993, arm: 0.62, pal: civ(0x1d1d22, 0x46679a, 0xa3a8b0, 0xf2f2f2, 0xe9b993), brow: 0.05, mouth: 'smile', eye: 0.95 },
+    zuck: { civ: 1, leg: 0.76, torso: 0.5, headR: 0.205, bulk: 0.9, depth: 0.9, shoulder: 0.21, skin: 0xf3cfb3, arm: 0.6, sleeve: 'short', pal: civ(0x8d929b, 0x3a4f78, 0x6b7280, 0xf4f4f4, 0xf3cfb3), brow: 0.15, mouth: 'flat', eye: 1.3 },
+    altman: { civ: 1, leg: 0.77, torso: 0.5, headR: 0.2, bulk: 0.82, depth: 0.85, shoulder: 0.2, skin: 0xf0c6a6, arm: 0.6, pal: civ(0x2f3e5c, 0x3b3f47, 0xf4f4f4, 0xffffff, 0xf0c6a6), brow: 0.2, mouth: 'smile', eye: 1.35 },
+    musk: { civ: 1, leg: 0.8, torso: 0.56, headR: 0.205, bulk: 1.12, depth: 1.05, shoulder: 0.25, skin: 0xeec3a3, arm: 0.64, sleeve: 'short', pal: civ(0x16171b, 0x24262c, 0x16171b, 0x3a3d45, 0xeec3a3), brow: -0.12, mouth: 'smirk', eye: 0.95 },
+    bezos: { civ: 1, leg: 0.74, torso: 0.54, headR: 0.2, bulk: 1.3, depth: 1.15, shoulder: 0.27, skin: 0xe2ae8a, arm: 0.6, armC: 0x9cc3e6, pal: civ(0x1f2b44, 0x3a4a6a, 0x2a2220, 0x1a1512, 0xe2ae8a), brow: -0.05, mouth: 'grin', eye: 1 },
+    jensen: { civ: 1, leg: 0.74, torso: 0.52, headR: 0.2, bulk: 0.98, depth: 0.95, shoulder: 0.23, skin: 0xe0b48e, arm: 0.6, pal: civ(0x26201f, 0x1c1c22, 0x18181c, 0x2e2e34, 0xe0b48e), brow: 0.05, mouth: 'smile', eye: 1 },
+    gates: { civ: 1, leg: 0.76, torso: 0.5, headR: 0.2, bulk: 0.9, depth: 0.9, shoulder: 0.21, skin: 0xf1c7a8, arm: 0.6, pal: civ(0x5b6b8c, 0xb59f78, 0x4a3426, 0x2a1f18, 0xf1c7a8), brow: 0.18, mouth: 'smile', eye: 1 },
+    lisa: { civ: 1, leg: 0.76, torso: 0.48, headR: 0.195, bulk: 0.78, depth: 0.82, shoulder: 0.2, skin: 0xe8c09a, arm: 0.58, pal: civ(0x9e2235, 0x1d1f27, 0x1d1f27, 0x101116, 0xe8c09a), brow: 0.1, mouth: 'smile', eye: 1.15 },
   };
+}
+// legend palette: outfit + shoes identical for both teams; accent = team colour (badge, armband, shoe stripe); bare hands
+function civ(main, pants, shoes, sole, skin) {
+  return { CT: { main, accent: 0x2f8cff, pants, boots: shoes, gloves: skin, trim: sole }, T: { main, accent: 0xff7a2f, pants, boots: shoes, gloves: skin, trim: sole } };
 }
 
 // ---------------------------------------------------------------- main factory
@@ -134,14 +150,14 @@ export function createCharacter(THREE, opts = {}) {
   const shY = chestLen * 0.8, shX = sp.shoulder;
   const neck = node(chest, 0, chestLen, 0);
   const head = node(neck, 0, 0.03, 0);
-  const HR = sp.headR, headC = HR * 0.88, HZ = { otto: 1.3, zed: 1.22, pip: 1.1, bruno: 1.12, rex: 1.08, mimi: 1.08 }[id];
+  const HR = sp.headR, headC = HR * 0.88, HZ = { otto: 1.3, zed: 1.22, pip: 1.1, bruno: 1.12, rex: 1.08, mimi: 1.08 }[id] ?? 1.1;
   const headTop = hipBase + 0.02 + spineLen + chestLen + 0.03 + headC + HR;
   const skin = mat(sp.skin), dark = mat(0x23202e), white = mat(0xffffff);
   const mMain = tm('main'), mAcc = tm('accent'), mPants = tm('pants'), mBoots = tm('boots'), mGloves = tm('gloves'), mTrim = tm('trim');
 
   rbox(pelvis, 0.3 * B, 0.16, 0.2 * D, 0.06, mPants, 0, -0.01, 0);
-  cyl(pelvis, 0.155 * B, 0.155 * B, 0.045, mBoots, 0, 0.08, 0, { s: [1, 1, 0.72 * D], seg: 16 });
-  rbox(pelvis, 0.05, 0.05, 0.03, 0.012, mTrim, 0, 0.08, -0.12 * D, { outline: false });
+  cyl(pelvis, 0.155 * B, 0.155 * B, 0.045, sp.civ ? mat(0x2a2422) : mBoots, 0, 0.08, 0, { s: [1, 1, 0.72 * D], seg: 16 });
+  rbox(pelvis, 0.05, 0.05, 0.03, 0.012, sp.civ ? mat(0xc9ccd2) : mTrim, 0, 0.08, -0.12 * D, { outline: false });
   sph(spine, 0.5, mMain, 0, spineLen * 0.5 + 0.02, 0, { s: [0.27 * B, 0.24 + spineLen * 0.4, 0.2 * D] });
   sph(chest, 0.5, mMain, 0, chestLen * 0.42, 0, { s: [shX * 2 * 1.08, chestLen * 1.15, 0.27 * D], seg: 16 });
   cyl(neck, 0.055, 0.065, 0.1, skin, 0, 0.0, 0, { outline: false });
@@ -172,7 +188,109 @@ export function createCharacter(THREE, opts = {}) {
   // ---------- per-character headgear / outfit
   const dangles = [];
   const dangle = (nd, amp, freq, ph = 0) => dangles.push({ nd, amp, freq, ph });
+  // ---- legend helpers: hair caps (tilted back = hairline on the forehead, nape at the back), jaw shells, glasses, conference badge
+  const hairCap = (m, tilt = 0.45, r = 1.07, phi = 0.56, dy = 0.04, dz = 0.03, sc = [1, 1, 1]) => sph(head, HR * r, m, 0, headC + HR * dy, HR * dz, { phi: Math.PI * phi, rot: [tilt, 0, 0], s: sc, seg: 18 });
+  const shell = (par, r, m, th0, th1, x, y, z, o = {}) => { const g = new THREE.SphereGeometry(r, 16, 8, Math.PI * (o.p0 ?? 1), Math.PI * (o.pl ?? 1), Math.PI * th0, Math.PI * (th1 - th0)); geos.push(g); return add(par, g, m, x, y, z, { outline: false, ...o }); };
+  function glasses(frame, shape = 'round', o = {}) {
+    const gz = -HR * 1.0, gy = HR * 0.07, R = HR * (o.size ?? 0.25), t = HR * (o.thick ?? 0.035);
+    for (const sx of [-1, 1]) {
+      const cx = sx * HR * 0.38;
+      if (o.lens != null) { const ln = sph(face, R, mat(o.lens), cx, gy - (shape === 'aviator' ? HR * 0.03 : 0), gz + 0.004, { s: [shape === 'aviator' ? 1.12 : 1, shape === 'aviator' ? 1.0 : 0.9, 0.3], seg: 12, outline: false }); ln.userData.lens = true; }
+      if (shape === 'rect') { const w = R * 2.3, h = R * 1.55; rbox(face, w, t, t, t * 0.4, frame, cx, gy + h / 2, gz, { outline: false }); rbox(face, w, t, t, t * 0.4, frame, cx, gy - h / 2, gz, { outline: false }); for (const ex of [-1, 1]) rbox(face, t, h, t, t * 0.4, frame, cx + ex * w / 2, gy, gz, { outline: false }); }
+      else torus(face, R, t * 0.5, frame, cx, gy, gz, { seg: 18 });
+      rbox(face, 0.012, 0.012, HR * 0.95, 0.005, frame, sx * HR * 0.86, gy + HR * 0.04, -HR * 0.5, { outline: false, rot: [0, sx * 0.12, 0] });   // temple arms
+    }
+    rbox(face, HR * 0.22, t * 0.8, t * 0.8, t * 0.3, frame, 0, gy + HR * 0.04, gz, { outline: false });
+  }
+  function badge() {   // conference lanyard + badge in the team colour: tells teams apart at a glance
+    const strap = mat(0x22252e), cz = -0.135 * D;
+    for (const sx of [-1, 1]) rbox(chest, 0.022, chestLen * 0.5, 0.012, 0.005, mAcc, sx * 0.055, chestLen * 0.7, cz - 0.01, { outline: false, rot: [-0.12, 0, sx * 0.22] });
+    rbox(chest, 0.1, 0.13, 0.014, 0.012, white, 0, chestLen * 0.37, cz - 0.022, { ot: 0.008 });
+    rbox(chest, 0.1, 0.045, 0.016, 0.01, mAcc, 0, chestLen * 0.415, cz - 0.026, { outline: false });
+    rbox(chest, 0.035, 0.035, 0.016, 0.006, strap, -0.02, chestLen * 0.345, cz - 0.026, { outline: false });
+    for (let i = 0; i < 2; i++) rbox(chest, 0.03, 0.007, 0.016, 0.003, strap, 0.022, chestLen * (0.355 - i * 0.03), cz - 0.026, { outline: false });
+  }
+  const collarRing = (m, r = 0.074, h = 0.1, y = 0.0) => cyl(neck, r, r + 0.01, h, m, 0, y, 0, { seg: 16 });
   const extras = {
+    // Steve Jobs: black mock turtleneck, jeans, grey sneakers, round rimless glasses, receding salt-and-pepper hair, stubble
+    jobs() {
+      const hair = mat(0x6b6966), beard = mat(0x75716c);
+      hairCap(hair, 0.85, 1.05, 0.6, 0.0, 0.05);
+      shell(face, HR * 1.025, beard, 0.64, 0.98, 0, 0, 0, { p0: 0.95, pl: 1.1 });
+      rbox(face, HR * 0.42, HR * 0.08, 0.03, 0.015, beard, 0, -HR * 0.24, -HR * 0.92, { outline: false });
+      glasses(mat(0xb8bdc6), 'round', { size: 0.27, thick: 0.03 });
+      collarRing(mMain, 0.078, 0.12, 0.0);
+      badge();
+    },
+    // Mark Zuckerberg: heather grey tee, jeans, short curly hair, a gold chain (2024 era)
+    zuck() {
+      const hair = mat(0x5e4129);
+      hairCap(hair, 0.42, 1.06, 0.55, 0.06, 0.03);
+      for (let i = 0; i < 9; i++) { const a = -1.15 + i * (2.3 / 8); sph(head, HR * 0.17, hair, Math.sin(a) * HR * 0.93, headC + HR * (0.48 + 0.05 * Math.cos(a * 2)), -Math.cos(a) * HR * 0.86, { seg: 8, outline: false }); }
+      for (let i = 0; i < 5; i++) { const a = -0.9 + i * 0.45; sph(head, HR * 0.2, hair, Math.sin(a) * HR * 0.5, headC + HR * 0.98, -Math.cos(a) * HR * 0.35 + HR * 0.1, { seg: 8, outline: false }); }
+      torus(neck, 0.07, 0.009, mat(0xffcf4d), 0, -0.035, -0.012, { rot: [Math.PI / 2 - 0.35, 0, 0], seg: 18 });
+      torus(neck, 0.064, 0.012, mMain, 0, -0.05, 0, { rot: [Math.PI / 2, 0, 0], seg: 16 });
+      badge();
+    },
+    // Sam Altman: navy crewneck sweater, dark jeans, white sneakers, short brown hair with a side part
+    altman() {
+      const hair = mat(0x4a3426);
+      hairCap(hair, 0.4, 1.05, 0.55, 0.05, 0.03);
+      sph(head, HR * 0.55, hair, -HR * 0.25, headC + HR * 0.72, -HR * 0.55, { s: [1.3, 0.42, 0.75], rot: [0.2, 0, 0.18], seg: 12, outline: false });
+      torus(neck, 0.07, 0.02, mMain, 0, -0.04, 0, { rot: [Math.PI / 2, 0, 0], seg: 16 });
+      badge();
+    },
+    // Elon Musk: black tee with an X, black jeans and boots, thick swept-back dark hair
+    musk() {
+      const hair = mat(0x2e241c);
+      hairCap(hair, 0.62, 1.1, 0.58, 0.1, 0.06, [1.02, 1.05, 1.08]);
+      sph(head, HR * 0.6, hair, 0, headC + HR * 0.9, -HR * 0.12, { s: [1.35, 0.5, 1.1], rot: [0.35, 0, 0], seg: 12, outline: false });
+      const xm = mat(0xf2f2f2); for (const r of [0.75, -0.75]) rbox(chest, 0.018, 0.12, 0.012, 0.004, xm, 0.06, chestLen * 0.62, -0.14 * D, { outline: false, rot: [0, 0, r] });
+      torus(neck, 0.072, 0.014, mMain, 0, -0.05, 0, { rot: [Math.PI / 2, 0, 0], seg: 16 });
+      badge();
+    },
+    // Jeff Bezos: bald, gold aviators, navy puffer vest over a light blue shirt, big laugh
+    bezos() {
+      glasses(mat(0xd9b24a), 'aviator', { size: 0.27, thick: 0.03, lens: 0x14181f });
+      for (let i = 0; i < 3; i++) for (const z of [-1, 1]) rbox(chest, shX * 2.05, 0.012, 0.03, 0.006, mat(0x172036), 0, chestLen * (0.2 + i * 0.25), z * 0.128 * D, { outline: false });
+      rbox(chest, 0.014, chestLen * 0.85, 0.02, 0.005, mat(0xc9ccd2), 0, chestLen * 0.42, -0.14 * D, { outline: false });
+      const shirt = mat(0x9cc3e6); for (const sx of [-1, 1]) rbox(neck, 0.07, 0.05, 0.02, 0.01, shirt, sx * 0.045, 0.0, -0.07, { rot: [-0.3, 0, sx * 0.7] });
+      collarRing(mMain, 0.08, 0.06, -0.04);
+      badge();
+    },
+    // Jensen Huang: black leather jacket, black tee and jeans, swept-back silver hair, dark rectangular glasses
+    jensen() {
+      const hair = mat(0x9da3ab), lap = mat(0x15110f), zip = mat(0xc9ccd2);
+      hairCap(hair, 0.32, 1.09, 0.57, 0.08, 0.05, [1.02, 1.03, 1.06]);
+      sph(head, HR * 0.6, hair, 0, headC + HR * 0.75, -HR * 0.2, { s: [1.3, 0.48, 1.15], rot: [0.3, 0, 0], seg: 12, outline: false });
+      glasses(mat(0x22222a), 'rect', { size: 0.22, thick: 0.045 });
+      for (const sx of [-1, 1]) rbox(chest, 0.1, chestLen * 0.55, 0.03, 0.012, lap, sx * 0.075, chestLen * 0.7, -0.125 * D, { rot: [0, 0, sx * 0.32] });
+      for (const sx of [-1, 1]) rbox(neck, 0.08, 0.07, 0.02, 0.012, mMain, sx * 0.06, 0.0, -0.02, { rot: [0, sx * 0.5, sx * 0.4] });
+      rbox(chest, 0.012, chestLen * 0.7, 0.02, 0.004, zip, 0.03, chestLen * 0.35, -0.14 * D, { outline: false });
+      badge();
+    },
+    // Bill Gates: blue-grey V-neck sweater over a light blue collared shirt, khakis, rectangular glasses, sandy side part
+    gates() {
+      const hair = mat(0x9c8a74), shirt = mat(0xbfd9f2);
+      hairCap(hair, 0.42, 1.05, 0.55, 0.04, 0.03);
+      sph(head, HR * 0.5, hair, HR * 0.3, headC + HR * 0.7, -HR * 0.6, { s: [1.35, 0.4, 0.7], rot: [0.25, 0, -0.2], seg: 12, outline: false });
+      glasses(mat(0x7a7d85), 'rect', { size: 0.24, thick: 0.03 });
+      rbox(chest, 0.09, 0.13, 0.02, 0.012, shirt, 0, chestLen * 0.86, -0.115 * D, { rot: [0.2, 0, 0], outline: false });
+      for (const sx of [-1, 1]) rbox(neck, 0.065, 0.05, 0.018, 0.01, shirt, sx * 0.04, -0.01, -0.07, { rot: [-0.3, 0, sx * 0.75] });
+      badge();
+    },
+    // Lisa Su: deep red blazer over a black top, black slacks, sleek black bob with a fringe
+    lisa() {
+      const hair = mat(0x16141a), top = mat(0x1b1b22), lap = mat(0x7e1828);
+      hairCap(hair, 0.28, 1.08, 0.6, 0.06, 0.04);
+      for (const sx of [-1, 1]) sph(head, HR * 0.72, hair, sx * HR * 0.74, headC - HR * 0.22, HR * 0.12, { s: [0.42, 1.05, 1.1], seg: 12 });
+      sph(head, HR * 0.95, hair, 0, headC - HR * 0.25, HR * 0.45, { s: [1.05, 0.9, 0.6], seg: 12, outline: false });
+      rbox(face, HR * 1.55, HR * 0.3, HR * 0.4, HR * 0.12, hair, 0, HR * 0.6, -HR * 0.68, { rot: [-0.35, 0, 0], outline: false });
+      rbox(chest, 0.1, chestLen * 0.5, 0.02, 0.01, top, 0, chestLen * 0.72, -0.125 * D, { outline: false });
+      for (const sx of [-1, 1]) rbox(chest, 0.07, chestLen * 0.55, 0.025, 0.01, lap, sx * 0.06, chestLen * 0.68, -0.13 * D, { rot: [0, 0, sx * 0.3] });
+      collarRing(top, 0.066, 0.05, -0.03);
+      badge();
+    },
     bruno() {
       const hair = mat(0x3d2618);
       sph(head, HR * 1.1, mAcc, 0, headC + HR * 0.05, 0.01, { phi: Math.PI * 0.52, s: [1, 0.95, 1.02], seg: 18 });
@@ -264,7 +382,7 @@ export function createCharacter(THREE, opts = {}) {
     },
   };
   extras[id]();
-  const bareArms = id === 'rex', rolled = id === 'mimi' || id === 'pip';
+  const bareArms = id === 'rex', rolled = id === 'mimi' || id === 'pip', short = sp.sleeve === 'short', armM = sp.armC != null ? mat(sp.armC) : mMain;
 
   // ---------- arms
   const armU = sp.arm * 0.47, armF = sp.arm * 0.53, armRad = 0.052 * Math.sqrt(B);
@@ -272,10 +390,12 @@ export function createCharacter(THREE, opts = {}) {
   for (const sx of [-1, 1]) {
     const sh = node(chest, sx * shX, shY, 0);
     const up = node(sh), fo = node(up, 0, -armU, 0), hand = node(fo, 0, -armF, 0);
-    sph(sh, armRad * 1.25, mMain, 0, 0, 0, { seg: 10, outline: false });
-    limb(up, armU, armRad * 1.1, bareArms ? skin : mMain);
-    limb(fo, armF, armRad * 0.95, bareArms || rolled ? skin : mMain);
-    cyl(fo, armRad * 1.12, armRad * 1.12, 0.05, rolled ? mMain : mGloves, 0, -armF * 0.62, 0, { seg: 10 });
+    sph(sh, armRad * 1.25, armM, 0, 0, 0, { seg: 10, outline: false });
+    limb(up, armU, armRad * 1.1, bareArms || short ? skin : armM);
+    limb(fo, armF, armRad * 0.95, bareArms || rolled || short ? skin : armM);
+    if (short) cyl(up, armRad * 1.4, armRad * 1.32, armU * 0.48, armM, 0, -armU * 0.2, 0, { seg: 12 });   // T-shirt sleeve
+    else if (!sp.civ || rolled) cyl(fo, armRad * 1.12, armRad * 1.12, 0.05, rolled ? mMain : mGloves, 0, -armF * 0.62, 0, { seg: 10 });
+    if (sp.civ && sx < 0) cyl(up, armRad * (short ? 1.46 : 1.22), armRad * (short ? 1.4 : 1.18), 0.05, mAcc, 0, -armU * (short ? 0.36 : 0.42), 0, { seg: 12 });   // team armband (left arm)
     if (bareArms) cyl(fo, armRad * 1.2, armRad * 1.2, 0.045, mAcc, 0, -armF * 0.78, 0, { seg: 8 });
     rbox(hand, 0.082, 0.085, 0.1, 0.03, mGloves, 0, 0.0, 0.0);
     arms.push({ sx, sh, up, fo, hand });
@@ -288,10 +408,11 @@ export function createCharacter(THREE, opts = {}) {
     const th = node(hp), sh = node(th, 0, -L1, 0), ft = node(sh, 0, -L2, 0);
     limb(th, L1 + 0.02, legRad * 1.08, mPants);
     limb(sh, L2 + 0.02, legRad * 0.92, mPants);
-    sph(sh, legRad * 0.8, mAcc, 0, 0.02, -legRad * 0.85, { s: [1.0, 0.9, 0.5], seg: 8, outline: false });
+    if (!sp.civ) sph(sh, legRad * 0.8, mAcc, 0, 0.02, -legRad * 0.85, { s: [1.0, 0.9, 0.5], seg: 8, outline: false });
     cyl(sh, legRad * 1.05, legRad * 1.0, 0.12, mBoots, 0, -L2 + 0.09, 0, { seg: 10 });
     rbox(ft, 0.12 * Math.sqrt(B), 0.1, 0.27, 0.04, mBoots, 0, -0.03, -0.055);
     rbox(ft, 0.115 * Math.sqrt(B), 0.03, 0.28, 0.012, mTrim, 0, -0.07, -0.055, { outline: false });
+    if (sp.civ) rbox(ft, 0.125 * Math.sqrt(B), 0.025, 0.16, 0.01, mAcc, 0, -0.01, -0.07, { outline: false });   // team stripe on the sneaker
     if (id === 'rex' || id === 'otto') rbox(th, 0.12, 0.14, 0.12, 0.04, mAcc, 0, -L1 * 0.55, 0.0, { outline: false });
     legs.push({ sx, hp, th, sh, ft });
   }
@@ -546,6 +667,12 @@ export function createCharacter(THREE, opts = {}) {
     get team() { return team; }, get dead() { return isDead; },
     height: headTop, headRadius: HR, radius: 0.3,
   };
+}
+
+/** first-person colours for a legend (gunvm / knifevm setOutfit): bare hands, sleeve = outfit (skin for T-shirts), cuff = team */
+export function legendOutfit(id, team) {
+  const sp = specs()[id]; if (!sp || !sp.civ) return null; const p = sp.pal[team === 'T' ? 'T' : 'CT'];
+  return { sleeve: sp.sleeve === 'short' ? sp.skin : (sp.armC ?? p.main), glove: sp.skin, cuff: p.accent, skin: sp.skin };
 }
 
 // ---------------------------------------------------------------- first-person hand + sleeve for viewmodels
