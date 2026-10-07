@@ -61,8 +61,8 @@ export function createPowers({ game, net, THREE, an, play, banner = () => {} }) 
     if (!m) return; const P = POWERS[m.ch] || Object.values(POWERS).find((x) => x.k === m.k), pos = posOf(m.id), me = m.id === net.id, r = net.roster.get(m.id), who = (r && r.name) || 'Someone';
     try { an.sound('power'); } catch (e) {}
     if (pos) { if (m.k === 'rocket') { burst(pos, 0xff7a2f, 30, 3, 1.0, 1); burst(pos, 0xffd166, 16, 2, 0.7, 2); } else if (m.k === 'prime') box(pos); else if (m.k === 'bsod') wave(pos, 0x2f8cff, 14); else burst({ x: pos.x, y: pos.y + 0.8, z: pos.z }, FX[m.k] ? parseInt(FX[m.k][0].slice(1), 16) : 0xffffff, 18, 2.5, 0.7, 2); }
-    if (me && P) { an.medal(P.name.toUpperCase(), P.desc.toUpperCase(), FX[m.k] ? FX[m.k][0] : '#ffd166', 2.2); an.say(P.name, 3); }
-    else if (P) { const foe = isFree(net.mode) || !r || r.team !== net.team; banner((foe ? 'ENEMY ' : '') + who.toUpperCase() + ' · ' + P.name.toUpperCase(), 2.5); if (foe && (m.k === 'xray' || m.k === 'bsod' || m.k === 'cloak')) an.say((foe ? 'Enemy ' : '') + P.name, 2); }
+    if (me && P) an.medal(P.name.toUpperCase(), P.desc.toUpperCase(), FX[m.k] ? FX[m.k][0] : '#ffd166', 2.2);   // the legend says its own line (voices.js)
+    else if (P) { const foe = isFree(net.mode) || !r || r.team !== net.team; banner((foe ? 'ENEMY ' : '') + who.toUpperCase() + ' · ' + P.name.toUpperCase(), 2.5); }
   });
   net.on('zap', (m) => { if (!m || !m.o || !m.e) return; const o = new THREE.Vector3(...m.o), e = new THREE.Vector3(...m.e); if (m.id === net.id) o.add(new THREE.Vector3(0, -0.35, 0)); arc(o, e); arc(o, e, 0xffffff); if (m.v) burst(e, 0x9fe8ff, 14, 3, 0.5, 2); try { an.sound('zap'); } catch (er) {} });
   return {
@@ -100,4 +100,4 @@ export function createPowers({ game, net, THREE, an, play, banner = () => {} }) 
     },
     dispose() { for (const v of vfx) game.scene.remove(v.obj); vfx = []; for (const b of game.bots.list) if (b._pwk) look(b, false, false); hud.remove(); fx.remove(); tag.remove(); stun.remove(); },
   };
-         }
+}
