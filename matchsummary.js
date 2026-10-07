@@ -31,7 +31,7 @@ table.ms-t{width:100%;border-collapse:collapse;font-size:15px}.ms-t th{font-size
 .ms-go button{font:700 17px Fredoka,system-ui,sans-serif;padding:11px 28px;border:0;border-radius:12px;background:#ffd166;color:#1b2033;cursor:pointer}`;
 export function showSummary(m, { myId, myTeam, onClose } = {}) {
   if (!document.getElementById('ms-css')) { const s = document.createElement('style'); s.id = 'ms-css'; s.textContent = CSS; document.head.appendChild(s); }
-  document.querySelector('.ms')?.remove();
+  { const prev = document.querySelector('.ms'); if (prev) prev._close ? prev._close() : prev.remove(); }
   const list = (m.list || []).slice(), me = list.find((r) => r.id === myId), mvp = list.find((r) => r.id === m.mvp), gun = m.mode === 'gun', dm = DM[m.mode];
   const won = me ? !!me.w : false, draw = !list.some((r) => r.w);
   const sc = (r) => (gun ? r.gl * 1000 + r.k : r.k * 100 + r.dmg / 10 - r.d);
@@ -50,8 +50,8 @@ ${comp.length ? `<div class="ms-co"><h4>BEST PER COMPANY</h4><div class="ms-chip
 <div class="ms-go"><small>ENTER TO CONTINUE</small><button>CONTINUE</button></div></div>`;
   document.body.appendChild(el);
   let closed = false; const close = () => { if (closed) return; closed = true; el.remove(); document.removeEventListener('keydown', key, true); clearTimeout(to); try { onClose && onClose(); } catch (e) {} };
-  const key = (e) => { if (e.code === 'Enter' || e.code === 'Space' || e.code === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); } };
-  el.querySelector('button').onclick = close; el.addEventListener('mousedown', (e) => e.stopPropagation());
+  const key = (e) => { if (e.code === 'Enter' || e.code === 'Space' || e.code === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); if (!e.repeat) close(); } };
+  el._close = close; el.querySelector('button').onclick = close; el.addEventListener('mousedown', (e) => e.stopPropagation());
   document.addEventListener('keydown', key, true); const to = setTimeout(close, 16000);
   return { close };
 }
