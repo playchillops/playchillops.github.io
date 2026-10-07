@@ -38,7 +38,7 @@ export const LEGENDS = [
 ];
 export const LEGEND_IDS = LEGENDS.map((l) => l.id);
 // Superpowers (Juan 2026-10-06: "cada persona tiene un superpoder que se rellena con el tiempo y cuando matas"): one per legend.
-// Charge 0..100: POWER_CHARGE.perSec every second alive in a live round, +perKill per kill, +perDmg per damage point. Q fires it at 100.
+// Charge 0..100: POWER_CHARGE.perSec every second alive in a live round, +perKill per kill, +perDmg per damage point. Y fires it at 100.
 export const POWERS = {
   jobs: { k: 'xray', name: 'One More Thing', desc: 'See every enemy through walls', dur: 8 },
   zuck: { k: 'cloak', name: 'Metaverse', desc: 'Turn almost invisible (shooting flickers you back)', dur: 7 },
@@ -50,6 +50,7 @@ export const POWERS = {
   lisa: { k: 'turbo', name: 'Ryzen Turbo', desc: 'Run 60% faster', dur: 7 },
 };
 export const POWER_CHARGE = { perSec: 1.25, perKill: 25, perDmg: 0.12 };
+export const KNIFE_REACH = 1.5; // metres, shared by client and server
 export const TURBO = 1.6, STUN_TASER = 5, STUN_BSOD = 2.5, TASER_RANGE = 6.5;
 /** Starship launch: same numbers on the client (prediction) and the server */
 export function rocketVel(yaw, pitch) { const up = Math.max(0, Math.min(.9, pitch)); return { x: -Math.sin(yaw) * (14 - up * 6), y: 14 + up * 6, z: -Math.cos(yaw) * (14 - up * 6) }; }   // flat: ~18 m far, 4.5 m high; looking up: 8.5 m high
