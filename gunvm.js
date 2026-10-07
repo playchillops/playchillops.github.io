@@ -28,7 +28,10 @@ const ADS = { pistol: [0, -.093, -.34], smg: [0, -.115, -.35], rifle: [0, -.118,
 export function createViewmodels(THREE) {
   const T = THREE, group = new T.Group(); group.name = 'viewmodels';
   const mats = new Map(), mat = (c, o = {}) => { const k = c + JSON.stringify(o); if (!mats.has(k)) mats.set(k, new T.MeshLambertMaterial({ color: c, flatShading: true, ...o })); return mats.get(k); };
-  const dark = mat(0x2b2f3a), mid = mat(0x4a5163), metal = mat(0x8e9bb0), brass = mat(0xffc85a), skin = mat(0xf0c3a0), glove = mat(0x2f3b55), sleeveM = mat(0x3d6bff), cuffM = mat(0xffd166);
+  const dark = mat(0x2b2f3a), mid = mat(0x4a5163), metal = mat(0x8e9bb0), brass = mat(0xffc85a), skin = mat(0xf0c3a0);
+  // hand / sleeve materials are not shared with gun parts (setOutfit recolours them: your legend's sleeves, bare hands, team cuff)
+  const own = (c) => new T.MeshLambertMaterial({ color: c, flatShading: true }), OUTFIT0 = { glove: 0x2f3b55, sleeve: 0x3d6bff, cuff: 0xffd166, knuckle: 0x3a4766 };
+  const glove = own(OUTFIT0.glove), sleeveM = own(OUTFIT0.sleeve), cuffM = own(OUTFIT0.cuff), knuckM = own(OUTFIT0.knuckle);
   const B = (p, w, h, d, m, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) => { const o = new T.Mesh(new T.BoxGeometry(w, h, d), m); o.position.set(x, y, z); o.rotation.set(rx, ry, rz); p.add(o); return o; };
   const C = (p, r, l, m, x = 0, y = 0, z = 0, sg = 10, r2 = r) => { const o = new T.Mesh(new T.CylinderGeometry(r, r2, l, sg), m); o.rotation.x = PI / 2; o.position.set(x, y, z); p.add(o); return o; };
   const G = (p, x = 0, y = 0, z = 0) => { const g = new T.Group(); g.position.set(x, y, z); p.add(g); return g; };
@@ -42,7 +45,7 @@ export function createViewmodels(THREE) {
   function hand(p, x, y, z, ry = 0, sleeveDir = [.03, -.07, .2]) {
     const h = G(p, x, y, z); h.rotation.y = ry; h.userData.hand = true;
     B(h, .052, .05, .07, glove, 0, 0, 0); B(h, .056, .03, .062, glove, -.008, .028, -.004); B(h, .02, .022, .05, glove, .028, .018, -.03, 0, -.5, 0);
-    for (let i = 0; i < 3; i++) B(h, .052, .012, .006, mat(0x3a4766), 0, .045, -.026 + i * .02);
+    for (let i = 0; i < 3; i++) B(h, .052, .012, .006, knuckM, 0, .045, -.026 + i * .02);
     const s = G(h, 0, -.01, .04), L = Math.hypot(...sleeveDir); s.quaternion.setFromUnitVectors(new T.Vector3(0, 0, 1), new T.Vector3(...sleeveDir).normalize());
     const sl = C(s, .034, L, sleeveM, 0, 0, L / 2, 10, .042); void sl; C(s, .04, .028, cuffM, 0, 0, .018, 10);
     return h;
@@ -126,6 +129,9 @@ export function createViewmodels(THREE) {
   const api = {
     group, models,
     get current() { return st.current; },
+    /** o = { sleeve, glove, cuff } colours (legendOutfit) or null for the default gloves + blue sleeves */
+    setOutfit(o) { const c = o || OUTFIT0; glove.color.setHex(c.glove ?? OUTFIT0.glove); sleeveM.color.setHex(c.sleeve ?? OUTFIT0.sleeve); cuffM.color.setHex(c.cuff ?? OUTFIT0.cuff);
+      knuckM.color.setHex(o ? new T.Color(c.glove).multiplyScalar(0.82).getHex() : OUTFIT0.knuckle); },
     setWeapon(id) {
       if (!models[id] || id === st.current && models[id].g.visible) return;
       models[st.current].g.visible = false;
