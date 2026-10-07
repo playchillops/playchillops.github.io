@@ -85,10 +85,18 @@ export const WEAPONS = {
     damage: { head: 80, body: 40, limb: 28 }, range: 250, pellets: 1, spread: 0.022, spreadMove: 0.03, spreadPerShot: 0, spreadMax: 0.04, spreadRecover: 5, adsSpread: 0.001,
     recoil: { pitch: 0.035, yaw: 0.006, kick: 0.09, recover: 6 }, zoom: 3, scope: true, adsZoom: 3, color: 0x7fe3ff, flash: 1.1,
     desc: 'Light scout sniper · 3× scope · fast and mobile' },
+  bazooka: { id: 'bazooka', name: 'Kite Bazooka', cls: 'launcher', slot: 'primary', price: 3600, auto: false, rpm: 35, mag: 1, reserve: 4, reloadTime: 2.8,
+    damage: { head: 85, body: 85, limb: 85 }, range: 100, pellets: 1, spread: .003, spreadMove: .018, spreadPerShot: 0, spreadMax: .02, spreadRecover: 5,
+    recoil: { pitch: .075, yaw: .006, kick: .2, recover: 4 }, zoom: 1, scope: false, adsZoom: 1.2, color: 0xa6dd79, flash: 1.5,
+    projectile: { speed: 34, gravity: 0, fuse: 3, radius: 6, damage: 85 }, desc: 'Rocket launcher · 1 rocket · splash damage · no full-health one-shot' },
+  grenadelauncher: { id: 'grenadelauncher', name: 'Pop Launcher', cls: 'launcher', slot: 'primary', price: 2400, auto: false, rpm: 80, mag: 4, reserve: 12, reloadTime: 3.2,
+    damage: { head: 65, body: 65, limb: 65 }, range: 65, pellets: 1, spread: .008, spreadMove: .025, spreadPerShot: 0, spreadMax: .025, spreadRecover: 5,
+    recoil: { pitch: .045, yaw: .01, kick: .14, recover: 5 }, zoom: 1, scope: false, adsZoom: 1.2, color: 0xffa76e, flash: 1.2,
+    projectile: { speed: 22, gravity: 9.8, fuse: 2.5, radius: 5, damage: 65 }, desc: 'Grenade launcher · 4 rounds · arcing impact grenades' },
 };
 // shop / UI helpers
 export const WEAPON_CATEGORIES = ['PISTOLS', 'SMG & HEAVY', 'RIFLES', 'SNIPERS'];
-export const weaponCategory = (w) => (w.cls === 'pistol' || w.cls === 'hpistol' ? 0 : w.cls === 'smg' || w.cls === 'shotgun' || w.cls === 'lmg' ? 1 : w.cls === 'rifle' ? 2 : 3);
+export const weaponCategory = (w) => (w.cls === 'pistol' || w.cls === 'hpistol' ? 0 : w.cls === 'smg' || w.cls === 'shotgun' || w.cls === 'lmg' || w.cls === 'launcher' ? 1 : w.cls === 'rifle' ? 2 : 3);
 // 0..1 bars for the buy menu: damage per second-ish, fire rate, control (low recoil/spread), range
 export function weaponBars(w) {
   const dps = (w.damage.body * w.pellets * Math.min(w.rpm, w.burst ? 60 / (w.burstDelay + (w.burst - 1) * 60 / w.rpm) * w.burst : w.rpm)) / 60;
@@ -108,7 +116,7 @@ export function computeDamage(weaponId, zone = 'body', distance = 0) {
   return d;
 }
 export const weaponClass = (id) => (WEAPONS[id] && WEAPONS[id].cls) || 'pistol';
-export const shotSound = (id) => ({ pistol: 'shot_pistol', hpistol: 'shot_hpistol', smg: 'shot_smg', shotgun: 'shot_shotgun', lmg: 'shot_lmg', rifle: id === 'machinegun' ? 'shot_mg' : 'shot_m4', sniper: id === 'sniper' ? 'shot_sniper' : 'shot_scout' }[weaponClass(id)] || 'shot_pistol');
+export const shotSound = (id) => ({ pistol: 'shot_pistol', hpistol: 'shot_hpistol', smg: 'shot_smg', shotgun: 'shot_shotgun', lmg: 'shot_lmg', rifle: id === 'machinegun' ? 'shot_mg' : 'shot_m4', sniper: id === 'sniper' ? 'shot_sniper' : 'shot_scout' }[weaponClass(id)] || (weaponClass(id) === 'launcher' ? 'shot_shotgun' : 'shot_pistol'));
 
 export function applyDamage(hp, weaponId, zone = 'body', distance = 0) {
   const headshot = zone === 'head';
@@ -203,7 +211,8 @@ export function createWeaponSystem(THREE, vm, hud) {
         ws.bloom = Math.min(w.spreadMax, ws.bloom + w.spreadPerShot);
         let kp = 1, ky = (Math.random() - 0.5) * 2; const pat = w.pattern;   // CS-style spray: learnable pattern + a little noise
         if (pat) { const i = ws.sprayN < pat.length ? ws.sprayN : pat.length - 6 + ((ws.sprayN - pat.length) % 6); kp = pat[Math.max(0, i)][0]; ky = pat[Math.max(0, i)][1] + (Math.random() - 0.5) * 0.35; }
-        ws.lookPitch += w.recoil.pitch * kp * (ws.aiming ? 0.7 : 1);
+        const climb = 1.25 + Math.min(ws.sprayN, 12) * 0.055;
+        ws.lookPitch += w.recoil.pitch * kp * climb * (ws.aiming ? 0.7 : 1);
         ws.lookYaw += ky * w.recoil.yaw; ws.sprayN++; ws.sprayT = 0;
         vm.fire(); emit('shot', { weapon: ws.current, mag: a.mag });
         if (a.mag === 0 && a.reserve > 0 && w.auto) ws.reload();
@@ -285,7 +294,7 @@ export function createHUD(container = document.body) {
       t1.style.top = -g - L + 'px'; t2.style.top = g + 'px'; l1.style.left = -g - L + 'px'; l2.style.left = g + 'px';
     },
     hitMarker(kill = false, head = false) {
-      hit.style.setProperty('--c', kill ? '#ff3b3b' : head ? '#ffd24a' : '#fff');
+      hit.style.setProperty('--c', head ? '#39ff14' : kill ? '#ff3b3b' : '#fff');
       hit.classList.add('on'); clearTimeout(hitT); hitT = setTimeout(() => hit.classList.remove('on'), 90);
     },
     damageFlash() { flash.classList.add('on'); setTimeout(() => flash.classList.remove('on'), 80); },
