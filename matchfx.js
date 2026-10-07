@@ -6,7 +6,8 @@ import { createAnnouncer } from './announcer.js';
 import { createFinalCam } from './finalcam.js';
 import { createSprays } from './spray.js';
 import { showSummary } from './matchsummary.js';
-import { DM, GUN_ORDER, isFree } from './common.js';
+import { DM, GUN_ORDER, isFree, legendOf } from './common.js';
+import { legendOutfit } from './characters.js';
 import { WEAPONS } from './player.js';
 const MULTI = ['', '', 'DOUBLE KILL', 'TRIPLE KILL', 'MULTI KILL', 'ULTRA KILL', 'RAMPAGE'], SAYM = ['', '', 'Double kill', 'Triple kill', 'Multi kill', 'Ultra kill', 'Rampage'];
 const STREAK = { uav: ['UAV online', 'Enemy UAV online'], missile: ['Missile away', 'Enemy missile incoming'], rc: ['RC car deployed', 'Enemy RC car spotted'], airstrike: ['Airstrike inbound', 'Enemy airstrike inbound'], nuke: ['Tactical nuke inbound', 'Enemy tactical nuke inbound'] };
@@ -19,7 +20,14 @@ export function createMatchFx({ game, net, THREE, play, banner = () => {} }) {
   const kf = createKillfeed(), an = createAnnouncer({ volume: vol });
   const cam = createFinalCam(THREE, { camera: game.camera, world: game.world, play, onShot: ({ o, e }) => { try { game.anim.onBotShot({ from: new THREE.Vector3(...o), to: new THREE.Vector3(...e), hit: false }); } catch (er) {} } });
   const sprays = createSprays(THREE, { scene: game.scene, world: game.world });
-  const who = (id) => { if (!id) return null; const r = net.roster.get(id); return { name: (r && r.name) || (id === net.id ? 'You' : 'Player'), team: id === net.id ? net.team : r && r.team, pr: r && r.pr }; };
+  const who = (id) => { if (!id) return null; const r = net.roster.get(id); return { name: (r && r.name) || (id === net.id ? 'You' : 'Player'), team: id === net.id ? net.team : r && r.team, pr: r && r.pr, ch: (r && r.ch) || (id === net.id ? net.ch : '') }; };
+  // your Silicon Valley legend: intro card + voice, and first-person sleeves / bare hands / team cuff
+  let shownLegend = '', outfitKey = '';
+  const outfit = () => { const key = net.ch + net.team; if (key === outfitKey) return; outfitKey = key; const o = legendOutfit(net.ch, net.team); try { game.vm.setOutfit && game.vm.setOutfit(o); game.kvm && game.kvm.setOutfit && game.kvm.setOutfit(o); } catch (e) {} };
+  const introduce = () => { const lg = legendOf(net.ch); if (!lg || shownLegend === net.ch) return; shownLegend = net.ch; an.medal('YOU ARE ' + lg.name.toUpperCase(), lg.co.toUpperCase(), '#ffd166', 3.6); an.say('You are ' + lg.name, 2); };
+  net.on('welcome', () => { outfit(); setTimeout(introduce, 900); });
+  net.on('roster', () => { const r = net.roster.get(net.id); if (r && r.ch && r.ch !== net.ch) { net.ch = r.ch; shownLegend = ''; setTimeout(introduce, 300); } outfit(); });
+  net.on('tsw', () => outfit()); net.on('teamr', () => outfit()); net.on('swap', () => setTimeout(outfit, 50));
   const free = () => isFree(net.mode);
   let multi = 0, multiT = 0, spree = 0, lastKiller = 0, lead = null, sum = null, summaryShown = false, waiting = [], warned = {}, lastGl = 0;
   const flushWaiting = () => { const w = waiting; waiting = []; for (const f of w) try { f(); } catch (e) {} };
@@ -94,7 +102,7 @@ export function createMatchFx({ game, net, THREE, play, banner = () => {} }) {
       let mine = 0, best = 0; for (const [id, v] of net.fs || []) { if (id === net.id) mine = v; else best = Math.max(best, v); }
       return net.mode === 'gun' ? { p: Math.min(mine + 1, GUN_ORDER.length), b: Math.min(best + 1, GUN_ORDER.length), label: 'LVL / ' + GUN_ORDER.length } : { p: mine, b: best, label: 'YOU · TOP / ' + d.limit };
     },
-    dispose() { document.body.classList.remove('sc-dm', 'fc-on'); cam.dispose(); kf.dispose(); an.dispose(); sprays.dispose(); document.querySelector('.ms')?.remove(); flushWaiting(); },
+    dispose() { try { game.vm.setOutfit && game.vm.setOutfit(null); game.kvm && game.kvm.setOutfit && game.kvm.setOutfit(null); } catch (e) {} document.body.classList.remove('sc-dm', 'fc-on'); cam.dispose(); kf.dispose(); an.dispose(); sprays.dispose(); document.querySelector('.ms')?.remove(); flushWaiting(); },
   };
   return api;
 }
