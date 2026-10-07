@@ -1,5 +1,6 @@
 // game.js - Sniper Chill: wires map, movement, hitscan, player/weapons, audio and bots together.
 import * as THREE from './three.module.min.js';
+import { KNIFE_REACH } from './common.js';
 import { buildMap, LAYOUTS } from './map.js';
 import { createController } from './movement.js';
 import { raycast, wallBlocked } from './hitscan.js';
@@ -229,7 +230,7 @@ export class Game {
     const o = this.ctrl.state.eye, d = this.ctrl.getDirection(); let best = null, bd = 1e9;
     for (const b of this.bots.list) {
       if (!b.alive) continue; const p = b.position, vx = p.x - o.x, vy = p.y + 1.0 - o.y, vz = p.z - o.z, dist = Math.hypot(vx, vy, vz);
-      if (dist > (heavy ? 2.4 : 2.7) || dist < 0.01) continue; const dot = (vx * d.x + vy * d.y + vz * d.z) / dist; if (dot < (heavy ? 0.7 : 0.55)) continue;
+      if (dist > KNIFE_REACH || dist < 0.01) continue; const dot = (vx * d.x + vy * d.y + vz * d.z) / dist; if (dot < (heavy ? 0.7 : 0.55)) continue;
       const wall = raycast(o, { x: vx / dist, y: vy / dist, z: vz / dist }, { colliders: this.world, maxDistance: dist }); if (wall) continue;
       if (dist < bd) { bd = dist; best = { b, dist, dir: { x: vx / dist, y: vy / dist, z: vz / dist }, point: { x: p.x, y: p.y + 1.0, z: p.z } }; }
     }
@@ -587,4 +588,4 @@ export class Game {
     this.kc.afterRender();
   }
   destroy() { this.running = false; this.ro && this.ro.disconnect(); this.ctrl.dispose(); this.renderer.dispose(); }
-            }
+      }
