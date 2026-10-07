@@ -30,6 +30,7 @@ const CSS = `
 .mn-row span{font-size:12.5px;opacity:.7;line-height:1.35}
 .mn-keys{display:grid;grid-template-columns:1fr 1fr;gap:6px 22px}.mn-keys div{display:flex;gap:10px;align-items:center;font-size:13px;opacity:.9}
 .mn-keys kbd{min-width:44px;text-align:center;border:1px solid rgba(255,255,255,.45);border-radius:5px;font:600 11px Fredoka,system-ui;padding:2px 6px}
+.mn-leg{position:absolute;left:50%;bottom:7%;transform:translateX(-50%);text-align:center;text-shadow:0 2px 10px #000;white-space:nowrap}.mn-leg b{display:block;font-size:clamp(18px,3vh,28px);letter-spacing:.14em;text-transform:uppercase}.mn-leg span{font-size:12px;letter-spacing:.3em;text-transform:uppercase;color:#ffb347}
 .mn-who{position:absolute;right:clamp(20px,4vw,60px);bottom:clamp(50px,9vh,80px);z-index:3;text-align:right;text-shadow:0 2px 8px #000}
 .mn-name{font-size:24px;font-weight:600;letter-spacing:.1em}.mn-lvl{font-size:12px;letter-spacing:.2em;opacity:.7}
 .mn-bar{position:absolute;left:0;right:0;bottom:0;height:38px;z-index:3;display:flex;gap:26px;align-items:center;padding:0 clamp(20px,4vw,64px);background:linear-gradient(transparent,rgba(0,0,0,.6));font-size:12px;letter-spacing:.12em;opacity:.85}
@@ -112,7 +113,9 @@ export function buildMenu(game, THREE, createCharacter, ROSTER) {
     const cv = el.querySelector('.mn-char canvas'); rend = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true }); rend.setClearColor(0, 0);
     const sc = new THREE.Scene(), cam = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
     sc.add(new THREE.AmbientLight(0x8890c0, 0.9)); const dl = new THREE.DirectionalLight(0xffe2c0, 1.0); dl.position.set(2, 3, 4); sc.add(dl); const rim = new THREE.DirectionalLight(0xff8a2a, 2.6); rim.position.set(-3, 2.5, -3); sc.add(rim); const rim2 = new THREE.DirectionalLight(0x6fb6ff, 2.2); rim2.position.set(3, 2, -3); sc.add(rim2);
-    const ch = createCharacter(THREE, { id: ROSTER[0].id, team: 'CT', weapon: 'pistol' }); sc.add(ch.group); cam.position.set(0, 1.15, 4.0); cam.lookAt(0, 0.9, 0); ch.group.position.set(0.1, 0, 0);
+    const legends = ROSTER.filter((r) => r.legend), pick = legends.length ? legends[Math.floor(Math.random() * legends.length)] : ROSTER[0];   // a random Silicon Valley legend every time
+    const ch = createCharacter(THREE, { id: pick.id, team: 'CT', weapon: 'pistol' }); sc.add(ch.group);
+    if (pick.legend) { const cap = document.createElement('div'); cap.className = 'mn-leg'; cap.innerHTML = `<b>${pick.name}</b><span>${pick.role}</span>`; el.querySelector('.mn-char').appendChild(cap); } cam.position.set(0, 1.15, 4.0); cam.lookAt(0, 0.9, 0); ch.group.position.set(0.1, 0, 0);
     let last = performance.now(), t = 0;
     const loop = (now) => { if (!run) return; requestAnimationFrame(loop); const dt = Math.min(0.05, (now - last) / 1000); last = now; t += dt;
       const w = cv.clientWidth, h = cv.clientHeight; if (w && (cv.width !== w || cv.height !== h)) { rend.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
