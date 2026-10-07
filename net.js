@@ -152,7 +152,7 @@ export class NetClient {
     this.sd = m.sd || null; this.lobby = !!m.ls; this.phase = m.ph; this.phaseLeft = m.pt; this.score = m.sc; this.round = m.rd; if (m.fs) this.fs = m.fs; this.bomb = m.bomb ? { site: m.bomb[0], x: m.bomb[1], y: m.bomb[2], z: m.bomb[3], t: m.bomb[4] } : null;
     const mine = pl.get(this.id), me = m.me;
     if (mine && me) {
-      this.alive = mine.alive; this.sz = me.sz || null; Object.assign(this.me, { mag: me.mag, res: me.res, rl: me.rl, hp: mine.hp, weapon: mine.weapon, pp: me.pp, dp: me.dp, m: me.m, inv: me.inv, gr: me.gr, ar: me.ar, he: me.he, ks: me.ks, gl: me.gl, pt: me.pt, pw: me.pw || 0, pa: me.pa || 0, st: me.st || 0, sk: me.sk || '', tz: !!me.tz }); if (m.av) this.avg = m.av;
+      this.alive = mine.alive; this.sz = me.sz || null; Object.assign(this.me, { mag: me.mag, res: me.res, rl: me.rl, hp: mine.hp, weapon: mine.weapon, pp: me.pp, dp: me.dp, m: me.m, inv: me.inv, gr: me.gr, ar: me.ar, he: me.he, ks: me.ks, gl: me.gl, pt: me.pt, pw: me.pw || 0, pa: me.pa || 0, st: me.st || 0, sk: me.sk || '', tz: !!me.tz, cp: me.cp || 0 }); if (m.av) this.avg = m.av;
       this.reconcile(me, mine);
     }
     this.emit('snap', m);
