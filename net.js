@@ -117,7 +117,7 @@ export class NetClient {
     for (const [id, eb] of b.pl) {
       if (id === this.id) continue;
       const ea = a.pl.get(id) || eb, r = this.roster.get(id) || {};
-      out.push({ id, name: r.name || '?', team: r.team, x: lerp(ea.x, eb.x, f), y: lerp(ea.y, eb.y, f), z: lerp(ea.z, eb.z, f), yaw: lerpAngle(ea.yaw, eb.yaw, f), pitch: lerp(ea.pitch, eb.pitch, f),
+      out.push({ id, name: r.name || '?', team: r.team, ch: r.ch, x: lerp(ea.x, eb.x, f), y: lerp(ea.y, eb.y, f), z: lerp(ea.z, eb.z, f), yaw: lerpAngle(ea.yaw, eb.yaw, f), pitch: lerp(ea.pitch, eb.pitch, f),
         crouched: eb.crouched, alive: eb.alive, connected: eb.connected, hp: eb.hp, weapon: eb.weapon });
     }
     return out;
@@ -128,11 +128,11 @@ export class NetClient {
     let m; try { m = JSON.parse(raw); } catch { return; }
     switch (m.t) {
       case 'welcome':
-        this.id = m.id; this.token = m.token; this.room = m.room; this.team = m.team; this.mode = m.mode || '1v1'; this.tickRate = m.tickRate; this.snapDiv = m.snapDiv; this.dropAt = 0;
+        this.id = m.id; this.token = m.token; this.room = m.room; this.team = m.team; this.mode = m.mode || '1v1'; this.ch = m.ch || ''; this.tickRate = m.tickRate; this.snapDiv = m.snapDiv; this.dropAt = 0;
         if (m.resumed) { this.pending = []; this.pred.clear(); }
         this.emit('welcome', m); break;
       case 'roster': this.roster.clear(); for (const r of m.list) this.roster.set(r.id, r); this.emit('roster', m); break;
-      case 'join': this.roster.set(m.id, { id: m.id, name: m.name, team: m.team, k: 0, d: 0 }); this.emit('join', m); break;
+      case 'join': this.roster.set(m.id, { id: m.id, name: m.name, team: m.team, ch: m.ch, k: 0, d: 0 }); this.emit('join', m); break;
       case 'swap': if (m.teams) { if (m.teams[this.id]) this.team = m.teams[this.id]; for (const [id, t] of Object.entries(m.teams)) { const r = this.roster.get(+id); if (r) r.team = t; } } this.emit('swap', m); break;
       case 'leave': this.roster.delete(m.id); this.emit('leave', m); break;
       case 'pong': this.rttMs = (this.o.now() - m.c) * 1000; break;
