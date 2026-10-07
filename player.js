@@ -1,8 +1,8 @@
 // player.js - Sniper Chill PLAYER + WEAPONS module (ES module, no deps, THREE passed in).
 //
 // API
-//   WEAPONS                          weapon defs {pistol, machinegun, sniper}
-//   WEAPON_ORDER                     ['pistol','machinegun','sniper'] (keys 1,2,3)
+//   WEAPONS                          weapon defs (11 guns: cls pistol|hpistol|smg|shotgun|lmg|rifle|sniper, slot, price, burst, pattern, falloff)
+//   WEAPON_ORDER                     = common.js WEAPON_IDS (network index order; append only)
 //   computeDamage(weaponId, zone)    zone: 'head'|'body'|'limb' -> number
 //   applyDamage(hp, weaponId, zone)  -> {hp, damage, killed, headshot}
 //   createViewmodels(THREE)          -> viewmodels: {group, setWeapon(id), fire(), reload(dur), update(dt, state), muzzleWorldPosition(v3), current}
@@ -26,45 +26,93 @@
 //     const k=ws.consumeLook(); pitch+=k.pitch; yaw+=k.yaw; camera.fov=ws.fov(75); camera.updateProjectionMatrix();
 //   on hit: const r=applyDamage(bot.hp, s.weapon, zone); hud.hitMarker(r.killed, r.headshot);
 
-export const WEAPON_ORDER = ['pistol', 'machinegun', 'sniper'];
+import { WEAPON_IDS } from './common.js';
+// Order = network index (input `w`, snapshot weapon). Only APPEND new weapons: indices 0-2 are the original three.
+export const WEAPON_ORDER = WEAPON_IDS;
+
+// Spray patterns (CS-style): per shot [pitch, yaw] multipliers of recoil.pitch / recoil.yaw. After the last entry the
+// last 6 repeat. Kicks are added to the camera aim, so the server sees exactly where you were looking.
+const P_AK = [[1, 0], [1.15, .1], [1.3, .2], [1.4, .5], [1.3, 1], [1.1, 1.6], [.9, 1.4], [.7, .6], [.6, -.6], [.5, -1.5], [.45, -2], [.4, -1.6], [.35, -.6], [.35, .8], [.35, 1.6], [.35, 1.2], [.3, -.4], [.3, -1.2]];
+const P_M4 = [[1, 0], [1.1, .1], [1.15, .3], [1.1, .7], [.95, 1], [.8, .7], [.65, -.2], [.55, -.9], [.5, -1.1], [.45, -.6], [.4, .3], [.4, .9], [.4, .6], [.35, -.3], [.35, -.8]];
+const P_SMG = [[1, 0], [1.1, -.3], [1.1, .3], [1, .8], [.9, .3], [.8, -.6], [.7, -1], [.6, -.2], [.55, .7], [.5, 1], [.5, .2], [.5, -.8]];
+const P_LMG = [[1, 0], [1.2, .3], [1.3, .7], [1.2, 1.2], [1, .9], [.8, 0], [.6, -1], [.5, -1.6], [.45, -1.1], [.4, 0], [.4, 1.2], [.4, 1.6], [.4, .6], [.4, -.8], [.4, -1.4]];
+const P_BURST = [[1, 0], [1.25, .4], [1.4, -.3]];
 
 export const WEAPONS = {
-  pistol: {
-    id: 'pistol', name: 'Chill Pistol', auto: false, rpm: 360, mag: 12, reserve: 60, reloadTime: 1.2,
-    damage: { head: 60, body: 20, limb: 12 },
-    range: 80, pellets: 1, spread: 0.004, spreadMove: 0.012, spreadPerShot: 0.004, spreadMax: 0.02, spreadRecover: 6,
-    recoil: { pitch: 0.014, yaw: 0.004, kick: 0.05, recover: 10 },
-    zoom: 1, scope: false, adsZoom: 1.25, color: 0x5ad1ff, flash: 0.8,
-  },
-  machinegun: {
-    id: 'machinegun', name: 'Chill-O-Matic', auto: true, rpm: 780, mag: 30, reserve: 120, reloadTime: 1.8,
-    damage: { head: 38, body: 11, limb: 7 },
-    range: 70, pellets: 1, spread: 0.007, spreadMove: 0.02, spreadPerShot: 0.0035, spreadMax: 0.05, spreadRecover: 5,
-    recoil: { pitch: 0.007, yaw: 0.005, kick: 0.04, recover: 9 },
-    zoom: 1, scope: false, adsZoom: 1.3, color: 0xffb347, flash: 1,
-  },
-  sniper: {
-    id: 'sniper', name: 'Quiet Storm', auto: false, rpm: 48, mag: 5, reserve: 20, reloadTime: 2.6,
-    damage: { head: 90, body: 55, limb: 40 }, // never one-shots at 100 hp: headshot 90 leaves 10, two hits kill
-    range: 300, pellets: 1, spread: 0.03, spreadMove: 0.06, spreadPerShot: 0, spreadMax: 0.06, spreadRecover: 4,
-    adsSpread: 0.0, // perfectly accurate when scoped and still
-    recoil: { pitch: 0.05, yaw: 0.008, kick: 0.12, recover: 5 },
-    zoom: 4, scope: true, adsZoom: 4, color: 0x9affc4, flash: 1.3,
-  },
+  // ---------------- original three (unchanged balance) ----------------
+  pistol: { id: 'pistol', name: 'Chill Pistol', cls: 'pistol', slot: 'secondary', price: 200, auto: false, rpm: 360, mag: 12, reserve: 60, reloadTime: 1.2,
+    damage: { head: 60, body: 20, limb: 12 }, range: 80, pellets: 1, spread: 0.004, spreadMove: 0.012, spreadPerShot: 0.004, spreadMax: 0.02, spreadRecover: 6,
+    recoil: { pitch: 0.014, yaw: 0.004, kick: 0.05, recover: 10 }, zoom: 1, scope: false, adsZoom: 1.25, color: 0x5ad1ff, flash: 0.8,
+    desc: '12 rounds · quick reload · crisp headshots' },
+  machinegun: { id: 'machinegun', name: 'Chill-O-Matic', cls: 'rifle', slot: 'primary', price: 1800, auto: true, rpm: 780, mag: 30, reserve: 120, reloadTime: 1.8,
+    damage: { head: 38, body: 11, limb: 7 }, range: 70, pellets: 1, spread: 0.007, spreadMove: 0.02, spreadPerShot: 0.0035, spreadMax: 0.05, spreadRecover: 5,
+    recoil: { pitch: 0.007, yaw: 0.005, kick: 0.04, recover: 9 }, pattern: P_AK, zoom: 1, scope: false, adsZoom: 1.3, color: 0xffb347, flash: 1,
+    desc: 'Full auto rifle · hits hard · learn the spray (up, then right, then left)' },
+  sniper: { id: 'sniper', name: 'Quiet Storm', cls: 'sniper', slot: 'primary', price: 3500, auto: false, rpm: 48, mag: 5, reserve: 20, reloadTime: 2.6,
+    damage: { head: 90, body: 55, limb: 40 }, range: 300, pellets: 1, spread: 0.03, spreadMove: 0.06, spreadPerShot: 0, spreadMax: 0.06, spreadRecover: 4, adsSpread: 0.0,
+    recoil: { pitch: 0.05, yaw: 0.008, kick: 0.12, recover: 5 }, zoom: 4, scope: true, adsZoom: 4, color: 0x9affc4, flash: 1.3,
+    desc: 'Bolt-action · 4× scope · two hits anywhere' },
+  // ---------------- new arsenal ----------------
+  thunderpop: { id: 'thunderpop', name: 'Thunder Pop', cls: 'hpistol', slot: 'secondary', price: 700, auto: false, rpm: 150, mag: 7, reserve: 35, reloadTime: 2.1,
+    damage: { head: 85, body: 38, limb: 26 }, range: 90, pellets: 1, spread: 0.005, spreadMove: 0.06, spreadPerShot: 0.03, spreadMax: 0.08, spreadRecover: 4,
+    recoil: { pitch: 0.075, yaw: 0.02, kick: 0.16, recover: 4 }, zoom: 1, scope: false, adsZoom: 1.3, color: 0xffd166, flash: 1.4,
+    desc: 'Hand cannon · huge hits · wild when you move' },
+  fizztwin: { id: 'fizztwin', name: 'Fizz Twin', cls: 'pistol', slot: 'secondary', price: 450, auto: false, burst: 3, burstDelay: 0.38, rpm: 1100, mag: 18, reserve: 72, reloadTime: 1.6,
+    damage: { head: 40, body: 14, limb: 9 }, range: 60, pellets: 1, spread: 0.007, spreadMove: 0.016, spreadPerShot: 0.005, spreadMax: 0.03, spreadRecover: 6,
+    recoil: { pitch: 0.011, yaw: 0.006, kick: 0.04, recover: 10 }, pattern: P_BURST, zoom: 1, scope: false, adsZoom: 1.25, color: 0xf2a9b8, flash: 0.8,
+    desc: '3-round burst pistol · one click, three pops' },
+  buzzbox: { id: 'buzzbox', name: 'Buzz Box', cls: 'smg', slot: 'primary', price: 1200, auto: true, rpm: 900, mag: 32, reserve: 128, reloadTime: 1.9,
+    damage: { head: 30, body: 9, limb: 6 }, falloff: { start: 15, end: 40, min: 0.7 }, range: 45, pellets: 1, spread: 0.009, spreadMove: 0.013, spreadPerShot: 0.0028, spreadMax: 0.045, spreadRecover: 6,
+    recoil: { pitch: 0.0045, yaw: 0.006, kick: 0.03, recover: 10 }, pattern: P_SMG, zoom: 1, scope: false, adsZoom: 1.2, color: 0xc8b3cb, flash: 0.8,
+    desc: 'Run-and-gun SMG · accurate on the move · weak far away' },
+  bigpuff: { id: 'bigpuff', name: 'Big Puff', cls: 'shotgun', slot: 'primary', price: 1100, auto: false, rpm: 68, mag: 6, reserve: 24, reloadTime: 2.8,
+    damage: { head: 22, body: 13, limb: 8 }, falloff: { start: 5, end: 18, min: 0.2 }, range: 26, pellets: 9, spread: 0.06, spreadMove: 0.075, spreadPerShot: 0, spreadMax: 0.075, spreadRecover: 5, adsSpread: 0.045,
+    recoil: { pitch: 0.07, yaw: 0.02, kick: 0.17, recover: 5 }, zoom: 1, scope: false, adsZoom: 1.15, color: 0xff846e, flash: 1.6,
+    desc: 'Pump shotgun · 9 pellets · one pump up close' },
+  partypopper: { id: 'partypopper', name: 'Party Popper', cls: 'lmg', slot: 'primary', price: 2600, auto: true, rpm: 800, mag: 100, reserve: 200, reloadTime: 4.3,
+    damage: { head: 34, body: 10, limb: 7 }, range: 70, pellets: 1, spread: 0.011, spreadMove: 0.03, spreadPerShot: 0.0028, spreadMax: 0.055, spreadRecover: 4,
+    recoil: { pitch: 0.006, yaw: 0.008, kick: 0.045, recover: 7 }, pattern: P_LMG, zoom: 1, scope: false, adsZoom: 1.25, color: 0xa9e0c4, flash: 1.1,
+    desc: '100-round belt · hold the line · slow reload' },
+  breeze: { id: 'breeze', name: 'Breeze M4', cls: 'rifle', slot: 'primary', price: 2100, auto: true, rpm: 690, mag: 25, reserve: 100, reloadTime: 2.0,
+    damage: { head: 36, body: 10, limb: 7 }, range: 75, pellets: 1, spread: 0.005, spreadMove: 0.018, spreadPerShot: 0.0026, spreadMax: 0.038, spreadRecover: 6,
+    recoil: { pitch: 0.0055, yaw: 0.0035, kick: 0.035, recover: 10 }, pattern: P_M4, zoom: 1, scope: false, adsZoom: 1.35, color: 0x68e3db, flash: 0.9,
+    desc: 'Smooth rifle · gentle spray · precise' },
+  taptap: { id: 'taptap', name: 'Tap-Tap', cls: 'rifle', slot: 'primary', price: 1600, auto: false, burst: 3, burstDelay: 0.34, rpm: 1000, mag: 24, reserve: 96, reloadTime: 2.1,
+    damage: { head: 36, body: 11, limb: 7 }, range: 70, pellets: 1, spread: 0.0055, spreadMove: 0.02, spreadPerShot: 0.002, spreadMax: 0.03, spreadRecover: 6,
+    recoil: { pitch: 0.006, yaw: 0.003, kick: 0.035, recover: 11 }, pattern: P_BURST, zoom: 1, scope: false, adsZoom: 1.35, color: 0xffda8d, flash: 0.9,
+    desc: 'Burst rifle · three bullets per click · cheap and tidy' },
+  skyneedle: { id: 'skyneedle', name: 'Sky Needle', cls: 'sniper', slot: 'primary', price: 1900, auto: false, rpm: 70, mag: 10, reserve: 30, reloadTime: 2.3,
+    damage: { head: 80, body: 40, limb: 28 }, range: 250, pellets: 1, spread: 0.022, spreadMove: 0.03, spreadPerShot: 0, spreadMax: 0.04, spreadRecover: 5, adsSpread: 0.001,
+    recoil: { pitch: 0.035, yaw: 0.006, kick: 0.09, recover: 6 }, zoom: 3, scope: true, adsZoom: 3, color: 0x7fe3ff, flash: 1.1,
+    desc: 'Light scout sniper · 3× scope · fast and mobile' },
 };
+// shop / UI helpers
+export const WEAPON_CATEGORIES = ['PISTOLS', 'SMG & HEAVY', 'RIFLES', 'SNIPERS'];
+export const weaponCategory = (w) => (w.cls === 'pistol' || w.cls === 'hpistol' ? 0 : w.cls === 'smg' || w.cls === 'shotgun' || w.cls === 'lmg' ? 1 : w.cls === 'rifle' ? 2 : 3);
+// 0..1 bars for the buy menu: damage per second-ish, fire rate, control (low recoil/spread), range
+export function weaponBars(w) {
+  const dps = (w.damage.body * w.pellets * Math.min(w.rpm, w.burst ? 60 / (w.burstDelay + (w.burst - 1) * 60 / w.rpm) * w.burst : w.rpm)) / 60;
+  const cl = (x, a, b) => Math.max(0.06, Math.min(1, (x - a) / (b - a)));
+  return { damage: cl(w.damage.body * w.pellets, 0, 60), rate: cl(w.burst ? 60 * w.burst / (w.burstDelay + 60 / w.rpm * w.burst) : w.rpm, 40, 950), dps: cl(dps, 20, 190),
+    control: cl(1 - (w.recoil.pitch * 6 + w.spreadMax * 6 + w.spread * 4), 0, 1), range: cl(w.range, 20, 300) };
+}
 
 export const HEADSHOT_KILLS = false;   // headshots hurt a lot but no longer one-shot (helmet cuts them further)
 export const PLAYER_MAX_HP = 100;
 
-export function computeDamage(weaponId, zone = 'body') {
+export function computeDamage(weaponId, zone = 'body', distance = 0) {
   const w = WEAPONS[weaponId];
   if (!w) return 0;
-  return w.damage[zone] ?? w.damage.body;
+  let d = w.damage[zone] ?? w.damage.body;
+  if (w.falloff && distance > w.falloff.start) { const f = w.falloff, t = Math.min(1, (distance - f.start) / (f.end - f.start)); d = Math.max(1, Math.round(d * (1 - t * (1 - f.min)))); }
+  return d;
 }
+export const weaponClass = (id) => (WEAPONS[id] && WEAPONS[id].cls) || 'pistol';
+export const shotSound = (id) => ({ pistol: 'shot_pistol', hpistol: 'shot_hpistol', smg: 'shot_smg', shotgun: 'shot_shotgun', lmg: 'shot_lmg', rifle: id === 'machinegun' ? 'shot_mg' : 'shot_m4', sniper: id === 'sniper' ? 'shot_sniper' : 'shot_scout' }[weaponClass(id)] || 'shot_pistol');
 
-export function applyDamage(hp, weaponId, zone = 'body') {
+export function applyDamage(hp, weaponId, zone = 'body', distance = 0) {
   const headshot = zone === 'head';
-  let damage = computeDamage(weaponId, zone);
+  let damage = computeDamage(weaponId, zone, distance);
   if (headshot && HEADSHOT_KILLS) damage = Math.max(damage, hp);
   const next = Math.max(0, hp - damage);
   return { hp: next, damage, killed: next <= 0, headshot };
@@ -80,141 +128,8 @@ export function createPlayerState(opts = {}) {
   return s;
 }
 
-// ---------------------------------------------------------------- viewmodels
-export function createViewmodels(THREE) {
-  const group = new THREE.Group();
-  group.name = 'viewmodels';
-  const mat = (c, o = {}) => new THREE.MeshLambertMaterial({ color: c, flatShading: true, ...o });
-  const box = (w, h, d, m, x = 0, y = 0, z = 0, parent) => {
-    const me = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
-    me.position.set(x, y, z); if (parent) parent.add(me); return me;
-  };
-  const cyl = (r, l, m, x, y, z, parent, seg = 8) => {
-    const me = new THREE.Mesh(new THREE.CylinderGeometry(r, r, l, seg), m);
-    me.rotation.x = Math.PI / 2; me.position.set(x, y, z); parent.add(me); return me;
-  };
-  const dark = mat(0x2b2f3a), mid = mat(0x4a5163), skin = mat(0xf0c3a0), sleeve = mat(0x3d6bff);
-
-  function hand(parent, x, y, z) {
-    const h = new THREE.Group(); h.position.set(x, y, z); parent.add(h);
-    box(0.05, 0.05, 0.07, skin, 0, 0, 0, h);
-    box(0.055, 0.05, 0.14, sleeve, 0, -0.01, 0.1, h);
-    return h;
-  }
-  function flashMesh(color) {
-    const g = new THREE.Group();
-    const m = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.95, depthWrite: false });
-    const a = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.12, 6), m); a.rotation.x = -Math.PI / 2; a.position.z = -0.06; g.add(a);
-    const b = new THREE.Mesh(new THREE.PlaneGeometry(0.14, 0.14), m); g.add(b);
-    const c = b.clone(); c.rotation.z = Math.PI / 4; g.add(c);
-    g.visible = false; g.userData.mat = m; return g;
-  }
-
-  const models = {};
-  // pistol
-  { const g = new THREE.Group(); const body = mat(WEAPONS.pistol.color);
-    const slide = box(0.05, 0.06, 0.26, body, 0, 0.02, -0.05, g);
-    box(0.045, 0.09, 0.06, dark, 0, -0.045, 0.04, g).rotation.x = 0.25;
-    box(0.04, 0.03, 0.1, dark, 0, -0.01, -0.05, g);
-    box(0.012, 0.015, 0.012, mid, 0, 0.055, -0.16, g); box(0.02, 0.015, 0.012, mid, 0, 0.055, 0.05, g);
-    const muzzle = new THREE.Object3D(); muzzle.position.set(0, 0.02, -0.2); g.add(muzzle);
-    const fl = flashMesh(0xfff2a0); fl.position.copy(muzzle.position); g.add(fl);
-    hand(g, 0, -0.08, 0.07);
-    models.pistol = { g, muzzle, flash: fl, slide, slideRest: slide.position.z, home: new THREE.Vector3(0.17, -0.17, -0.38), ads: new THREE.Vector3(0, -0.09, -0.34) }; }
-  // machine gun
-  { const g = new THREE.Group(); const body = mat(WEAPONS.machinegun.color);
-    box(0.07, 0.09, 0.42, body, 0, 0, -0.1, g);
-    cyl(0.018, 0.3, dark, 0, 0.01, -0.45, g);
-    box(0.045, 0.16, 0.07, dark, 0, -0.12, -0.02, g).rotation.x = -0.2;
-    box(0.04, 0.1, 0.06, dark, 0, -0.08, 0.1, g).rotation.x = 0.3;
-    box(0.06, 0.07, 0.2, mid, 0, -0.01, 0.2, g);
-    box(0.02, 0.03, 0.03, mid, 0, 0.07, -0.3, g); box(0.03, 0.03, 0.03, mid, 0, 0.07, 0.05, g);
-    const muzzle = new THREE.Object3D(); muzzle.position.set(0, 0.01, -0.62); g.add(muzzle);
-    const fl = flashMesh(0xffc15a); fl.position.copy(muzzle.position); g.add(fl);
-    hand(g, 0, -0.06, -0.3); hand(g, 0.0, -0.1, 0.12);
-    models.machinegun = { g, muzzle, flash: fl, slide: null, home: new THREE.Vector3(0.19, -0.2, -0.4), ads: new THREE.Vector3(0, -0.12, -0.36) }; }
-  // sniper
-  { const g = new THREE.Group(); const body = mat(WEAPONS.sniper.color);
-    box(0.05, 0.07, 0.6, body, 0, 0, -0.1, g);
-    cyl(0.014, 0.55, dark, 0, 0.01, -0.68, g);
-    box(0.05, 0.1, 0.22, dark, 0, -0.03, 0.3, g);
-    box(0.04, 0.09, 0.06, dark, 0, -0.09, 0.08, g);
-    cyl(0.03, 0.26, mid, 0, 0.09, -0.12, g, 10);           // scope tube
-    cyl(0.04, 0.03, dark, 0, 0.09, -0.27, g, 10); cyl(0.036, 0.03, dark, 0, 0.09, 0.02, g, 10);
-    box(0.012, 0.04, 0.012, mid, 0, 0.05, -0.12, g);
-    const muzzle = new THREE.Object3D(); muzzle.position.set(0, 0.01, -0.97); g.add(muzzle);
-    const fl = flashMesh(0xbfffe0); fl.position.copy(muzzle.position); fl.scale.setScalar(1.4); g.add(fl);
-    hand(g, 0, -0.1, 0.06); hand(g, 0, -0.04, -0.3);
-    models.sniper = { g, muzzle, flash: fl, slide: null, home: new THREE.Vector3(0.2, -0.2, -0.42), ads: new THREE.Vector3(0, -0.09, -0.3) }; }
-
-  for (const id of WEAPON_ORDER) { models[id].g.visible = false; group.add(models[id].g); }
-
-  const st = {
-    current: 'pistol', recoil: 0, flash: 0, reloadT: -1, reloadDur: 1, aim: 0, aimTarget: 0,
-    bob: 0, swap: 1, kick: 0, time: 0, inspT: -1,
-  };
-  const api = {
-    group, models,
-    get current() { return st.current; },
-    setWeapon(id) {
-      if (!models[id] || id === st.current && models[id].g.visible) return;
-      models[st.current].g.visible = false;
-      st.current = id; models[id].g.visible = true; st.swap = 0; st.reloadT = -1; st.flash = 0; st.inspT = -1;
-    },
-    fire() { const w = WEAPONS[st.current]; st.recoil = Math.min(1.6, st.recoil + 1); st.flash = 0.06; st.kick = w.recoil.kick;
-      models[st.current].flash.rotation.z = Math.random() * 6.28; },
-    inspect() { if (st.reloadT >= 0 || st.inspT >= 0 || st.aimTarget > 0 || st.recoil > 0.15 || st.swap < 1) return false; st.inspT = 0; return true; },
-    get inspecting() { return st.inspT >= 0; },
-    reload(dur) { st.inspT = -1; st.reloadT = 0; st.reloadDur = dur ?? WEAPONS[st.current].reloadTime; },
-    setAim(on) { st.aimTarget = on ? 1 : 0; },
-    get aimAmount() { return st.aim; },
-    get reloading() { return st.reloadT >= 0; },
-    muzzleWorldPosition(v) { models[st.current].muzzle.getWorldPosition(v); return v; },
-    // state: {moving, sprinting}
-    update(dt, s = {}) {
-      st.time += dt;
-      const m = models[st.current], w = WEAPONS[st.current];
-      st.aim += (st.aimTarget - st.aim) * Math.min(1, dt * 14);
-      st.swap = Math.min(1, st.swap + dt * 5);
-      st.recoil = Math.max(0, st.recoil - dt * w.recoil.recover);
-      st.kick = Math.max(0, st.kick - dt * 0.6);
-      if (s.moving) st.bob += dt * (s.sprinting ? 13 : 8);
-      const bobAmt = (s.moving ? 1 : 0) * (1 - st.aim * 0.9) * (s.sprinting ? 1.6 : 1);
-      const idle = Math.sin(st.time * 1.6) * 0.0015;
-      const p = m.home.clone().lerp(m.ads, st.aim);
-      p.x += Math.cos(st.bob * 0.5) * 0.012 * bobAmt;
-      p.y += Math.abs(Math.sin(st.bob * 0.5)) * 0.014 * bobAmt + idle - (1 - st.swap) * 0.25;
-      p.z += st.recoil * w.recoil.kick * 1.4;
-      m.g.position.copy(p);
-      m.g.rotation.set(st.recoil * w.recoil.kick * 2.2 - (1 - st.swap) * 0.8, 0, 0);
-      if (s.sprinting && s.moving) { m.g.rotation.y = 0.35 * (1 - st.aim); m.g.rotation.z = -0.1; } else m.g.rotation.z = 0;
-      if (m.slide) m.slide.position.z = m.slideRest + Math.min(1, st.recoil) * 0.07;
-      // reload
-      if (st.reloadT >= 0) {
-        st.reloadT += dt; const t = Math.min(1, st.reloadT / st.reloadDur);
-        const dip = Math.sin(t * Math.PI);                       // down and back up
-        m.g.position.y -= dip * 0.12; m.g.position.x += dip * 0.04;
-        m.g.rotation.x += dip * 0.7; m.g.rotation.z += Math.sin(t * Math.PI * 2) * 0.25 * dip;
-        if (t >= 1) st.reloadT = -1;
-      }
-      // inspect: slow turn of the weapon in front of the camera (cancelled by fire, reload, aim)
-      if (st.inspT >= 0) {
-        if (st.recoil > 0.05 || st.aimTarget > 0 || st.reloadT >= 0) st.inspT = -1;
-        else { st.inspT += dt; const t = Math.min(1, st.inspT / 2.2), e = Math.sin(Math.PI * Math.min(1, t * 1.05)), e2 = e * e * (3 - 2 * e);
-          m.g.position.x -= e2 * 0.07; m.g.position.y += e2 * 0.035; m.g.position.z += e2 * 0.07;
-          m.g.rotation.y += e2 * 0.95 * Math.cos(t * Math.PI * 1.5); m.g.rotation.x -= e2 * 0.3; m.g.rotation.z += Math.sin(t * Math.PI * 2) * 0.4 * e2;
-          if (t >= 1) st.inspT = -1; } }
-      // muzzle flash
-      st.flash = Math.max(0, st.flash - dt);
-      const fl = m.flash; fl.visible = st.flash > 0 && !(w.scope && st.aim > 0.8);
-      if (fl.visible) { const k = st.flash / 0.06; fl.userData.mat.opacity = k; fl.scale.setScalar((w.id === 'sniper' ? 1.4 : 1) * (0.7 + 0.6 * k) * w.flash); }
-      // hide gun when fully scoped (overlay takes over)
-      m.g.visible = !(w.scope && st.aim > 0.9);
-    },
-  };
-  api.setWeapon('pistol'); models.pistol.g.visible = true;
-  return api;
-}
+// ---------------------------------------------------------------- viewmodels (gunvm.js: models for the whole arsenal + part animations)
+export { createViewmodels } from './gunvm.js';
 
 // ---------------------------------------------------------------- weapon system
 export function createWeaponSystem(THREE, vm, hud) {
@@ -223,7 +138,7 @@ export function createWeaponSystem(THREE, vm, hud) {
   const ws = {
     current: 'pistol', ammo, onEvent: null,
     trigger: false, aiming: false, cooldown: 0, reloadLeft: 0, bloom: 0, fovNow: null, pendingTap: false,
-    lookPitch: 0, lookYaw: 0, scopeT: 0,
+    lookPitch: 0, lookYaw: 0, scopeT: 0, burstLeft: 0, sprayN: 0, sprayT: 0,
   };
   const emit = (n, d) => { if (ws.onEvent) ws.onEvent(n, d); };
   const W = () => WEAPONS[ws.current];
@@ -232,7 +147,7 @@ export function createWeaponSystem(THREE, vm, hud) {
   ws.select = (v) => {
     const id = typeof v === 'number' ? WEAPON_ORDER[v] : v;
     if (!WEAPONS[id] || id === ws.current) return;
-    ws.current = id; ws.reloadLeft = 0; ws.cooldown = 0.25; vm.setWeapon(id); vm.setAim(ws.aiming);
+    ws.current = id; ws.reloadLeft = 0; ws.cooldown = 0.25; ws.burstLeft = 0; ws.sprayN = 0; vm.setWeapon(id); vm.setAim(ws.aiming);
     emit('switch', { weapon: id }); hudSync();
   };
   ws.cycle = (dir = 1) => { const i = WEAPON_ORDER.indexOf(ws.current); ws.select(WEAPON_ORDER[(i + dir + WEAPON_ORDER.length) % WEAPON_ORDER.length]); };
@@ -269,12 +184,16 @@ export function createWeaponSystem(THREE, vm, hud) {
         a.mag += take; a.reserve -= take; emit('reloaded', { weapon: ws.current }); hudSync();
       }
     }
-    const wants = w.auto ? ws.trigger : ws.pendingTap;
+    // bursts: one press fires w.burst shots at rpm then waits burstDelay (server enforces the same cadence)
+    if (w.burst && ws.pendingTap && !ws.burstLeft && ws.cooldown <= 0 && ws.reloadLeft <= 0) ws.burstLeft = w.burst;
+    const wants = w.burst ? ws.burstLeft > 0 : w.auto ? ws.trigger : ws.pendingTap;
     ws.pendingTap = false;
+    ws.sprayT += dt; if (ws.sprayT > 60 / w.rpm * 2.2 + (w.burstDelay || 0) + 0.08) ws.sprayN = 0;   // spray pattern restarts after a pause
     if (wants && ws.reloadLeft <= 0 && ws.cooldown <= 0) {
-      if (a.mag <= 0) { emit('empty', { weapon: ws.current }); if (!ws.reload()) ws.cooldown = 0.25; }
+      if (a.mag <= 0) { ws.burstLeft = 0; emit('empty', { weapon: ws.current }); if (!ws.reload()) ws.cooldown = 0.25; }
       else {
-        a.mag--; ws.cooldown = 60 / w.rpm;
+        a.mag--; if (w.burst) { ws.burstLeft--; ws.cooldown = ws.burstLeft > 0 ? 60 / w.rpm : w.burstDelay; } else ws.cooldown = 60 / w.rpm;
+        if (a.mag === 0) ws.burstLeft = 0;
         const sp = ws.spread(s);
         for (let i = 0; i < w.pellets; i++) {
           const ang = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * sp;
@@ -282,8 +201,10 @@ export function createWeaponSystem(THREE, vm, hud) {
             damage: { ...w.damage }, range: w.range, pellets: w.pellets, tracer: true });
         }
         ws.bloom = Math.min(w.spreadMax, ws.bloom + w.spreadPerShot);
-        ws.lookPitch += w.recoil.pitch * (ws.aiming ? 0.7 : 1);
-        ws.lookYaw += (Math.random() - 0.5) * 2 * w.recoil.yaw;
+        let kp = 1, ky = (Math.random() - 0.5) * 2; const pat = w.pattern;   // CS-style spray: learnable pattern + a little noise
+        if (pat) { const i = ws.sprayN < pat.length ? ws.sprayN : pat.length - 6 + ((ws.sprayN - pat.length) % 6); kp = pat[Math.max(0, i)][0]; ky = pat[Math.max(0, i)][1] + (Math.random() - 0.5) * 0.35; }
+        ws.lookPitch += w.recoil.pitch * kp * (ws.aiming ? 0.7 : 1);
+        ws.lookYaw += ky * w.recoil.yaw; ws.sprayN++; ws.sprayT = 0;
         vm.fire(); emit('shot', { weapon: ws.current, mag: a.mag });
         if (a.mag === 0 && a.reserve > 0 && w.auto) ws.reload();
         hudSync();
