@@ -1,7 +1,8 @@
 // progress.js - level / rank / XP and domination ("tamed") on the client. Server is authoritative: it sends 'dom', 'free' and
 // 'reward' events (room.js) and the account profile carries xp + dom. This file only shows them.
 import * as ACC from './account.js';
-import { progress, levelOf, rankOf, matchXp, XP_BASE, XP_KILL, XP_WIN } from './rank.js';
+import { progress, levelOf, rankOf, matchXp, XP_BASE, XP_KILL, XP_WIN, PRESTIGE_LEVEL, MAX_PRESTIGE, canPrestige } from './rank.js';
+import { emblemSVG, PRESTIGE_NAMES } from './emblem.js';
 const esc = (s) => String(s ?? '').replace(/[<>&"'`]/g, '');
 const css = `.pr-toast{position:fixed;left:50%;top:16%;transform:translateX(-50%);z-index:9400;padding:12px 22px;border-radius:14px;font:700 22px Fredoka,system-ui,sans-serif;color:#fff;text-align:center;pointer-events:none;box-shadow:0 10px 40px rgba(0,0,0,.45);animation:prin .35s ease-out}
 .pr-toast small{display:block;font-size:13px;font-weight:500;opacity:.9;margin-top:3px}
@@ -21,10 +22,25 @@ export function profileHtml(p) {
   if (!p) return '';
   const pr = progress(p.xp || 0), d = p.dom || { tamed: [], by: [] };
   const names = (l) => l.length ? l.map((x) => `<b>${esc(x.name)}</b>${x.company ? ' <span style="opacity:.6">(' + esc(x.company) + ')</span>' : ''}`).join(', ') : '<span style="opacity:.6">nobody</span>';
-  return `<div style="margin:6px 0 12px;padding:10px 12px;border-radius:12px;background:#0007;border:1px solid #fff2"><div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:22px;font-weight:700">LEVEL ${pr.level}</span><span style="color:#ffb347;letter-spacing:.12em;font-size:14px">${pr.rank.toUpperCase()}</span></div><div style="height:10px;border-radius:6px;background:#000a;overflow:hidden;margin:6px 0"><div style="height:100%;width:${Math.round(pr.pct * 100)}%;background:linear-gradient(90deg,#ffd166,#ff8f4d)"></div></div><div style="font-size:12px;opacity:.75">${pr.into} / ${pr.span} XP to level ${pr.level + 1} &nbsp;·&nbsp; ${pr.xp} XP total</div><div style="font-size:13px;margin-top:8px">Tamed: ${names(d.tamed)}</div><div style="font-size:13px;margin-top:3px;color:${d.by.length ? '#ff9fb8' : 'inherit'}">You are tamed by: ${names(d.by)}</div></div>`;
+  return `<div style="margin:6px 0 12px;padding:10px 12px;border-radius:12px;background:#0007;border:1px solid #fff2"><div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:22px;font-weight:700">LEVEL ${pr.level}</span><span style="color:#ffb347;letter-spacing:.12em;font-size:14px">${pr.rank.toUpperCase()}</span></div><div style="height:10px;border-radius:6px;background:#000a;overflow:hidden;margin:6px 0"><div style="height:100%;width:${Math.round(pr.pct * 100)}%;background:linear-gradient(90deg,#ffd166,#ff8f4d)"></div></div><div style="font-size:12px;opacity:.75">${pr.into} / ${pr.span} XP to level ${pr.level + 1} &nbsp;·&nbsp; ${pr.xp} XP total</div>${prestigeHtml(p)}<div style="font-size:13px;margin-top:8px">Tamed: ${names(d.tamed)}</div><div style="font-size:13px;margin-top:3px;color:${d.by.length ? '#ff9fb8' : 'inherit'}">You are tamed by: ${names(d.by)}</div></div>`;
 }
 
-export function initProgress(net, { me = () => '' } = {}) {
+/** prestige block of the profile: current emblem, and from level PRESTIGE_LEVEL the button to reset for the next one */
+function prestigeHtml(p) {
+  const n = p.prestige | 0, can = canPrestige(p.xp || 0, n), next = Math.min(MAX_PRESTIGE, n + 1);
+  const cur = n ? `<span style="display:inline-flex;align-items:center;gap:6px;color:#ffd166;font-weight:700;letter-spacing:.08em">${emblemSVG(n, 22)} PRESTIGE ${n} · ${PRESTIGE_NAMES[n].toUpperCase()}</span>` : '';
+  const act = n >= MAX_PRESTIGE ? '<span style="opacity:.75">Max prestige. Respect.</span>' : can ? `<button class="mn-i" data-prestige style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;font-size:13px;background:#ffd16622;border:1px solid #ffd166">${emblemSVG(next, 18)} PRESTIGE ${next}</button> <span style="font-size:11px;opacity:.7">back to level 1 for the ${PRESTIGE_NAMES[next]} emblem</span>` : `<span style="font-size:12px;opacity:.7">Prestige ${next} ${emblemSVG(next, 14)} unlocks at level ${PRESTIGE_LEVEL}</span>`;
+  return `<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center">${cur}${act}</div>`;
+}
+/** wire the prestige button inside `box` (two clicks: confirm, then reset); onDone(profile) re-renders */
+export function wirePrestige(box, onDone) {
+  const b = box.querySelector('[data-prestige]'); if (!b) return; let armed = false;
+  b.onclick = async () => { if (!armed) { armed = true; b.innerHTML = 'Sure? Your level goes back to 1. Click again'; b.style.background = '#ff6b6b33'; b.style.borderColor = '#ff6b6b'; return; }
+    b.disabled = true; b.textContent = 'Prestiging...'; const r = await ACC.prestige().catch(() => null); if (r && r.ok) { toastOnce(`${emblemSVG(r.profile.prestige, 30)} PRESTIGE ${r.profile.prestige}<small>${PRESTIGE_NAMES[r.profile.prestige]} emblem unlocked</small>`); onDone && onDone(r.profile); } else { b.textContent = 'Not yet'; } };
+}
+function toastOnce(html) { addCss(); const e = document.createElement('div'); e.className = 'pr-toast'; e.style.background = '#6b4a12'; e.innerHTML = html; document.body.appendChild(e); setTimeout(() => e.remove(), 4000); }
+
+export function initProgress(net, { me = () => '', defer = (f) => f() } = {}) {   // defer: the reward card waits for the end-of-match screen
   addCss();
   const toast = (html, color, secs) => { const e = document.createElement('div'); e.className = 'pr-toast'; e.style.background = color; e.innerHTML = html; document.body.appendChild(e); setTimeout(() => e.remove(), (secs || 3.5) * 1000); };
   let badge = document.querySelector('.pr-badge'); if (!badge) { badge = document.createElement('div'); badge.className = 'pr-badge'; document.body.appendChild(badge); }
@@ -40,7 +56,7 @@ export function initProgress(net, { me = () => '' } = {}) {
     if (freedMe) { by.delete(m.vn); paint(); }
     if (domMe) mine.delete(m.bn);
     toast(freedMe ? `YOU BROKE FREE OF ${esc(m.vn).toUpperCase()}` : `${esc(m.bn)} BROKE FREE OF ${esc(m.vn).toUpperCase()}`, '#c47a1a', 3); });
-  net.on('reward', (r) => { if (!r) return; rewardCard(r); });
+  net.on('reward', (r) => { if (!r) return; defer(() => rewardCard(r)); });
 }
 
 export function rewardCard(r) {
