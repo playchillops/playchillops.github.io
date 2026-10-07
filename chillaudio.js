@@ -143,6 +143,15 @@
       echo(o, t, 0.22, 0.4);
     },
     shot_knife: (o, t) => noise(t, 0.15, 0.2, o, 'bandpass', 1500, 4000, 1.5, 0.03),
+    // arsenal: every class has its own voice
+    shot_hpistol: (o, t) => { noise(t, 0.2, 0.95, o, 'lowpass', 7000, 260, 0.7, 0.001); osc('sine', 190, 45, t, 0.16, 0.75, o, 0.001); noise(t, 0.04, 0.55, o, 'highpass', 5000, 5000, 0.7, 0.001); echo(o, t, 0.12, 0.25); },
+    shot_smg: (o, t) => { noise(t, 0.06, 0.45, o, 'lowpass', 6200, 800, 0.8, 0.001); osc('square', 320, 130, t, 0.045, 0.22, o, 0.001); },
+    shot_shotgun: (o, t, op) => { noise(t, 0.38, 1.15, o, 'lowpass', 4200, 140, 0.6, 0.001); osc('sine', 95, 32, t, 0.32, 1.0, o, 0.001); noise(t, 0.05, 0.6, o, 'highpass', 3500, 3500, 0.7, 0.001); echo(o, t, 0.18, 0.3);
+      if (!op.pos || op.own) { noise(t + 0.42, 0.05, 0.16, o, 'bandpass', 1300, 1300, 5); noise(t + 0.62, 0.05, 0.18, o, 'bandpass', 1700, 1700, 5); } },   // pump
+    shot_lmg: (o, t) => { noise(t, 0.11, 0.7, o, 'lowpass', 4600, 380, 0.8, 0.001); osc('sawtooth', 140, 48, t, 0.1, 0.42, o, 0.001); },
+    shot_m4: (o, t) => { noise(t, 0.085, 0.55, o, 'lowpass', 5600, 620, 0.8, 0.001); osc('triangle', 230, 80, t, 0.07, 0.35, o, 0.001); noise(t, 0.02, 0.25, o, 'highpass', 6000, 6000, 0.7, 0.001); },
+    shot_scout: (o, t, op) => { noise(t, 0.34, 0.8, o, 'lowpass', 7600, 300, 0.7, 0.001); osc('sine', 210, 40, t, 0.3, 0.62, o, 0.001); noise(t, 0.05, 0.5, o, 'highpass', 4500, 4500, 0.7, 0.001); echo(o, t, 0.2, 0.3);
+      if (!op.pos || op.own) noise(t + 0.4, 0.04, 0.12, o, 'bandpass', 2200, 2200, 6); },
     bulletWhiz: (o, t) => { const x = osc('sawtooth', 3200, 900, t, 0.18, 0.1, o, 0.01); noise(t, 0.15, 0.08, o, 'bandpass', 4000, 1500, 2, 0.02); },
     bulletImpact: (o, t) => { noise(t, 0.08, 0.3, o, 'bandpass', 1800, 600, 2); osc('sine', 200, 80, t, 0.06, 0.15, o); },
 
