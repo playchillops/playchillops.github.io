@@ -17,6 +17,12 @@ export function createEvents({ game, net, THREE, an, banner = () => {}, play }) 
   const tick = document.createElement('div'); tick.className = 'ev-tick'; document.body.appendChild(tick);
   const sand = document.createElement('div'); sand.className = 'ev-sand'; document.body.appendChild(sand);
   const tip = document.createElement('div'); tip.className = 'ev-tip'; document.body.appendChild(tip);
+  const pharaohs=new Map(), ribbons=[];
+  const disposeMesh=g=>{game.scene.remove(g);g.traverse(o=>{o.geometry?.dispose();if(Array.isArray(o.material))o.material.forEach(m=>m.dispose());else o.material?.dispose();});};
+  function makePharaoh(){const g=new THREE.Group();g.name='Tomb Pharaoh';const box=(w,h,d,x,y,z,c)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshLambertMaterial({color:c}));m.position.set(x,y,z);g.add(m);return m;};box(.65,.9,.4,0,.9,0,0xe9d7ac);box(.42,.42,.42,0,1.6,0,0xb98a51);box(.65,.2,.52,0,1.88,0,0xffce42);for(let s of [-1,1]){box(.18,.58,.5,s*.31,1.63,0,0x288bb1);box(.14,.65,.14,s*.43,.94,-.06,0xe9d7ac);box(.19,.5,.25,s*.18,.26,0,0xe9d7ac);}for(let y=.55;y<1.4;y+=.16)box(.67,.035,.42,0,y,0,0xa68a62);box(.33,.28,.03,0,.8,-.22,0xffce42);for(let x of [-.1,.1])box(.055,.07,.03,x,1.64,-.23,0x141829);return g;}
+  net.on('pharaohs',m=>{const keep=new Set();for(const a of m.list||[]){keep.add(a[0]);let g=pharaohs.get(a[0]);if(!g){g=makePharaoh();pharaohs.set(a[0],g);game.scene.add(g);}g.position.set(a[1],a[2],a[3]);const e=net.eye();g.rotation.y=Math.atan2(g.position.x-e.x,g.position.z-e.z);}for(const [id,g]of pharaohs)if(!keep.has(id)){disposeMesh(g);pharaohs.delete(id);}});
+  net.on('bandage',m=>{if(ribbons.length>=24)return;const g=new THREE.Mesh(new THREE.BoxGeometry(.12,.08,.85),new THREE.MeshBasicMaterial({color:0xf7ebc9}));g.position.set(...m.o);const v=new THREE.Vector3(...m.v);g.lookAt(g.position.clone().add(v));game.scene.add(g);ribbons.push({g,v,t:0});});
+  net.on('wrapped',m=>banner('FEET WRAPPED · '+m.stacks+'/3 · SLOW FOR 5s',2));
   const projectiles = new Map();
   const crates = new Map(), fx = [], timers = [], SANDC = new THREE.Color(0xd2b27e); let shake = 0, fog0 = null, bullUntil = 0, sandUntil = 0, rocketT = -1;
   const later = (s, f) => timers.push(setTimeout(f, s * 1000));
@@ -49,7 +55,8 @@ export function createEvents({ game, net, THREE, an, banner = () => {}, play }) 
   // ---- map events ----
   net.on('mevent', (m) => {
     if (!m) return;
-    if (m.k === 'starship') {
+    if(m.k==='pharaoh'){banner('THE TOMB AWAKENS · SHOOT THE PHARAOHS',4);an.say('The tomb awakens',2);}
+    else if (m.k === 'starship') {
       an.say('Starship launch in ten seconds. Clear the launch pad.', 3); banner('STARSHIP LAUNCH IN 10 · CLEAR THE LAUNCH PAD (B)', 3);
       const ring = new THREE.Mesh(new THREE.RingGeometry(6.0, 6.5, 48), new THREE.MeshBasicMaterial({ color: 0xff3b3b, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false })); ring.rotation.x = -Math.PI / 2; ring.position.set(m.x, 0.36, m.z); game.scene.add(ring);
       fx.push({ obj: ring, t: 0, life: 13, tick: (v) => { ring.material.opacity = 0.45 + 0.4 * Math.abs(Math.sin(v.t * 5)); } });
@@ -94,6 +101,7 @@ export function createEvents({ game, net, THREE, an, banner = () => {}, play }) 
   return {
     update(dt) {
       const now = performance.now();
+      for(let i=ribbons.length-1;i>=0;i--){const b=ribbons[i];b.t+=dt;b.g.position.addScaledVector(b.v,dt);b.g.rotateZ(dt*8);if(b.t>1.7){disposeMesh(b.g);ribbons.splice(i,1);}}
       for(const [id,f] of projectiles){f.t+=dt;f.g.position.addScaledVector(f.v,dt);f.v.y-=f.cfg.gravity*dt;f.g.lookAt(f.g.position.clone().add(f.v));if(f.t>f.cfg.fuse+1){game.scene.remove(f.g);f.g.traverse(o=>{o.geometry?.dispose();o.material?.dispose();});projectiles.delete(id);}}
 
       // crates: fall, then glow; prompt + progress when you are close
@@ -125,7 +133,7 @@ export function createEvents({ game, net, THREE, an, banner = () => {}, play }) 
       if (bullUntil && now > bullUntil) { bullUntil = 0; tick.style.display = 'none'; }
       for (let i = fx.length - 1; i >= 0; i--) { const v = fx[i]; v.t += dt; v.tick && v.tick(v, dt); if (v.t >= v.life) { game.scene.remove(v.obj); fx.splice(i, 1); } }
     },
-    dispose() { for(const f of projectiles.values()){game.scene.remove(f.g);f.g.traverse(o=>{o.geometry?.dispose();o.material?.dispose();});}projectiles.clear(); for (const t of timers) clearTimeout(t); for (const c of crates.values()) game.scene.remove(c.g); crates.clear(); for (const v of fx) game.scene.remove(v.obj); fx.length = 0; const R = rocket(); if (R) { R.group.position.y = 0; R.group.visible = true; } if (fog0 && game.scene.fog) { game.scene.fog.near = fog0.near; game.scene.fog.far = fog0.far; game.scene.fog.color.copy(fog0.color); } game.canvas.style.transform = ''; tick.remove(); sand.remove(); tip.remove(); },
+    dispose() {for(const g of pharaohs.values())disposeMesh(g);pharaohs.clear();for(const b of ribbons)disposeMesh(b.g);ribbons.length=0; for(const f of projectiles.values()){game.scene.remove(f.g);f.g.traverse(o=>{o.geometry?.dispose();o.material?.dispose();});}projectiles.clear(); for (const t of timers) clearTimeout(t); for (const c of crates.values()) game.scene.remove(c.g); crates.clear(); for (const v of fx) game.scene.remove(v.obj); fx.length = 0; const R = rocket(); if (R) { R.group.position.y = 0; R.group.visible = true; } if (fog0 && game.scene.fog) { game.scene.fog.near = fog0.near; game.scene.fog.far = fog0.far; game.scene.fog.color.copy(fog0.color); } game.canvas.style.transform = ''; tick.remove(); sand.remove(); tip.remove(); },
   };
   function puff(x, y, z) {   // rocket smoke
     const m = new THREE.MeshLambertMaterial({ color: 0xf2efe8 }), p = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 1), m); p.position.set(x, y, z); game.scene.add(p);
