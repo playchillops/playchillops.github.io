@@ -368,7 +368,7 @@ export function createMultiplayer(game, THREE) {
     }
     if (DM[net.mode]) g.info.textContent = mp.fx ? mp.fx.info() : '';
     else g.info.textContent = net.phase === 'freeze' ? `BUY PHASE · ${Math.ceil(net.phaseLeft)} s · B = shop` : `${bt || hint || ''}${bt ? '' : (hint ? ' · ' : '') + (net.phase || '').toUpperCase() + ' ' + Math.ceil(net.phaseLeft || 0) + 's'}`;
-    q('net').textContent = Math.round(net.rttMs) + ' ms';
+    q('net').textContent = 'PING ' + (net.hasPing ? Math.round(net.rttMs) + ' ms' : '--');
     { const LH = 'PRESS ENTER TO START  -  K / L add bots', LW = 'Waiting for the host to start the match'; if (net.lobby) { let h = false; try { h = isHostNow(); } catch (e) {} lastMsg = h ? LH : LW; msgT = 0.5; } else if (lastMsg === LH || lastMsg === LW || lastMsg.indexOf('Host: K') === 0) { lastMsg = ''; msgT = 0; } }
     if (net.alive && net.phase === 'live') { /* room hint fades after the round starts */ }
     const cam = g.camera;
@@ -402,4 +402,4 @@ export function createMultiplayer(game, THREE) {
   mp.solo = (m, gm) => { if (m === 'a' || m === 'b') mapSel = m; let n = 'Player'; try { n = localStorage.getItem('sc_name') || 'Player'; } catch (e) {} connect({ room: 'new', name: n, solo: true, gm: DM[gm] ? gm : 'bomb' }); };
   mp.autoJoin = () => { const m = /[?&]room=([A-Za-z0-9]+)/.exec(location.search); if (m) { lobby(m[1].toUpperCase()); if (/[?&]go=1/.test(location.search)) { let n = 0; const iv = setInterval(() => { const b = document.querySelector('#mpg'); if (b && !mp.net) { clearInterval(iv); b.click(); } else if (++n > 40) clearInterval(iv); }, 400); } return true; } return false; };
   return mp;
-      }
+}
