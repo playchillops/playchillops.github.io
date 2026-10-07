@@ -254,12 +254,13 @@ export class Game {
   renderInv() {
     const es = this.eco.getState(), inv = es.inventory, cur = this.knifeOn ? 'knife' : this.ws.current, gr = inv.grenades || {};
     const nm = (id) => (id && WEAPON_STATS[id] && WEAPON_STATS[id].name) || id || '';
-    const sig = [inv.primary, inv.secondary, cur, gr.frag, gr.smoke, gr.flash, this.state].join('|'); if (sig === this.invSig) return; this.invSig = sig;
+    const sig = [inv.primary, inv.secondary, cur, gr.frag, gr.smoke, gr.flash, inv.taser, this.state].join('|'); if (sig === this.invSig) return; this.invSig = sig;
     const it = (key, label, sub, on, extra = '') => `<div class="it${on ? ' cur' : ''}${extra}"><kbd>${key}</kbd><b>${label}</b>${sub ? `<small>${sub}</small>` : ''}</div>`;
     let h = '';
     h += inv.primary ? it('1', nm(inv.primary), '', cur === inv.primary) : it('1', 'Primary', 'empty', false, ' empty');
     h += it('2', nm(inv.secondary || 'pistol'), '', cur === (inv.secondary || 'pistol'));
     h += it('3', inv.butterfly ? 'Butterfly' : inv.knifeskin ? 'Kite Cutter' : 'Knife', '', cur === 'knife');
+    if (inv.taser) h += it('X', 'Zap Taser', 'one zap', false, ' gr');
     const gl = [['V', 'frag', 'Frag'], ['H', 'smoke', 'Smoke'], ['J', 'flash', 'Flash']].filter(([, id]) => gr[id] > 0);
     if (gl.length) { h += '<div class="sep"></div>'; for (const [k, id, lab] of gl) h += it(k, lab, '×' + gr[id], false, ' gr'); }
     this.invb.innerHTML = h;
@@ -290,6 +291,7 @@ export class Game {
     if (!this.eco.consumeGrenade(type)) return;   // fires the 'grenade' event (multiplayer relays it to the server)
     this.grenades.throwGrenade(type, { position: this.ctrl.state.eye, direction: this.ctrl.getDirection(), charge, owner: 'player', team: s.team, consume: false });
     play('grenade_throw');
+    try { this.mp?.fx?.an.say('Fire in the hole!', 2.5); } catch (e) {}
   }
   endMatchEffects(id) { this.destruction.reset(id); this.grenades.reset(id); }
   onWeaponEvent(n, d) {
@@ -455,6 +457,7 @@ export class Game {
     this.vm.muzzleWorldPosition(muzzle);
     if (shots.length && this.bots.noise) this.bots.noise(o.x, o.z, 34);
     for (const s of shots) {
+      if (WEAPON_STATS[s.weapon]?.projectile) { play('grenade_throw'); continue; } // authoritative projectile event draws flight and explosion
       const yaw = st.yaw + s.dir.x, pit = st.pitch + s.dir.y, cp = Math.cos(pit);
       const dir = { x: -Math.sin(yaw) * cp, y: Math.sin(pit), z: -Math.cos(yaw) * cp };
       let hit = raycast(o, dir, { colliders: this.world, targets: this.bots.list, maxDistance: s.range });
