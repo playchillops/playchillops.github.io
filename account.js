@@ -36,3 +36,7 @@ export const players = async () => (await api('/leaderboard/players')).j || [];
 export const board = async (range) => (await api('/leaderboard/players?range=' + (range || 'all'))).j || [];
 export const feed = async () => (await api('/feed')).j || [];
 export const online = async () => (await api('/online')).j || [];
+// company logo (spray / MVP card / profile): served by the game server, which fetches it from the company website
+export const logoUrl = (site) => site ? HOST + '/logo?d=' + encodeURIComponent(site) : '';
+/** prestige: back to level 1 for the next emblem (server checks the level) */
+export async function prestige() { if (!await ensure()) return null; const r = await api('/acct/prestige', 'POST', {}); if (r.j && r.j.profile) profile = r.j.profile; return r.j || null; }
