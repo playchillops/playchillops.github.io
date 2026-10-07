@@ -433,7 +433,8 @@ export class Game {
   }
   openSolo(map, gm) { let seen = false; try { seen = !!localStorage.getItem('sc_tut'); } catch (e) {} if (!seen) { this.tutorial(() => this.openSolo(map, gm)); return; } if (this.menuStop) { this.menuStop(); this.menuStop = null; } this.ov.style.display = 'none'; play('ui_start'); loadingStart({ map: map || 'a', mode: 'solo' }); loadingStep('WAKING SERVER', 14); this.mp.solo(map, gm); }
   openMP() { if (this.menuStop) { this.menuStop(); this.menuStop = null; } this.ov.style.display = 'none'; this.mp.open(); }
-  renderMP() { if (this.look) this.look.render(this.camera); else this.renderer.render(this.scene, this.camera); }
+  adaptQuality(){const dt=this._real||0;if(this._qualityLow||dt<=0||dt>.5)return;this._perfWindow=(this._perfWindow||[]);this._perfWindow.push(dt);if(this._perfWindow.length<90)return;const avg=this._perfWindow.reduce((a,b)=>a+b,0)/this._perfWindow.length;this._perfWindow=[];if(avg>.035){this._qualityLow=true;this.renderer.setPixelRatio(1);this.look?.setQuality('low');this.renderer.shadowMap.enabled=false;this.look?.resize();}}
+  renderMP() { this.adaptQuality(); if (this.look) this.look.render(this.camera); else this.renderer.render(this.scene, this.camera); }
   showMenu() {
     if (this.mp && this.mp.active) this.mp.stop(); this.ov.style.display = 'flex';
     this.state = 'menu'; this.sb.style.display = 'none'; if (this.sbm) this.sbm.style.display = 'none'; this.streaks.cancel('menu'); this.streaks.show(false); this.hud.root.style.display = 'none'; this.info.textContent = ''; this.kf.textContent = '';
@@ -580,7 +581,7 @@ export class Game {
     { const fr = now - this.last; const p = this.pf; p.n++; p.t += fr; if (fr > p.worst) p.worst = fr; if (p.t >= 500) { const net = this.mp?.active ? this.mp.net : null; const sp = net?.serverPerf; this.perf.textContent = Math.round(p.n * 1000 / p.t) + ' FPS · FRAME ' + Math.round(p.t / p.n) + ' ms (max ' + Math.round(p.worst) + ')\n' + (net ? 'PING (RTT) ' + (net.hasPing ? Math.round(net.rttMs) + ' ms' : '--') + '\nSERVER tick ' + (sp ? sp[0] + ' ms · pause (5s) ' + sp[1] + ' ms' : '--') : 'PING / SERVER: offline'); p.n = 0; p.t = 0; p.worst = 0; } }
     const real = Math.min(0.05, (now - this.last) / 1000); this.last = now;
     const dt = real * this.kc.update(real) * this.killfx.update(real) * (this.deathCam ? 0.35 : 1);
-    this._real = real;
+    this._real = Math.min(.25,(now-(this._netClock||now))/1000);this._netClock=now;this.adaptQuality();
     this.updateBlast(dt);
     for (let i = this.fx.length - 1; i >= 0; i--) { const f = this.fx[i]; f.t -= dt; f.l.material.opacity = Math.max(0, f.t / f.life); if (f.t <= 0) { this.scene.remove(f.l); f.l.geometry.dispose(); f.l.material.dispose(); this.fx.splice(i, 1); } }
     if (this.state === 'play') { this.destruction.update(dt); this.grenades.update(dt); this.chargeTick(); this.update(dt); }   // smokes keep living while the shop is open
