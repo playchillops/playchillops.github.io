@@ -3,7 +3,7 @@ import * as THREE from './three.module.min.js';
 import { buildMap, LAYOUTS } from './map.js';
 import { createController } from './movement.js';
 import { raycast, wallBlocked } from './hitscan.js';
-import { createViewmodels, createWeaponSystem, createHUD, createPlayerState, applyDamage, WEAPON_ORDER, WEAPONS } from './player.js';
+import { createViewmodels, createWeaponSystem, createHUD, createPlayerState, applyDamage, WEAPON_ORDER, WEAPONS, shotSound } from './player.js';
 import { initAudio, play, setListener, startAmbient, setVolume } from './audio.js';
 import { startMusic, stopMusic, setMusicMode, setMusicLevel } from './music.js';
 import { createBots } from './bots.js';
@@ -267,8 +267,7 @@ export class Game {
   }
   endMatchEffects(id) { this.destruction.reset(id); this.grenades.reset(id); }
   onWeaponEvent(n, d) {
-    const map = { pistol: 'shot_pistol', machinegun: 'shot_mg', sniper: 'shot_sniper' };
-    if (n === 'shot') play(map[d.weapon]); else if (n === 'empty') { play('empty'); this.anim.onEmpty(); } else if (n === 'reload') { play('reload'); this.anim.onReload(); } else if (n === 'switch') { play('switch'); this.anim.onSwitch(); }
+    if (n === 'shot') play(shotSound(d.weapon)); else if (n === 'empty') { play('empty'); this.anim.onEmpty(); } else if (n === 'reload') { play('reload'); this.anim.onReload(); } else if (n === 'switch') { play('switch'); this.anim.onSwitch(); }
   }
   newEconomy() {
     if (this.eco) { try { this.eco.dispose(); } catch (e) {} }
@@ -277,7 +276,7 @@ export class Game {
     this.eco = createEconomy({ container: this.root, team: 'T', freezeTime: 10, autoOpen: false, inZone: () => !!(this.mp && this.mp.net && this.mp.net.lobby) || this.inBuyZone(), onEvent: (n, d) => this.onEco(n, d) });
     if (this.grenades) this.grenades.setEconomy(this.eco);
   }
-  syncAmmoToEco() { if (!this.eco) return; for (const id of ['pistol', 'machinegun', 'sniper']) { const a = this.ws.ammo[id]; if (a && this.eco.getState().inventory.ammo[id]) this.eco.setAmmo(id, { mag: a.mag, reserve: a.reserve }); } }
+  syncAmmoToEco() { if (!this.eco) return; for (const id of WEAPON_ORDER) { const a = this.ws.ammo[id]; if (a && this.eco.getState().inventory.ammo[id]) this.eco.setAmmo(id, { mag: a.mag, reserve: a.reserve }); } }
   onEco(n, d) {
     if (n === 'purchase') play('buy'); else if (n === 'denied') play('buy_fail'); else if (n === 'pickup') play('ui_click');
     if (n === 'menu') {
@@ -348,9 +347,8 @@ export class Game {
   }
   inBuyZone() { const p = this.ctrl.state.position, z = this.zone; return !!z && Math.abs(p.x - z.x) <= z.h && Math.abs(p.z - z.z) <= z.h && Math.abs(p.y - z.y) < 2; }
   addDrop(drop) {
-    const idx = { pistol: 0, machinegun: 1, sniper: 2 }[drop.weapon] ?? 0; let mesh;
-    const src = this.vm.group.children[idx];
-    if (src) { mesh = src.clone(true); mesh.visible = true; mesh.traverse((o) => { o.visible = o.userData && o.userData.isFlash ? false : true; }); mesh.position.set(0, 0, 0); mesh.rotation.set(0, 0, 0); mesh.scale.setScalar(1.7); }
+    let mesh; const src = (this.vm.models[drop.weapon] || this.vm.models.pistol).g;   // the dropped gun is a copy of its first-person model (no hands, no flash)
+    if (src) { mesh = src.clone(true); mesh.visible = true; mesh.traverse((o) => { o.visible = !(o.userData && (o.userData.isFlash || o.userData.hand)); }); mesh.position.set(0, 0, 0); mesh.rotation.set(0, 0, 0); mesh.scale.setScalar(1.7); }
     else mesh = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.12, 0.2), new THREE.MeshBasicMaterial({ color: 0xffffff }));
     const holder = new THREE.Group(); holder.add(mesh); mesh.rotation.z = Math.PI / 2; mesh.position.y = 0.12;
     const gh = this.map.getHeight(drop.position.x, drop.position.z); const gy = Number.isFinite(gh) ? Math.max(gh, (drop.position.y || 0) - 0.5) : (drop.position.y || 0);
@@ -440,7 +438,7 @@ export class Game {
       let kh = hit ? (hit.kind === 'target' ? null : { kind: 'world', normal: hit.normal }) : null;
       if (hit && hit.kind === 'target') {
         const b = hit.target, zone = hit.zone === 'legs' ? 'limb' : hit.zone;
-        const mpOn = !!(this.mp && this.mp.active), hp0 = b.health, r0 = applyDamage(b.health, s.weapon, zone), r = mpOn ? { ...r0, killed: false, hp: b.health } : r0;
+        const mpOn = !!(this.mp && this.mp.active), hp0 = b.health, r0 = applyDamage(b.health, s.weapon, zone, hit.distance || 0), r = mpOn ? { ...r0, killed: false, hp: b.health } : r0;
         kh = { kind: 'target', bot: b, zone, headshot: r.headshot, killed: r.killed };
         if (mpOn) b.flash = 0.12; else this.bots.damage(b, r.hp, r.headshot); /* multiplayer: the server decides hits and kills */
         this.cineOK = r.killed && this.bots.aliveCount() <= 1;
