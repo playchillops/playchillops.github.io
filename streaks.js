@@ -3,18 +3,19 @@
 
 export const DEFAULT_CONFIG = {
   // Streak counter resets on death / start. Each reward is granted once when the counter hits `at`.
+  // "funding rounds" (Juan 2026-10-07): Angel (radar) 3, Series A (care package) 4, Series B (guided missile) 6, Series C (airstrike) 8, IPO (mega-nuke) 11
   rewards: [
     { id: 'uav', at: 3, key: 'Digit4' },
-    { id: 'missile', at: 5, key: 'Digit5' },
-    { id: 'rc', at: 7, key: 'Digit6' },
-    { id: 'airstrike', at: 9, key: 'Digit7' },
-    { id: 'nuke', at: 10, key: 'Digit8' },
+    { id: 'crate', at: 4, key: 'Digit5' },
+    { id: 'missile', at: 6, key: 'Digit6' },
+    { id: 'airstrike', at: 8, key: 'Digit7' },
+    { id: 'nuke', at: 11, key: 'Digit8' },
   ],
   callKey: 'KeyG',            // calls the first available reward (in `rewards` order)
   countStreakKills: false,    // do kills made by streaks feed the counter?
   loop: false,                // after the last reward, restart the counter from 0
   selfDamage: false,          // blasts hurt the player (not implemented: reserved)
-  names: { uav: 'Radar UAV', missile: 'Guided missile', rc: 'RC bomb car', airstrike: 'Airstrike', nuke: 'Tactical nuke' },
+  names: { uav: 'Angel Round · radar', crate: 'Series A · care package', missile: 'Series B · guided missile', rc: 'RC bomb car', airstrike: 'Series C · airstrike', nuke: 'IPO · mega-nuke' },
   nuke: { countdown: 4 },
   uav: { duration: 20, alertBots: true, alertRadius: 30 },
   missile: { speed: 50, boost: 90, lifetime: 20, startHeight: 150, startBack: 10, startPitch: -1.1, blastRadius: 9, maxDamage: 140, minDamage: 40, alertBots: true },
@@ -70,6 +71,7 @@ const CSS = `
 .sk .bar i{display:block;height:100%;background:#ffd166;width:100%}
 `;
 const ICON = {
+  crate: '<svg viewBox="0 0 40 40" stroke="#222" stroke-width="1.3" stroke-linejoin="round"><path d="M6 15a14 9 0 0 1 28 0z" fill="#fff"/><path d="M8 15l8 9M32 15l-8 9M20 15v9" fill="none" stroke="#fff"/><rect x="12" y="23" width="16" height="13" rx="1.5" fill="#c8955a"/><path d="M12 29h16M20 23v13" stroke="#7a5a32"/></svg>',
   uav: '<svg viewBox="0 0 40 40" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="20" cy="22" r="14" stroke-opacity=".45"/><circle cx="20" cy="22" r="8" stroke-opacity=".7"/><path d="M20 22L31 11" stroke="#7dffb0"/><circle cx="20" cy="22" r="2.5" fill="#fff" stroke="none"/><circle cx="12" cy="27" r="2.2" fill="#ff6b6b" stroke="none"/><circle cx="27" cy="29" r="2.2" fill="#ff6b6b" stroke="none"/></svg>',
   missile: '<svg viewBox="0 0 40 40" stroke="#222" stroke-width="1.4" stroke-linejoin="round"><g transform="rotate(40 20 20)"><path d="M20 3c4 4 5 9 5 15v12H15V18c0-6 1-11 5-15z" fill="#fff"/><path d="M20 3c3 3 4.5 7 4.8 11h-9.6c.3-4 1.8-8 4.8-11z" fill="#ff6b6b"/><path d="M15 24l-6 8h6zM25 24l6 8h-6z" fill="#ffd166"/><path d="M17 30h6l-3 7z" fill="#ff9a3c"/></g></svg>',
   rc: '<svg viewBox="0 0 40 40" stroke="#222" stroke-width="1.4" stroke-linejoin="round"><path d="M5 24l3-7h16l5 5h6v6H5z" fill="#ffd166"/><path d="M11 17l2-4h8l3 4z" fill="#9ad1ff"/><circle cx="12" cy="28" r="5" fill="#444"/><circle cx="30" cy="28" r="5" fill="#444"/><circle cx="12" cy="28" r="1.8" fill="#ccc" stroke="none"/><circle cx="30" cy="28" r="1.8" fill="#ccc" stroke="none"/><path d="M28 17l3-9" stroke="#fff" stroke-width="2"/><circle cx="31" cy="7" r="2" fill="#ff6b6b"/></svg>',
@@ -512,12 +514,12 @@ export function createStreaks(ctx) {
   function updateNuke(dt) {
     const N = S.nuke, c = cfg.nuke.countdown; N.t += dt;
     const left = Math.ceil(c - N.t);
-    if (N.t < c && left !== N.n) { N.n = left; showBanner('TACTICAL NUKE', 'Detonation in ' + left, 1.2); try { ctx.play && ctx.play('beep'); } catch (e) {} }
+    if (N.t < c && left !== N.n) { N.n = left; showBanner('IPO', 'Ringing the bell in ' + left, 1.2); try { ctx.play && ctx.play('beep'); } catch (e) {} }
     if (N.t >= c && !N.fired) {
       N.fired = true; S.shake = 3; S.nukeFl.style.transition = 'none'; S.nukeFl.style.opacity = '1';
       let killed = 0; for (const b of bots.list) { if (!b.alive) continue; const k = damageBot(b, 9999, { source: 'nuke', position: center(b) }); if (k) { killed++; emit('kill', { bot: b, source: 'nuke', streakId: 'nuke' }); if (ctx.onKill) ctx.onKill({ bot: b, source: 'nuke', streakId: 'nuke' }); } }
       emit('explosion', { position: { x: 0, y: 0, z: 0 }, radius: 0, source: 'nuke' });
-      showBanner('NUKE', 'Everyone is gone. Round won.', 3);
+      showBanner('IPO!', 'Everyone else just got diluted.', 3);
       requestAnimationFrame(() => { S.nukeFl.style.transition = 'opacity 2.2s ease-out'; S.nukeFl.style.opacity = '0'; });
     }
     if (N.t > c + 1) S.nuke = null;
@@ -528,7 +530,8 @@ export function createStreaks(ctx) {
     if (id === 'uav' && S.uav) return false;
     if (!(S.inv[id] > 0)) return false;
     S.inv[id]--; look.dx = look.dy = 0;
-    if (id === 'uav') { startUav(); emit('called', { id }); showBanner('UAV active', `Enemies revealed for ${cfg.uav.duration} s`, 1.8); }
+    if (id === 'uav') { startUav(); emit('called', { id }); showBanner('ANGEL ROUND', `Radar: enemies revealed for ${cfg.uav.duration} s`, 1.8); }
+    else if (id === 'crate') { emit('called', { id }); showBanner('SERIES A', 'Care package incoming · hold E on it', 2); }   // the server drops it (room.js crates)
     else if (id === 'nuke') startNuke();
     else if (id === 'missile' || id === 'airstrike') openTablet(id); else if (id === 'rc') startRc();
     else return false;
@@ -593,4 +596,4 @@ export function createStreaks(ctx) {
     call, cancel, reset, update, registerKill, registerDeath, explode, show: (v) => { dom.style.display = v ? '' : 'none'; },
     dispose() { cancel('dispose'); document.removeEventListener('keydown', onKey, true); document.removeEventListener('keyup', onKey, true); document.removeEventListener('mousemove', onMove); document.removeEventListener('mousedown', onDown, true); document.removeEventListener('mouseup', onUp, true); dom.remove(); },
   });
-}
+                       }
