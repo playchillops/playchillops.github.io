@@ -2,7 +2,7 @@
 // favourite weapon) and the best player of every company in the room. Data = the server's 'summary' message (room.js summary()).
 import { ICONS } from './economy.js';
 import { WEAPONS } from './player.js';
-import { DM, GUN_ORDER } from './common.js';
+import { DM, GUN_ORDER, legendOf } from './common.js';
 import { emblemSVG } from './emblem.js';
 import { logoUrl } from './account.js';
 const TEAMC = { T: '#ffb35c', CT: '#7fe3ff', Z: '#7dff9a' }, TEAMN = { T: 'Orange', CT: 'Cyan', Z: 'Green' };
@@ -38,12 +38,12 @@ export function showSummary(m, { myId, myTeam, onClose } = {}) {
   list.sort((a, b) => b.w - a.w || sc(b) - sc(a));
   const sub = dm ? dm.name.toUpperCase() : 'BOMB DEFUSAL';
   const scoreLine = m.mode === 'tdm' ? `<span style="color:${TEAMC.T}">${m.score.T || 0}</span> - <span style="color:${TEAMC.CT}">${m.score.CT || 0}</span>` : !dm ? `${m.score.T || 0} - ${m.score.CT || 0}${m.mode === 'ffa3' ? ' - ' + (m.score.Z || 0) : ''}` : '';
-  const row = (r, i) => `<tr class="${r.id === myId ? 'me' : ''} ${r.w ? 'win' : ''}"><td style="opacity:.6">${i + 1}</td><td><span class="nm">${logo(r.st, r.co, 24)}${emblemSVG(r.pr, 16)}<span style="color:${TEAMC[r.t] || '#fff'}">${esc(r.n)}</span>${r.b ? '<small style="opacity:.5">BOT</small>' : r.co ? `<small style="opacity:.55">${esc(r.co)}</small>` : ''}${r.id === m.mvp ? ' <b style="color:#ffd166;font-size:11px;letter-spacing:.14em">MVP</b>' : ''}</span></td>
+  const row = (r, i) => `<tr class="${r.id === myId ? 'me' : ''} ${r.w ? 'win' : ''}"><td style="opacity:.6">${i + 1}</td><td><span class="nm">${logo(r.st, r.co, 24)}${emblemSVG(r.pr, 16)}<span style="color:${TEAMC[r.t] || '#fff'}">${esc(r.n)}</span>${!r.b && legendOf(r.ch) ? `<small style="color:#ffd166;opacity:.8">as ${esc(legendOf(r.ch).name)}</small>` : ''}${r.b ? '<small style="opacity:.5">BOT</small>' : r.co ? `<small style="opacity:.55">${esc(r.co)}</small>` : ''}${r.id === m.mvp ? ' <b style="color:#ffd166;font-size:11px;letter-spacing:.14em">MVP</b>' : ''}</span></td>
     ${gun ? `<td>${Math.min(r.gl + 1, GUN_ORDER.length)}/${GUN_ORDER.length}</td>` : ''}<td><b>${r.k}</b></td><td>${r.d}</td><td>${pct(r.hs, r.k)}</td><td>${pct(r.hi, r.sh)}</td><td>${r.dmg}</td><td><span class="wp">${r.top ? wicon(r.top, 26) + esc(wname(r.top)) : '-'}</span></td></tr>`;
   const comp = (m.comp || []).map((id) => list.find((r) => r.id === id)).filter(Boolean);
   const el = document.createElement('div'); el.className = 'ms';
   el.innerHTML = `<div class="ms-w"><div class="ms-h"><h2 style="color:${draw ? '#fff' : won ? '#7dffb0' : '#ffb4a8'}">${draw ? 'DRAW' : won ? 'VICTORY' : 'DEFEAT'}</h2><span>${sub}</span>${scoreLine ? `<span style="font-size:22px;opacity:1;font-weight:700">${scoreLine}</span>` : ''}</div>
-<div class="ms-g">${mvp ? `<div class="ms-mvp"><div class="t">MVP</div><div class="n">${emblemSVG(mvp.pr, 26)}<span style="color:${TEAMC[mvp.t] || '#fff'}">${esc(mvp.n)}</span></div><div class="c">${mvp.b ? '<span style="opacity:.6">Bot</span>' : logo(mvp.st, mvp.co, 40) + `<span>${esc(mvp.co || 'No company')}</span>`}</div>
+<div class="ms-g">${mvp ? `<div class="ms-mvp"><div class="t">MVP</div><div class="n">${emblemSVG(mvp.pr, 26)}<span style="color:${TEAMC[mvp.t] || '#fff'}">${esc(mvp.n)}</span></div>${!mvp.b && legendOf(mvp.ch) ? `<div style="font-size:13px;letter-spacing:.14em;color:#ffd166;margin:-2px 0 6px">AS ${esc(legendOf(mvp.ch).name.toUpperCase())}</div>` : ''}<div class="c">${mvp.b ? '<span style="opacity:.6">Bot</span>' : logo(mvp.st, mvp.co, 40) + `<span>${esc(mvp.co || 'No company')}</span>`}</div>
 <div class="ms-st"><div><b>${mvp.k}</b><small>KILLS</small></div><div><b>${mvp.d ? (mvp.k / mvp.d).toFixed(2) : mvp.k}</b><small>K / D</small></div><div><b>${pct(mvp.hs, mvp.k)}</b><small>HEADSHOTS</small></div><div><b>${pct(mvp.hi, mvp.sh)}</b><small>ACCURACY</small></div><div><b>${mvp.dmg}</b><small>DAMAGE</small></div><div style="color:#ffd166">${mvp.top ? wicon(mvp.top, 34) : '<b>-</b>'}<small style="display:block">${esc(wname(mvp.top)).toUpperCase()}</small></div></div></div>` : '<div></div>'}
 <div><table class="ms-t"><tr><th>#</th><th>PLAYER</th>${gun ? '<th>LEVEL</th>' : ''}<th>K</th><th>D</th><th>HS</th><th>ACC</th><th>DMG</th><th>TOP WEAPON</th></tr>${list.map(row).join('')}</table>
 ${comp.length ? `<div class="ms-co"><h4>BEST PER COMPANY</h4><div class="ms-chips">${comp.map((r) => `<div class="ms-chip">${logo(r.st, r.co, 34)}<div><b>${esc(r.co)}</b><small>${esc(r.n)} · ${r.k} kills</small></div></div>`).join('')}</div></div>` : ''}</div></div>
