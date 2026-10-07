@@ -14,7 +14,7 @@ export function createSpectator(THREE, { camera, root, world }) {
   let mode = 'third', idx = 0, targetId = null, deadT = -1, deathPos = null, deathEye = null, killer = null, lostT = 0, hidden = null, yawS = 0, pitchS = 0, active = false;
   // ---- HUD: death banner + spectate panel ----
   const css = 'position:absolute;left:50%;transform:translateX(-50%);z-index:41;pointer-events:none;font-family:Fredoka,system-ui,sans-serif;color:#fff;text-align:center;text-shadow:0 0 4px #000,0 2px 8px rgba(0,0,0,.8)';
-  const ban = document.createElement('div'); ban.style.cssText = css + ';bottom:20%;display:none';
+  const ban = document.createElement('div'); ban.className = 'sp-ban'; ban.style.cssText = css + ';bottom:20%;display:none';   // hidden while a calling card shows (callingcard.js)
   ban.innerHTML = '<div style="font-weight:700;font-size:38px;letter-spacing:.16em">ELIMINATED</div><div class="sp-by" style="font-size:17px;letter-spacing:.06em;opacity:.95;margin-top:4px"></div>';
   const pan = document.createElement('div'); pan.style.cssText = css + ';bottom:11%;display:none;min-width:260px;padding:10px 18px 9px;border-radius:14px;background:rgba(11,16,32,.72);border:1px solid rgba(255,255,255,.14);box-shadow:0 8px 30px rgba(0,0,0,.35)';
   pan.innerHTML = '<div style="font-size:11px;letter-spacing:.24em;opacity:.7">SPECTATING</div><div class="sp-name" style="font-weight:700;font-size:26px;line-height:1.15"></div><div class="sp-info" style="font-size:14px;opacity:.9;margin-top:2px"></div><div class="sp-keys" style="font-size:11px;letter-spacing:.08em;opacity:.65;margin-top:6px">LEFT / RIGHT CLICK switch player &nbsp;·&nbsp; SPACE first / third person</div>';
