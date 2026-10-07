@@ -148,7 +148,7 @@ export class Game {
     this.hint = document.createElement('div'); this.hint.style.cssText = 'position:absolute;right:200px;bottom:34px;z-index:21;font-weight:800;font-size:18px;text-shadow:0 2px 4px #000;pointer-events:none'; root.appendChild(this.hint);
     this.sb = document.createElement('div'); this.sb.className = 'scb'; this.sb.style.display = 'none'; root.appendChild(this.sb); this.sbm = document.createElement('div'); this.sbm.className = 'sbm'; this.sbm.style.display = 'none'; root.appendChild(this.sbm);
     this.match = { p: 0, b: 0, round: 1, over: false };
-    this.perf = document.createElement('div'); this.perf.style.cssText = 'position:absolute;left:8px;top:8px;z-index:200;font:700 10px/1 ui-monospace,monospace;color:#fff;background:rgba(0,0,0,.45);padding:5px 8px;border-radius:8px;pointer-events:none'; this.perf.textContent = '-- FPS · -- ms'; root.appendChild(this.perf); this.pf = { n: 0, t: 0, worst: 0 };
+    this.perf = document.createElement('div'); this.perf.style.cssText = 'position:absolute;left:8px;top:8px;z-index:200;font:700 10px/1 ui-monospace,monospace;color:#fff;background:rgba(0,0,0,.45);padding:5px 8px;border-radius:8px;pointer-events:none'; this.perf.style.whiteSpace = 'pre-line'; this.perf.style.lineHeight = '1.5'; this.perf.style.top = '190px'; this.perf.textContent = '-- FPS'; root.appendChild(this.perf); this.pf = { n: 0, t: 0, worst: 0 };
     this.setOv = document.createElement('div'); this.setOv.className = 'setov'; this.setOv.style.display = 'none'; root.appendChild(this.setOv);
     this.invb = document.createElement('div'); this.invb.className = 'invb'; this.invb.style.display = 'none'; root.appendChild(this.invb); this.invh = document.createElement('div'); this.invh.className = 'invh'; root.appendChild(this.invh); this.invSig = '';
     this.knifeOn = false; this.knifeCd = 0; this.slashT = -1; this.makeKnife();
@@ -340,7 +340,7 @@ export class Game {
   openSettings() {
     const s = this.set, o = this.setOv; o.style.display = 'flex';
     o.innerHTML = `<div class="setp"><h2>Settings</h2>
-<label class="sr"><span>FPS / ms counter</span><input type="checkbox" data-k="fps" ${s.fps ? 'checked' : ''}></label>
+<label class="sr"><span>FPS / ping / server lag</span><input type="checkbox" data-k="fps" ${s.fps ? 'checked' : ''}></label>
 <label class="sr"><span>Sensitivity <em data-v="sens">${s.sens.toFixed(2)}x</em></span><input type="range" min="0.3" max="2.5" step="0.05" value="${s.sens}" data-k="sens"></label>
 <label class="sr"><span>Master volume <em data-v="vol">${Math.round(s.vol * 100)}%</em></span><input type="range" min="0" max="1" step="0.05" value="${s.vol}" data-k="vol"></label>
 <label class="sr"><span>Effects volume <em data-v="fx">${Math.round(s.fx * 100)}%</em></span><input type="range" min="0" max="1" step="0.05" value="${s.fx}" data-k="fx"></label>
@@ -571,7 +571,7 @@ export class Game {
   }
   loop(now) {
     if (!this.running) return; requestAnimationFrame(this.loop);
-    { const fr = now - this.last; const p = this.pf; p.n++; p.t += fr; if (fr > p.worst) p.worst = fr; if (p.t >= 500) { this.perf.textContent = Math.round(p.n * 1000 / p.t) + ' FPS · ' + Math.round(p.t / p.n) + ' ms (max ' + Math.round(p.worst) + ')'; p.n = 0; p.t = 0; p.worst = 0; } }
+    { const fr = now - this.last; const p = this.pf; p.n++; p.t += fr; if (fr > p.worst) p.worst = fr; if (p.t >= 500) { const net = this.mp?.active ? this.mp.net : null; const sp = net?.serverPerf; this.perf.textContent = Math.round(p.n * 1000 / p.t) + ' FPS · FRAME ' + Math.round(p.t / p.n) + ' ms (max ' + Math.round(p.worst) + ')\n' + (net ? 'PING (RTT) ' + (net.hasPing ? Math.round(net.rttMs) + ' ms' : '--') + '\nSERVER tick ' + (sp ? sp[0] + ' ms · pause (5s) ' + sp[1] + ' ms' : '--') : 'PING / SERVER: offline'); p.n = 0; p.t = 0; p.worst = 0; } }
     const real = Math.min(0.05, (now - this.last) / 1000); this.last = now;
     const dt = real * this.kc.update(real) * this.killfx.update(real) * (this.deathCam ? 0.35 : 1);
     this._real = real;
@@ -587,4 +587,4 @@ export class Game {
     this.kc.afterRender();
   }
   destroy() { this.running = false; this.ro && this.ro.disconnect(); this.ctrl.dispose(); this.renderer.dispose(); }
-    }
+  }
