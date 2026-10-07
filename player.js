@@ -45,13 +45,13 @@ export const WEAPONS = {
     recoil: { pitch: 0.014, yaw: 0.004, kick: 0.05, recover: 10 }, zoom: 1, scope: false, adsZoom: 1.25, color: 0x5ad1ff, flash: 0.8,
     desc: '12 rounds · quick reload · crisp headshots' },
   machinegun: { id: 'machinegun', name: 'Chill-O-Matic', cls: 'rifle', slot: 'primary', price: 1800, auto: true, rpm: 780, mag: 30, reserve: 120, reloadTime: 1.8,
-    damage: { head: 48, body: 16, limb: 10 }, range: 70, pellets: 1, spread: 0.007, spreadMove: 0.02, spreadPerShot: 0.0035, spreadMax: 0.05, spreadRecover: 5,
+    damage: { head: 110, body: 26, limb: 18 }, range: 70, pellets: 1, spread: 0.007, spreadMove: 0.02, spreadPerShot: 0.0035, spreadMax: 0.05, spreadRecover: 5,
     recoil: { pitch: 0.007, yaw: 0.005, kick: 0.04, recover: 9 }, pattern: P_AK, zoom: 1, scope: false, adsZoom: 1.3, color: 0xffb347, flash: 1,
     desc: 'Full auto rifle · hits hard · learn the spray (up, then right, then left)' },
   sniper: { id: 'sniper', name: 'Quiet Storm', cls: 'sniper', slot: 'primary', price: 3500, auto: false, rpm: 48, mag: 5, reserve: 20, reloadTime: 2.6,
-    damage: { head: 90, body: 55, limb: 40 }, range: 300, pellets: 1, spread: 0.03, spreadMove: 0.06, spreadPerShot: 0, spreadMax: 0.06, spreadRecover: 4, adsSpread: 0.0,
+    damage: { head: 180, body: 75, limb: 50 }, range: 300, pellets: 1, spread: 0.03, spreadMove: 0.06, spreadPerShot: 0, spreadMax: 0.06, spreadRecover: 4, adsSpread: 0.0,
     recoil: { pitch: 0.05, yaw: 0.008, kick: 0.12, recover: 5 }, zoom: 4, scope: true, adsZoom: 4, color: 0x9affc4, flash: 1.3,
-    desc: 'Bolt-action · 4× scope · two hits anywhere' },
+    desc: 'Bolt-action · 4× scope · lethal unhelmeted headshots' },
   // ---------------- new arsenal ----------------
   thunderpop: { id: 'thunderpop', name: 'Thunder Pop', cls: 'hpistol', slot: 'secondary', price: 700, auto: false, rpm: 150, mag: 7, reserve: 35, reloadTime: 2.1,
     damage: { head: 85, body: 38, limb: 26 }, range: 90, pellets: 1, spread: 0.005, spreadMove: 0.06, spreadPerShot: 0.03, spreadMax: 0.08, spreadRecover: 4,
@@ -62,27 +62,27 @@ export const WEAPONS = {
     recoil: { pitch: 0.011, yaw: 0.006, kick: 0.04, recover: 10 }, pattern: P_BURST, zoom: 1, scope: false, adsZoom: 1.25, color: 0xf2a9b8, flash: 0.8,
     desc: '3-round burst pistol · one click, three pops' },
   buzzbox: { id: 'buzzbox', name: 'Buzz Box', cls: 'smg', slot: 'primary', price: 1200, auto: true, rpm: 900, mag: 32, reserve: 128, reloadTime: 1.9,
-    damage: { head: 30, body: 9, limb: 6 }, falloff: { start: 15, end: 40, min: 0.7 }, range: 45, pellets: 1, spread: 0.009, spreadMove: 0.013, spreadPerShot: 0.0028, spreadMax: 0.045, spreadRecover: 6,
+    damage: { head: 42, body: 14, limb: 9 }, falloff: { start: 15, end: 40, min: 0.7 }, range: 45, pellets: 1, spread: 0.009, spreadMove: 0.013, spreadPerShot: 0.0028, spreadMax: 0.045, spreadRecover: 6,
     recoil: { pitch: 0.0045, yaw: 0.006, kick: 0.03, recover: 10 }, pattern: P_SMG, zoom: 1, scope: false, adsZoom: 1.2, color: 0xc8b3cb, flash: 0.8,
     desc: 'Run-and-gun SMG · accurate on the move · weak far away' },
   bigpuff: { id: 'bigpuff', name: 'Big Puff', cls: 'shotgun', slot: 'primary', price: 1100, auto: false, rpm: 68, mag: 6, reserve: 24, reloadTime: 2.8,
-    damage: { head: 28, body: 17, limb: 11 }, falloff: { start: 5, end: 18, min: 0.2 }, range: 26, pellets: 9, spread: 0.06, spreadMove: 0.075, spreadPerShot: 0, spreadMax: 0.075, spreadRecover: 5, adsSpread: 0.045,
+    damage: { head: 34, body: 22, limb: 15 }, falloff: { start: 5, end: 18, min: 0.2 }, range: 26, pellets: 9, spread: 0.06, spreadMove: 0.075, spreadPerShot: 0, spreadMax: 0.075, spreadRecover: 5, adsSpread: 0.045,
     recoil: { pitch: 0.07, yaw: 0.02, kick: 0.17, recover: 5 }, zoom: 1, scope: false, adsZoom: 1.15, color: 0xff846e, flash: 1.6,
     desc: 'Pump shotgun · 9 pellets · heavy hits up close' },
   partypopper: { id: 'partypopper', name: 'Party Popper', cls: 'lmg', slot: 'primary', price: 2600, auto: true, rpm: 800, mag: 100, reserve: 200, reloadTime: 4.3,
-    damage: { head: 34, body: 10, limb: 7 }, range: 70, pellets: 1, spread: 0.011, spreadMove: 0.03, spreadPerShot: 0.0028, spreadMax: 0.055, spreadRecover: 4,
+    damage: { head: 50, body: 18, limb: 12 }, range: 70, pellets: 1, spread: 0.011, spreadMove: 0.03, spreadPerShot: 0.0028, spreadMax: 0.055, spreadRecover: 4,
     recoil: { pitch: 0.006, yaw: 0.008, kick: 0.045, recover: 7 }, pattern: P_LMG, zoom: 1, scope: false, adsZoom: 1.25, color: 0xa9e0c4, flash: 1.1,
     desc: '100-round belt · hold the line · slow reload' },
   breeze: { id: 'breeze', name: 'Breeze M4', cls: 'rifle', slot: 'primary', price: 2100, auto: true, rpm: 690, mag: 25, reserve: 100, reloadTime: 2.0,
-    damage: { head: 46, body: 15, limb: 10 }, range: 75, pellets: 1, spread: 0.005, spreadMove: 0.018, spreadPerShot: 0.0026, spreadMax: 0.038, spreadRecover: 6,
+    damage: { head: 110, body: 25, limb: 18 }, range: 75, pellets: 1, spread: 0.005, spreadMove: 0.018, spreadPerShot: 0.0026, spreadMax: 0.038, spreadRecover: 6,
     recoil: { pitch: 0.0055, yaw: 0.0035, kick: 0.035, recover: 10 }, pattern: P_M4, zoom: 1, scope: false, adsZoom: 1.35, color: 0x68e3db, flash: 0.9,
     desc: 'Smooth rifle · gentle spray · precise' },
   taptap: { id: 'taptap', name: 'Tap-Tap', cls: 'rifle', slot: 'primary', price: 1600, auto: false, burst: 3, burstDelay: 0.34, rpm: 1000, mag: 24, reserve: 96, reloadTime: 2.1,
-    damage: { head: 46, body: 16, limb: 10 }, range: 70, pellets: 1, spread: 0.0055, spreadMove: 0.02, spreadPerShot: 0.002, spreadMax: 0.03, spreadRecover: 6,
+    damage: { head: 110, body: 26, limb: 18 }, range: 70, pellets: 1, spread: 0.0055, spreadMove: 0.02, spreadPerShot: 0.002, spreadMax: 0.03, spreadRecover: 6,
     recoil: { pitch: 0.006, yaw: 0.003, kick: 0.035, recover: 11 }, pattern: P_BURST, zoom: 1, scope: false, adsZoom: 1.35, color: 0xffda8d, flash: 0.9,
     desc: 'Burst rifle · three bullets per click · cheap and tidy' },
   skyneedle: { id: 'skyneedle', name: 'Sky Needle', cls: 'sniper', slot: 'primary', price: 1900, auto: false, rpm: 70, mag: 10, reserve: 30, reloadTime: 2.3,
-    damage: { head: 80, body: 40, limb: 28 }, range: 250, pellets: 1, spread: 0.022, spreadMove: 0.03, spreadPerShot: 0, spreadMax: 0.04, spreadRecover: 5, adsSpread: 0.001,
+    damage: { head: 150, body: 60, limb: 40 }, range: 250, pellets: 1, spread: 0.022, spreadMove: 0.03, spreadPerShot: 0, spreadMax: 0.04, spreadRecover: 5, adsSpread: 0.001,
     recoil: { pitch: 0.035, yaw: 0.006, kick: 0.09, recover: 6 }, zoom: 3, scope: true, adsZoom: 3, color: 0x7fe3ff, flash: 1.1,
     desc: 'Light scout sniper · 3× scope · fast and mobile' },
   bazooka: { id: 'bazooka', name: 'Kite Bazooka', cls: 'launcher', slot: 'primary', price: 3600, auto: false, rpm: 35, mag: 1, reserve: 4, reloadTime: 2.8,
@@ -275,14 +275,16 @@ export function createHUD(container = document.body) {
   const q = (s) => root.querySelector(s);
   const fill = q('.sc-hp-fill'), num = q('.sc-hp-num'), ammoBox = q('.sc-ammo'), ammoN = q('.sc-ammo-n'), ammoW = q('.sc-ammo-w');
   const scope = q('.sc-scope'), ch = q('.sc-ch'), hit = q('.sc-hit'), flash = q('.sc-flash'), bomb = q('.sc-bomb'), rel = q('.sc-reload');
-  let hitT = 0;
+  let hitT = 0, healthKey='', ammoKey='';
   return {
     root,
     setHealth(hp, max = 100) {
+      const key=hp+':'+max;if(key===healthKey)return;healthKey=key;
       const f = Math.max(0, Math.min(1, hp / max)); fill.style.width = f * 100 + '%';
       fill.style.background = f > 0.6 ? '#52f0a0' : f > 0.3 ? '#ffd24a' : '#ff5566'; num.textContent = Math.ceil(hp);
     },
     setAmmo(mag, reserve, name, reloading) {
+      const key=[mag,reserve,name,reloading].join(':');if(key===ammoKey)return;ammoKey=key;
       ammoN.innerHTML = mag == null ? '' : `${mag} <small>/ ${reserve}</small>`; ammoW.textContent = name || ''; // mag null = melee (knife): name only
       ammoBox.classList.toggle('low', mag <= 2); rel.style.opacity = reloading ? 1 : 0;
     },
