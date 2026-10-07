@@ -14,6 +14,7 @@ const CSS = `.pw-hud{position:fixed;left:24px;bottom:112px;z-index:24;display:fl
 .pw-stun.b .face{font-size:min(22vh,180px);line-height:1}.pw-stun.b p{font-size:clamp(16px,2.6vh,26px);max-width:60vw;text-align:left;margin:12px 0}`;
 const RING = (f, c) => { const r = 23, L = 2 * Math.PI * r; return `<svg viewBox="0 0 56 56"><circle cx="28" cy="28" r="${r}" fill="rgba(8,12,26,.72)" stroke="rgba(255,255,255,.18)" stroke-width="5"/><circle cx="28" cy="28" r="${r}" fill="none" stroke="${c}" stroke-width="5" stroke-linecap="round" stroke-dasharray="${(L * f).toFixed(1)} ${L.toFixed(1)}" transform="rotate(-90 28 28)"/><text x="28" y="34" text-anchor="middle" font-family="Fredoka,system-ui,sans-serif" font-weight="800" font-size="17" fill="#fff">Y</text></svg>`; };
 const FX = {   // your own active power: a screen tint + a tag under the scoreboard
+  mobility: ['#9fe8ff', 'radial-gradient(circle,transparent 55%,rgba(159,232,255,.35) 100%)'],
   xray: ['#ffd166', 'radial-gradient(circle,transparent 55%,rgba(255,209,102,.28) 100%)'], cloak: ['#c9a2ff', 'radial-gradient(circle,transparent 45%,rgba(150,110,255,.38) 100%)'],
   agi: ['#7fe3ff', 'radial-gradient(circle,transparent 60%,rgba(127,227,255,.3) 100%)'], overclock: ['#76ff7a', 'radial-gradient(circle,transparent 55%,rgba(118,255,122,.3) 100%)'],
   turbo: ['#ff6b6b', 'repeating-conic-gradient(from 0deg at 50% 50%,rgba(255,255,255,0) 0deg 7deg,rgba(255,255,255,.12) 7deg 8deg),radial-gradient(circle,transparent 50%,rgba(255,80,80,.3) 100%)'],
@@ -71,7 +72,7 @@ export function createPowers({ game, net, THREE, an, play, banner = () => {} }) 
     /** Y: fire your power when it is charged */
     use() { const P = mine(); if (!P || !net.alive) return; if ((net.me.st || 0) > 0) return; if ((net.me.pw || 0) < 100) { banner(P.name + ' charging · ' + (net.me.pw | 0) + '%', 1.2); return; } net.setInput({ pw: true, rk: P.k === 'rocket' }); },
     /** turbo input flag (prediction runs at the same speed as the server) */
-    get turbo() { const P = mine(); return !!(P && P.k === 'turbo' && (net.me.pa || 0) > 0); },
+    get turbo() { const P = mine(); return !!(P && (P.k === 'turbo' || P.k === 'mobility') && (net.me.pa || 0) > 0); },
     get stunned() { return (net.me.st || 0) > 0 && net.alive; },
     update(dt) {
       // HUD meter
