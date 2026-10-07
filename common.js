@@ -6,7 +6,7 @@ export const MAX_PLAYERS = 12;
 export const REWIND_TICKS = 10;         // lag compensation window (~333 ms)
 export const HIST_TICKS = 32;
 export const SENS = 0.0022;             // must equal movement.js default sensitivity
-export const WEAPON_IDS = ['pistol', 'machinegun', 'sniper', 'thunderpop', 'fizztwin', 'buzzbox', 'bigpuff', 'partypopper', 'breeze', 'taptap', 'skyneedle']; // append only (network index)
+export const WEAPON_IDS = ['pistol', 'machinegun', 'sniper', 'thunderpop', 'fizztwin', 'buzzbox', 'bigpuff', 'partypopper', 'breeze', 'taptap', 'skyneedle', 'bazooka', 'grenadelauncher']; // append only (network index)
 export const PROTOCOL = 1;
 
 export const R = { // rules (all server side, tweak freely)
@@ -34,6 +34,7 @@ export const LEGENDS = [
   { id: 'bezos', name: 'Jeff Bezos', co: 'Amazon', site: 'amazon.com' },
   { id: 'jensen', name: 'Jensen Huang', co: 'NVIDIA', site: 'nvidia.com' },
   { id: 'gates', name: 'Bill Gates', co: 'Microsoft', site: 'microsoft.com' },
+  { id: 'hawking', name: 'Stephen Hawking', co: 'Cosmology', site: 'cam.ac.uk' },
   { id: 'lisa', name: 'Lisa Su', co: 'AMD', site: 'amd.com' },
 ];
 export const LEGEND_IDS = LEGENDS.map((l) => l.id);
@@ -44,13 +45,15 @@ export const POWERS = {
   zuck: { k: 'cloak', name: 'Metaverse', desc: 'Turn almost invisible (shooting flickers you back)', dur: 7 },
   altman: { k: 'agi', name: 'AGI Mode', desc: 'Perfect aim: zero spread', dur: 7 },
   musk: { k: 'rocket', name: 'Starship', desc: 'Rocket jump high and far where you look', dur: 0 },
-  bezos: { k: 'prime', name: 'Prime Delivery', desc: '+20 HP. Nothing else.', dur: 0 },
+  bezos: { k: 'prime', name: 'Prime Delivery', desc: '+20 HP, capped at 100. Nothing else.', dur: 0 },
   jensen: { k: 'overclock', name: 'Overclock', desc: 'Double fire rate and instant reloads', dur: 7 },
   gates: { k: 'bsod', name: 'Blue Screen', desc: 'Enemies within 14 m freeze for 2.5 s', dur: 0 },
+  hawking: { k: 'mobility', name: 'Quantum Dash', desc: 'Wheelchair speed boost: 3x mobility for 7 s', dur: 7 },
   lisa: { k: 'turbo', name: 'Ryzen Turbo', desc: 'Run 60% faster', dur: 7 },
 };
 export const POWER_CHARGE = { perSec: 1.25, perKill: 25, perDmg: 0.12 };
 export const KNIFE_REACH = 1.5; // metres, shared by client and server
+export const MOBILITY = 3;
 export const TURBO = 1.6, STUN_TASER = 5, STUN_BSOD = 2.5, TASER_RANGE = 6.5;
 /** Starship launch: same numbers on the client (prediction) and the server */
 export function rocketVel(yaw, pitch) { const up = Math.max(0, Math.min(.9, pitch)); return { x: -Math.sin(yaw) * (14 - up * 6), y: 14 + up * 6, z: -Math.cos(yaw) * (14 - up * 6) }; }   // flat: ~18 m far, 4.5 m high; looking up: 8.5 m high
