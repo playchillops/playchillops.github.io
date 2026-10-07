@@ -13,7 +13,7 @@ const PAL = { ground:0x91c990, tile:0xe2d2b4, edge:0xb2c4a0, metal:0x6d8494, roo
 export function buildMap(THREE, layout = scaleLayout(KITE_GARDEN_V4)) {
   const L = layout, H = L.half, P = L.plateau;
   const group = new THREE.Group(); group.name = L.name + ' v' + L.version;
-  const colliders = [], floors = [], ramps = [], stairsList = [], rampColliders = [], geos = new Set(), mats = new Set(), textures = [];
+  const colliders = [], floors = [], ramps = [], stairsList = [], rampColliders = [], geos = new Set(), mats = new Set(), textures = [], rockets = [];
   const STEP = .34;
   const col = k => (typeof k === 'number' ? k : (PAL[k] ?? PAL.cream));
   const batches = new Map(), matCache = new Map();
@@ -299,6 +299,7 @@ export function buildMap(THREE, layout = scaleLayout(KITE_GARDEN_V4)) {
       vbox(x - 4.2, z - 4.2, x + 4.2, z + 4.2, .3, .32, 'dark', true); for (let k = -3; k <= 3; k += 2) { vbox(x + k - .35, z - 4.2, x + k + .35, z - 3.4, .32, .335, 'gold', true); vbox(x + k - .35, z + 3.4, x + k + .35, z + 4.2, .32, .335, 'gold', true); }
       vbox(x - 1.5, z - 1.5, x + 1.5, z + 1.5, .321, .34, 'coral', true); // flame trench grate
       for (const [dx, dz] of [[-1.7, -1.7], [1.7, -1.7], [-1.7, 1.7], [1.7, 1.7]]) { sbox(x + dx - .18, z + dz - .18, x + dx + .18, z + dz + .18, .3, 2.6, 'dark', 'rocket leg'); vbox(x + dx - .45, z + dz - .45, x + dx + .45, z + dz + .45, .3, .45, 'metal', true); }
+      const c0 = group.children.length;   // everything from here to the boosters is the flying rocket (map event "Starship launch")
       sbox(x - .75, z - .75, x + .75, z + .75, 1.3, 2.6, 'dark', 'engine bell'); cyl(.55, 1.05, 1.1, 'dark', x, 1.9, z, 14, 'engine bell');
       sbox(x - 1.3, z - 1.3, x + 1.3, z + 1.3, 2.6, 13, 'cream', 'rocket'); // body hitbox (above head height: you can stand under it)
       cyl(1.45, 1.45, 10.4, 'cream', x, 7.8, z); for (const [y, c] of [[3.4, 'coral'], [6.6, 'cyan'], [10.2, 'coral']]) cyl(1.5, 1.5, .55, c, x, y, z);
@@ -306,9 +307,11 @@ export function buildMap(THREE, layout = scaleLayout(KITE_GARDEN_V4)) {
       const win = mesh(new T.CircleGeometry(.48, 16), material(PAL.cyan, true), x, 11.6, z + 1.47, false, 'rocket window'); void win; mesh(new T.TorusGeometry(.5, .07, 6, 18), material(PAL.gold), x, 11.6, z + 1.48, false, 'rocket window ring');
       for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + Math.PI / 4, g = new T.BoxGeometry(.14, 3.6, 2.1); g.translate(0, 0, 2.1 / 2 + 1.2); const f = mesh(g, material(PAL.coral), x, 4.4, z, false, 'rocket fin'); f.rotation.y = a; f.rotation.x = 0;
         const sx = Math.sin(a) * 1.9, sz = Math.cos(a) * 1.9; cyl(.42, .42, 5, 'cream', x + sx, 5.1, z + sz, 12, 'booster'); cyl(0, .42, 1.1, 'coral', x + sx, 8.15, z + sz, 12, 'booster nose'); }
+      const rk = new THREE.Group(); rk.name = 'launch rocket'; for (const m of group.children.slice(c0)) rk.add(m); group.add(rk);
       const smoke = [], sm = new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false }); mats.add(sm);
       for (let i = 0; i < 6; i++) { const s2 = mesh(new T.IcosahedronGeometry(1, 1), sm, x + Math.cos(i) * 2.2, .9, z + Math.sin(i) * 2.2, false, 'rocket smoke'); s2.castShadow = false; smoke.push(s2); }
       const fl = cyl(0, .8, 2.2, 'gold', x, .25, z, 12, 'rocket flame'); fl.geometry.rotateX(Math.PI); fl.material = new T.MeshBasicMaterial({ color: 0xff8a3d }); mats.add(fl.material); fl.castShadow = false;
+      rk.add(fl); rockets.push({ group: rk, flame: fl, x, z, smoke });
       fl.onBeforeRender = () => { const t = (performance.now() / 1000) % 9, on = t < 2.2, k = on ? .7 + .4 * Math.abs(Math.sin(t * 17)) : .001; fl.scale.set(on ? 1 : .001, k, on ? 1 : .001);
         smoke.forEach((s2, i) => { const u = on ? Math.min(1, t / 2.2) : Math.max(0, 1 - (t - 2.2) / 1.5); s2.scale.setScalar(.4 + 1.6 * u + .2 * Math.sin(t * 3 + i)); }); sm.opacity = on ? .55 : Math.max(0, .55 * (1 - (t - 2.2) / 1.5)); }; },
     gantry(o) { // service tower beside the rocket: lattice mast on the gantry deck, swing arm at the capsule, warning light
@@ -629,7 +632,7 @@ export function buildMap(THREE, layout = scaleLayout(KITE_GARDEN_V4)) {
       const mm = mesh(mg, b.m, 0, 0, 0, false, 'merged props'); mm.castShadow = b.cast; mm.receiveShadow = b.recv;
       for (const o of b.list) group.remove(o); } }
   const physicsColliders = [...colliders, ...rampColliders];
-  return { layout: L, portals, palmSpots, stairs: stairsList, callouts: L.callouts.map(([name, x, z]) => ({ name, position: V3(x, getHeight(x, z), z) })), group, lights, colliders, physicsColliders, floors, ramps, getHeight,
+  return { layout: L, portals, rockets, palmSpots, stairs: stairsList, callouts: L.callouts.map(([name, x, z]) => ({ name, position: V3(x, getHeight(x, z), z) })), group, lights, colliders, physicsColliders, floors, ramps, getHeight,
     stepHeight: STEP, spawnPoints, bombsites, navGrid, bounds: { minX: -H, maxX: H, minZ: -H, maxZ: H }, sky: { background: 0xb4dcf0, fog: { color: 0xb4dcf0, near: 80, far: 200 } },
     dispose() { for (const g of geos) g.dispose(); for (const m of mats) m.dispose(); for (const t of textures) t.dispose(); sun.shadow.map?.dispose(); } };
 }
