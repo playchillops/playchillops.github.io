@@ -43,8 +43,8 @@ export function createKnifeVM(THREE, camera) {
   const arm = new T.Group(); arm.position.set(.02, -.03, .1); arm.rotation.set(-.35, .32, 0); rig.add(arm);
   const skin = 0xf2c9a0, sleeveC = 0x2a6fd6;
   const fa = new T.CylinderGeometry(.034, .04, .3, 14); fa.rotateX(PI / 2); mesh(fa, skin, arm, 0, 0, .1, 1.06);
-  const sl = new T.CylinderGeometry(.047, .053, .26, 14); sl.rotateX(PI / 2); mesh(sl, sleeveC, arm, 0, 0, .29, 1.05);
-  const cuff = new T.CylinderGeometry(.05, .05, .035, 14); cuff.rotateX(PI / 2); mesh(cuff, 0xffd166, arm, 0, 0, .165, 1.06);
+  const sl = new T.CylinderGeometry(.047, .053, .26, 14); sl.rotateX(PI / 2); const slM = mesh(sl, sleeveC, arm, 0, 0, .29, 1.05);
+  const cuff = new T.CylinderGeometry(.05, .05, .035, 14); cuff.rotateX(PI / 2); const cuM = mesh(cuff, 0xffd166, arm, 0, 0, .165, 1.06);
   const band = new T.CylinderGeometry(.037, .037, .02, 14); band.rotateX(PI / 2); mesh(band, 0xff846e, arm, 0, 0, -.035, 1.08);
   // ---- hand: fist around a handle along z (palm on the right, fingers curl over the top to the left) ----
   const hand = new T.Group(); rig.add(hand);
@@ -106,6 +106,8 @@ export function createKnifeVM(THREE, camera) {
     else { c(KM.blade, 0xe8f4ff); c(KM.handle, 0xff7a3c); c(KM.guard, 0xffb347); c(KM.pom, 0xffb347); c(KM.ring, 0xffb347); KM.wraps.forEach((w) => c(w, 0xffd9a8)); } }
   const api = {
     root,
+    /** your legend's sleeve + team cuff (null = default blue sleeve, yellow cuff) */
+    setOutfit(o) { slM.material.color.setHex(o ? o.sleeve : sleeveC); cuM.material.color.setHex(o ? o.cuff : 0xffd166); },
     setType(k) { k = k === 'butterfly' || k === 'kite' ? k : 'default'; if (k === type) return; type = k; kar.visible = k !== 'butterfly'; bfly.visible = k === 'butterfly'; if (k !== 'butterfly') colors(k); },
     play(name) { cur = ANIM[name]; t = 0; trailOn = name.startsWith('slash') ? .3 : name === 'stab' ? .5 : 0; hist.length = 0; },
     draw() { api.play(type === 'butterfly' ? 'drawB' : 'draw'); },
