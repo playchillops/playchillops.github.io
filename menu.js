@@ -43,14 +43,15 @@ const ICONS = {
   missile: '<svg viewBox="0 0 54 54"><path d="M27 6c8 8 9 20 5 30H22c-4-10-3-22 5-30z"/><circle cx="27" cy="22" r="3.5"/><path d="M22 36l-7 7M32 36l7 7M27 40v8"/></svg>',
   rc: '<svg viewBox="0 0 54 54"><path d="M8 34h38v-8l-8-4h-14l-6 4H8z"/><circle cx="17" cy="38" r="4.5"/><circle cx="37" cy="38" r="4.5"/><path d="M27 18V8M23 8h8"/></svg>',
   airstrike: '<svg viewBox="0 0 54 54"><path d="M27 6l6 16 15 8-15 4-2 12h-8l-2-12-15-4 15-8z"/><path d="M17 46v4M27 48v4M37 46v4"/></svg>',
+  crate: '<svg viewBox="0 0 54 54"><path d="M8 20a19 12 0 0 1 38 0z"/><path d="M11 20l10 12M43 20l-10 12M27 20v12"/><rect x="16" y="31" width="22" height="17" rx="2"/><path d="M16 39h22M27 31v17"/></svg>',
   frag: '<svg viewBox="0 0 54 54"><circle cx="27" cy="31" r="14"/><path d="M22 17l5-7 8 3M27 10v-3"/></svg>',
 };
-export const STREAK_INFO = [
-  { id: 'uav', name: 'Radar UAV', at: 3, key: '4', desc: 'Reveals every enemy on the map for 20 s.' },
-  { id: 'missile', name: 'Guided missile', at: 5, key: '5', desc: 'Steer a missile down from the sky and crash it wherever you like.' },
-  { id: 'rc', name: 'RC bomb car', at: 7, key: '6', desc: 'Drive an explosive little car into the bots.' },
-  { id: 'airstrike', name: 'Airstrike', at: 9, key: '7', desc: 'Mark a spot and bomb it in a line.' },
-  { id: 'nuke', name: 'Tactical nuke', at: 10, key: '8', desc: 'Everyone goes boom. You win the round.' },
+export const STREAK_INFO = [   // funding rounds
+  { id: 'uav', name: 'Angel Round', at: 3, key: '4', desc: 'Radar: every enemy shows on the map for 20 s.' },
+  { id: 'crate', name: 'Series A', at: 4, key: '5', desc: 'A care package parachutes down next to you: a big gun, a full superpower, shield + taser or 150 HP. Anyone can steal it (hold E).' },
+  { id: 'missile', name: 'Series B', at: 6, key: '6', desc: 'Steer a guided missile down from the sky.' },
+  { id: 'airstrike', name: 'Series C', at: 8, key: '7', desc: 'Mark a spot and carpet-bomb it in a line.' },
+  { id: 'nuke', name: 'IPO', at: 11, key: '8', desc: 'Ring the bell: everyone else goes boom. You win the round.' },
 ];
 // vs-bots game modes (Juan 2026-10-06: "más modo csgo rápido, parecido al black ops 2")
 const GMS = [['bomb', 'Bomb'], ['tdm', 'Team Deathmatch'], ['ffa', 'Free-for-all'], ['gun', 'Gun Game']];
@@ -81,8 +82,8 @@ export function buildMenu(game, THREE, createCharacter, ROSTER) {
       return `<h3>PROFILE</h3><p style="margin:2px 0 8px;font-size:20px;font-weight:700">${nm} <span style="color:#ffb347;font-size:14px;letter-spacing:.12em">${rank(s).toUpperCase()}</span></p><p style="font-size:12px;opacity:.7;margin:0 0 10px"><span id="accbox">Loading account...</span></p><div class="mn-keys"><div><b>${s.kills}</b> kills</div><div><b>${s.heads}</b> headshots</div><div><b>${s.roundsWon}/${s.rounds}</b> rounds won</div><div><b>${s.matchesWon}/${s.matches}</b> matches won</div><div><b>${s.bestRoundKills}</b> best round kills</div><div><b>${favDiff(s) || '-'}</b> favourite level</div></div><img alt="Share card" src="${card}" style="width:78%;margin-top:12px;border-radius:10px"><p style="font-size:13px;margin-top:8px"><a style="color:#ffe9a8" download="chillops-card.png" href="${card}">Download card</a> &nbsp;·&nbsp; <a style="color:#ffe9a8" target="_blank" rel="noopener" href="https://twitter.com/intent/tweet?text=${encodeURIComponent(txt)}">Post on X</a></p>`; },
     board: () => `<h3>COMPANY LEADERBOARD</h3><div id="lbox" style="font-size:14px"><span style="opacity:.6">Loading...</span></div><p style="font-size:12px;opacity:.6">Multiplayer wins by company. Set your company in Profile. Everything is anonymous.</p>`,
     play: () => `<h3>PLAY</h3><div class="pl-grp"><b>LOCAL</b><i>You against bots, no one else needed. Pick a mode, then a map</i><div class="pl-row pl-modes">${GMS.map(([k, n]) => `<button class="mn-i pl-gm${k === gmSel() ? ' act' : ''}" data-gm="${k}">${n}</button>`).join('')}</div><i class="pl-gd" style="margin-top:6px">${GMD[gmSel()]}</i><div class="pl-row" style="margin-top:8px"><button class="mn-i pl-go" data-g="a">Kite Garden</button><button class="mn-i pl-go" data-g="b">Kite Plaza</button></div></div><div class="pl-grp"><b>MULTIPLAYER</b><i>Online rooms: find a match, private room or join with a code</i><div class="pl-row"><button class="mn-i pl-go" data-g="mp">Open lobby</button></div></div>`,
-    streaks: () => `<h3>STREAKS</h3>${STREAK_INFO.map((s, i) => `<div class="mn-row" style="animation-delay:${i * 60}ms">${ICONS[s.id]}<b>${s.name}<i>${s.at} KILLS · KEY ${s.key}</i></b><span>${s.desc}</span></div>`).join('')}<p style="font-size:12px;opacity:.6">G uses the first one. You lose your streak if you die; surviving the round keeps it.</p>`,
-    help: () => `<h3>CONTROLS</h3><div class="mn-keys">${[['WASD', 'Move'], ['Mouse', 'Aim'], ['Click', 'Shoot'], ['Right click', 'Scope'], ['Shift', 'Crouch'], ['Space', 'Jump'], ['R', 'Reload'], ['E', 'Pick up / plant'], ['B', 'Shop'], ['1 2 3', 'Weapons / knife'], ['V H J', 'Grenades'], ['G', 'Use streak'], ['Q', 'Superpower'], ['X', 'Taser'], ['T', 'Spray logo'], ['Esc', 'Pause']].map(([k, d]) => `<div><kbd>${k}</kbd><span>${d}</span></div>`).join('')}</div>`,
+    streaks: () => `<h3>STREAKS</h3>${STREAK_INFO.map((s, i) => `<div class="mn-row" style="animation-delay:${i * 60}ms">${ICONS[s.id]}<b>${s.name}<i>${s.at} KILLS · KEY ${s.key}</i></b><span>${s.desc}</span></div>`).join('')}<p style="font-size:12px;opacity:.6">Kill streaks are funding rounds. G uses the first one. You lose your streak if you die; surviving the round keeps it.</p>`,
+    help: () => `<h3>CONTROLS</h3><div class="mn-keys">${[['WASD', 'Move'], ['Mouse', 'Aim'], ['Click', 'Shoot'], ['Right click', 'Scope'], ['Shift', 'Crouch'], ['Space', 'Jump'], ['R', 'Reload'], ['E', 'Pick up / plant'], ['B', 'Shop'], ['1 2 3', 'Weapons / knife'], ['V H J', 'Grenades'], ['G', 'Use streak'], ['Q', 'Superpower'], ['X', 'Taser'], ['T', 'Spray logo'], ['Z', 'Taunt'], ['Esc', 'Pause']].map(([k, d]) => `<div><kbd>${k}</kbd><span>${d}</span></div>`).join('')}</div>`,
   };
   const esc = (s) => String(s ?? '').replace(/[<>&"']/g, '');
   const fillProfile = async () => { const box = pan.querySelector('#accbox'); if (!box) return; const p = await ACC.sync(true).catch(() => null) || await ACC.ensure().catch(() => null); if (!pan.contains(box)) return;
@@ -123,4 +124,4 @@ export function buildMenu(game, THREE, createCharacter, ROSTER) {
     requestAnimationFrame(loop);
   } catch (e) { /* no WebGL: panel stays empty */ }
   return () => { run = false; removeEventListener('keydown', onKey); stopConf(); try { rend && rend.dispose(); } catch (e) {} bg.remove(); el.remove(); };
-                                                                                                                         }
+}
