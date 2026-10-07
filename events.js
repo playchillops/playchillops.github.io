@@ -1,3 +1,4 @@
+import { WEAPONS } from './player.js';
 // events.js - live map events + care packages on the client (Juan 2026-10-07: "que vayan pasando cosas").
 // Server (room.js fireEvent / crates) decides what and where; this file shows it:
 //   starship  10 s countdown, red danger ring on the launch pad, then the real Plaza rocket lifts off (flames, smoke, shake)
@@ -16,6 +17,7 @@ export function createEvents({ game, net, THREE, an, banner = () => {}, play }) 
   const tick = document.createElement('div'); tick.className = 'ev-tick'; document.body.appendChild(tick);
   const sand = document.createElement('div'); sand.className = 'ev-sand'; document.body.appendChild(sand);
   const tip = document.createElement('div'); tip.className = 'ev-tip'; document.body.appendChild(tip);
+  const projectiles = new Map();
   const crates = new Map(), fx = [], timers = [], SANDC = new THREE.Color(0xd2b27e); let shake = 0, fog0 = null, bullUntil = 0, sandUntil = 0, rocketT = -1;
   const later = (s, f) => timers.push(setTimeout(f, s * 1000));
   const M = (c, o = {}) => new THREE.MeshLambertMaterial({ color: c, ...o });
@@ -64,6 +66,21 @@ export function createEvents({ game, net, THREE, an, banner = () => {}, play }) 
       tick.innerHTML = '<span>▲ BULL MARKET · SUPERPOWERS CHARGE 2X · $JOBS ▲ 12% · $ZUCK ▲ 8% · $SAMA ▲ 41% · $MUSK ▲ 420% · $BEZOS ▲ 9% · $NVDA ▲ 69% · $MSFT ▲ 7% · $AMD ▲ 23% · BUY THE DIP ▲</span>';
     }
   });
+  net.on('projectile', m=>{
+    if(!m||!WEAPONS[m.w]?.projectile||!Array.isArray(m.o)||!Array.isArray(m.v))return;
+    const cfg=WEAPONS[m.w].projectile,g=new THREE.Group();
+    const shell=new THREE.Mesh(new THREE.CylinderGeometry(.09,.09,.5,8),M(m.w==='bazooka'?0xa6dd79:0xffa76e));shell.rotation.x=Math.PI/2;g.add(shell);
+    const nose=new THREE.Mesh(new THREE.ConeGeometry(.09,.2,8),M(0xff6655));nose.rotation.x=-Math.PI/2;nose.position.z=-.34;g.add(nose);
+    g.position.fromArray(m.o);game.scene.add(g);projectiles.set(m.id,{g,v:new THREE.Vector3(...m.v),cfg,t:0});
+    play('grenade_throw',g.position);
+  });
+  net.on('projectileboom',m=>{
+    const f=projectiles.get(m.id);if(f){game.scene.remove(f.g);f.g.traverse(o=>{o.geometry?.dispose();o.material?.dispose();});projectiles.delete(m.id);}
+    const g=new THREE.Mesh(new THREE.IcosahedronGeometry(1,1),new THREE.MeshBasicMaterial({color:0xffb348,transparent:true,opacity:.8,depthWrite:false}));g.position.fromArray(m.p);game.scene.add(g);
+    fx.push({obj:g,t:0,life:.6,tick:(v)=>{g.scale.setScalar(.3+v.t*m.r*3);g.material.opacity=Math.max(0,.8-v.t*1.4);}});play('grenade_explode',g.position);
+    game.destruction?.damage({x:m.p[0],y:m.p[1],z:m.p[2]},Math.min(m.r,4),50,{source:m.w});
+  });
+  net.on('rambo',m=>{if(m.id===net.id){an.say('Rambo mode!',3);an.medal('RAMBO','UNLIMITED HEAVY AMMO · 12 s','#a9e0c4',3);}});
   function blimp(m) {
     const g = new THREE.Group(), body = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 12), M(0xdfe6f2)); body.scale.set(9, 3, 3); g.add(body);
     const band = new THREE.Mesh(new THREE.CylinderGeometry(3.05, 3.05, 2.2, 20, 1, true), M(0x2fe37a, { side: THREE.DoubleSide })); band.rotation.z = Math.PI / 2; g.add(band);
@@ -77,6 +94,8 @@ export function createEvents({ game, net, THREE, an, banner = () => {}, play }) 
   return {
     update(dt) {
       const now = performance.now();
+      for(const [id,f] of projectiles){f.t+=dt;f.g.position.addScaledVector(f.v,dt);f.v.y-=f.cfg.gravity*dt;f.g.lookAt(f.g.position.clone().add(f.v));if(f.t>f.cfg.fuse+1){game.scene.remove(f.g);f.g.traverse(o=>{o.geometry?.dispose();o.material?.dispose();});projectiles.delete(id);}}
+
       // crates: fall, then glow; prompt + progress when you are close
       let near = null;
       for (const c of crates.values()) {
@@ -106,10 +125,10 @@ export function createEvents({ game, net, THREE, an, banner = () => {}, play }) 
       if (bullUntil && now > bullUntil) { bullUntil = 0; tick.style.display = 'none'; }
       for (let i = fx.length - 1; i >= 0; i--) { const v = fx[i]; v.t += dt; v.tick && v.tick(v, dt); if (v.t >= v.life) { game.scene.remove(v.obj); fx.splice(i, 1); } }
     },
-    dispose() { for (const t of timers) clearTimeout(t); for (const c of crates.values()) game.scene.remove(c.g); crates.clear(); for (const v of fx) game.scene.remove(v.obj); fx.length = 0; const R = rocket(); if (R) { R.group.position.y = 0; R.group.visible = true; } if (fog0 && game.scene.fog) { game.scene.fog.near = fog0.near; game.scene.fog.far = fog0.far; game.scene.fog.color.copy(fog0.color); } game.canvas.style.transform = ''; tick.remove(); sand.remove(); tip.remove(); },
+    dispose() { for(const f of projectiles.values()){game.scene.remove(f.g);f.g.traverse(o=>{o.geometry?.dispose();o.material?.dispose();});}projectiles.clear(); for (const t of timers) clearTimeout(t); for (const c of crates.values()) game.scene.remove(c.g); crates.clear(); for (const v of fx) game.scene.remove(v.obj); fx.length = 0; const R = rocket(); if (R) { R.group.position.y = 0; R.group.visible = true; } if (fog0 && game.scene.fog) { game.scene.fog.near = fog0.near; game.scene.fog.far = fog0.far; game.scene.fog.color.copy(fog0.color); } game.canvas.style.transform = ''; tick.remove(); sand.remove(); tip.remove(); },
   };
   function puff(x, y, z) {   // rocket smoke
     const m = new THREE.MeshLambertMaterial({ color: 0xf2efe8 }), p = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 1), m); p.position.set(x, y, z); game.scene.add(p);
     const vx = (Math.random() - .5) * 6, vz = (Math.random() - .5) * 6; fx.push({ obj: p, t: 0, life: 3, tick: (v, dt) => { p.position.x += vx * dt; p.position.z += vz * dt; p.position.y += dt * 0.6; p.scale.setScalar(1 + v.t * 1.4); } });
   }
-    }
+}
