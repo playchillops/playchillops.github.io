@@ -149,6 +149,22 @@ const SOUNDS = {
     noise(o, t, 2.2, 1.0, 'lowpass', 3000, 60, 0.6, 0.005);
     tone(o, 'sine', 90, 25, t, 1.6, 1.0);
     noise(o, t + 0.2, 1.5, 0.4, 'bandpass', 400, 100, 0.5, 0.1);
+  },  // grenades (2026-10-06): a frag that sounds like it means it, a smoke pop + long hiss, the throw whoosh
+  grenade_explode(o, t) {
+    noise(o, t, 0.09, 1.0, 'highpass', 1200, 400, 0.7, 0.001);
+    noise(o, t, 1.8, 1.0, 'lowpass', 2600, 50, 0.7, 0.004);
+    tone(o, 'sine', 120, 28, t, 1.3, 1.0);
+    tone(o, 'triangle', 60, 22, t + 0.02, 0.9, 0.6);
+    for (let i = 0; i < 6; i++) noise(o, t + 0.25 + i * R(0.06, 0.14), 0.08, 0.25, 'bandpass', R(1500, 3500), 800, 1.5, 0.002);   // debris crackle
+  },
+  smoke_pop(o, t) {
+    tone(o, 'sine', 300, 90, t, 0.18, 0.5);
+    noise(o, t + 0.05, 3.2, 0.45, 'bandpass', 3800, 1400, 0.4, 0.25);
+    noise(o, t + 0.1, 2.5, 0.25, 'lowpass', 1200, 300, 0.5, 0.4);
+  },
+  grenade_throw(o, t) {
+    noise(o, t, 0.28, 0.35, 'bandpass', 900, 2600, 1.2, 0.05);
+    tone(o, 'square', 1500, 1500, t, 0.03, 0.08);
   },
 };
 
