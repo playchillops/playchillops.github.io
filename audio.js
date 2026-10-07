@@ -29,7 +29,7 @@ import './chillaudio.js';
 const CA_MAP = { ui_click: 'uiClick', ui_hover: 'uiHover', ui_start: 'uiStart', ui_back: 'uiBack', bomb_beep: 'bombBeep', beep: 'bombBeep', bomb_explode: 'bombExplosion', bomb_plant: 'bombPlanted', bomb_defuse: 'bombDefused',
   reload: 'reload', kill: 'kill', hurt: 'hurt', hit: 'hit', headshot: 'headshot', footstep: 'step', empty: 'empty', bot_shot: 'shot_mg', jump: 'jump', land: 'land', buy: 'buy', buy_fail: 'buyFail',
   streak_earned: 'killstreakEarned', streak_call: 'killstreakCall', nuke: 'nuke', nuke_siren: 'nukeSiren', round_win: 'roundWin', round_lose: 'roundLose', match_win: 'matchWin', match_lose: 'matchLose', death: 'death',
-  shot_pistol: 'shot_pistol', shot_mg: 'shot_mg', shot_sniper: 'shot_sniper', shot_knife: 'shot_knife',
+  shot_pistol: 'shot_pistol', shot_mg: 'shot_mg', shot_sniper: 'shot_sniper', shot_knife: 'shot_knife', shot_hpistol: 'shot_hpistol', shot_smg: 'shot_smg', shot_shotgun: 'shot_shotgun', shot_lmg: 'shot_lmg', shot_m4: 'shot_m4', shot_scout: 'shot_scout',
   plant_start: 'bombPlant', defuse_start: 'bombDefuseStart', round_start: 'roundStart', switch: 'switchWeapon', heli: 'heli', whiz: 'bulletWhiz', impact: 'bulletImpact' };
 let caReady = false;
 (function caUnlock() { const go = () => { try { if (window.ChillAudio && window.ChillAudio.init()) caReady = true; } catch (e) {} }; for (const ev of ['pointerdown', 'keydown', 'click']) document.addEventListener(ev, go, { capture: true }); })();
