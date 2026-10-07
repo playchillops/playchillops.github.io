@@ -7,6 +7,8 @@ const fsEl = () => document.fullscreenElement || document.webkitFullscreenElemen
 function goFS() { const el = document.documentElement; const f = el.requestFullscreen || el.webkitRequestFullscreen; if (f && !fsEl()) { try { const p = f.call(el); p && p.catch && p.catch(() => {}); try { navigator.keyboard && navigator.keyboard.lock && navigator.keyboard.lock(['Escape']).catch(() => {}); } catch (e) {} } catch (e) {} } }
 function exitFS() { (document.exitFullscreen || document.webkitExitFullscreen).call(document); }
 const btn = document.getElementById('fs');
+// Keep its toggle handler for the Esc-menu control, but never show a floating button.
+const fsStyle = document.createElement('style'); fsStyle.textContent = '#fs{display:none!important}'; document.head.appendChild(fsStyle);
 btn.onclick = (e) => { e.stopPropagation(); fsEl() ? exitFS() : goFS(); };
 document.addEventListener('fullscreenchange', () => { btn.textContent = fsEl() ? 'Exit fullscreen' : 'Fullscreen'; try { if (fsEl()) navigator.keyboard && navigator.keyboard.lock && navigator.keyboard.lock(['Escape']).catch(() => {}); else navigator.keyboard && navigator.keyboard.unlock && navigator.keyboard.unlock(); } catch (e) {} });
 btn.style.display = 'block'; btn.textContent = 'Fullscreen';
