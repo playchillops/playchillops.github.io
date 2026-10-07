@@ -4,13 +4,13 @@ import * as ACC from './account.js';
 import { lobbyPanel } from './social.js';
 import { createController } from './movement.js';
 import { createCharacter, CHARACTER_IDS } from './characters.js';
-import { WEAPON_ORDER } from './player.js';
+import { WEAPON_ORDER, shotSound } from './player.js';
 import { createSpectator } from './spectate.js';
 import { profileComplete, requireProfile } from './profilegate.js';
 import { play, setListener, initAudio } from './audio.js';
 import { initProgress } from './progress.js';
 import { loadingStart, loadingStep, loadingDone } from './loading.js';
-const SHOT = ['shot_pistol', 'shot_mg', 'shot_sniper'];
+const SHOT = WEAPON_ORDER.map(shotSound);   // remote shots sound like their gun
 const P3 = (a) => (a && a.length === 3 ? { x: a[0], y: a[1], z: a[2] } : undefined);
 
 const HOST = 'sniper-chill-mp.onrender.com';
@@ -246,7 +246,7 @@ export function createMultiplayer(game, THREE) {
       const dot = () => { if (!base || !geo) return; const ctx = cv.getContext('2d'), W = cv.width, p = mp.net && mp.net.cur ? mp.net.eye().feet : null; if (!p) return; ctx.clearRect(0, 0, W, W); ctx.drawImage(base, 0, 0); const yaw = game.ctrl.state.yaw || 0, px = 4 + (p.x - geo.originX) / geo.cols * (W - 8), py = 4 + (p.z - geo.originZ) / geo.rows * (W - 8), dx = -Math.sin(yaw), dy = -Math.cos(yaw);
         { const now = performance.now(); for (let i = pings.length - 1; i >= 0; i--) { const pg = pings[i], age = now - pg.t; if (age > 1600) { pings.splice(i, 1); continue; } const qx = 4 + (pg.x - geo.originX) / geo.cols * (W - 8), qy = 4 + (pg.z - geo.originZ) / geo.rows * (W - 8), k = age / 1600; ctx.globalAlpha = 1 - k; ctx.fillStyle = pg.c; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(qx, qy, 3 + 6 * k, 0, 7); ctx.stroke(); ctx.beginPath(); ctx.arc(qx, qy, 3.5, 0, 7); ctx.fill(); ctx.globalAlpha = 1; } }
         ctx.save(); ctx.translate(px, py); ctx.rotate(Math.atan2(dy, dx)); ctx.fillStyle = '#2ee6ff'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(-6, 6); ctx.lineTo(-3, 0); ctx.lineTo(-6, -6); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); };
-      const mt = setInterval(() => { let show = false; try { show = !!(mp.active && mp.net && mp.net.connected && game.state !== 'menu'); if (show && drawn !== game.map) draw(); } catch (e) {} cv.style.display = show ? 'block' : 'none'; try { const fb = document.getElementById('fs'); if (fb) fb.style.display = show ? 'none' : 'block'; } catch (e) {} }, 300);   // fullscreen button leaves the HUD during multiplayer play (it covered the money); it lives in the Esc menu
+      const mt = setInterval(() => { let show = false; try { show = !!(mp.active && mp.net && mp.net.connected && game.state !== 'menu' && !(game.eco && game.eco.getState().menuOpen)); /* hidden while the buy menu is open (it drew over the shop) */ if (show && drawn !== game.map) draw(); } catch (e) {} cv.style.display = show ? 'block' : 'none'; try { const fb = document.getElementById('fs'); if (fb) fb.style.display = show ? 'none' : 'block'; } catch (e) {} }, 300);   // fullscreen button leaves the HUD during multiplayer play (it covered the money); it lives in the Esc menu
       binds.push([{ removeEventListener() { const fb = document.getElementById('fs'); if (fb) fb.style.display = 'block'; } }, 'x', null, null]);
       const dt2 = setInterval(() => { try { if (cv.style.display !== 'none') dot(); } catch (e) {} }, 80);
       binds.push([{ removeEventListener() { cv.remove(); clearInterval(mt); clearInterval(dt2); } }, 'x', null, null]); }
