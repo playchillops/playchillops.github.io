@@ -284,7 +284,7 @@ export function createMultiplayer(game, THREE) {
     on(document, 'keydown', (e) => { if (!mp.active) return; if (e.code === 'Escape') { if (performance.now() - (pm.t || 0) < 150) return; if (game.setOv && game.setOv.style.display !== 'none') return; e.preventDefault(); pm.el ? closePause(true) : openPause(); return; } if (pm.el) return; keys[e.code] = true; if (['Space', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault(); });
     on(document, 'keyup', (e) => { keys[e.code] = false; });
     on(document, 'keydown', (e) => { if (e.code !== 'KeyT' || e.repeat || !mp.active || !mp.fx || pm.el || !document.pointerLockElement || (game.eco && game.eco.getState().menuOpen)) return; mp.fx.spray(); });   // T = spray your company logo
-    on(document, 'keydown', (e) => { if ((e.code !== 'KeyQ' && e.code !== 'KeyX' && e.code !== 'KeyZ') || e.repeat || !mp.active || !mp.fx || pm.el || (game.eco && game.eco.getState().menuOpen)) return; if (e.code === 'KeyQ') mp.fx.pow.use(); else if (e.code === 'KeyX') mp.fx.pow.taser(); else mp.fx.voices.taunt(); });   // Q = superpower, X = taser, Z = taunt
+    on(document, 'keydown', (e) => { if ((e.code !== 'KeyY' && e.code !== 'KeyX' && e.code !== 'KeyZ') || e.repeat || !mp.active || !mp.fx || pm.el || (game.eco && game.eco.getState().menuOpen)) return; if (e.code === 'KeyY') mp.fx.pow.use(); else if (e.code === 'KeyX') mp.fx.pow.taser(); else mp.fx.voices.taunt(); });   // Y = superpower, X = taser, Z = taunt
     on(game.canvas, 'mousedown', (e) => { if (!mp.active || pm.el) return; if (document.pointerLockElement !== game.canvas) { game.canvas.requestPointerLock(); return; } if (game.eco && game.eco.getState().menuOpen) return; if (e.button === 0) { if (!(mp.net.me.pp > 0 || mp.net.me.dp > 0)) { mp.net.setInput({ fire: true }); mp.net.tap(); } } });
     on(document, 'mouseup', (e) => { if (mp.active && e.button === 0) mp.net.setInput({ fire: false }); });
     on(window, 'blur', () => { keys = {}; });
@@ -402,4 +402,4 @@ export function createMultiplayer(game, THREE) {
   mp.solo = (m, gm) => { if (m === 'a' || m === 'b') mapSel = m; let n = 'Player'; try { n = localStorage.getItem('sc_name') || 'Player'; } catch (e) {} connect({ room: 'new', name: n, solo: true, gm: DM[gm] ? gm : 'bomb' }); };
   mp.autoJoin = () => { const m = /[?&]room=([A-Za-z0-9]+)/.exec(location.search); if (m) { lobby(m[1].toUpperCase()); if (/[?&]go=1/.test(location.search)) { let n = 0; const iv = setInterval(() => { const b = document.querySelector('#mpg'); if (b && !mp.net) { clearInterval(iv); b.click(); } else if (++n > 40) clearInterval(iv); }, 400); } return true; } return false; };
   return mp;
-        }
+}
