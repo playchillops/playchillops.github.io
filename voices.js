@@ -10,9 +10,10 @@ export const LINES = {
   bezos: { taunt: ['It is still day one.', 'Your package is out for delivery.', 'Customer obsession!', 'Ha ha ha ha ha!'], kill: ['Delivered.', 'Same day delivery.', 'Return to sender.'], power: 'Prime delivery!' },
   jensen: { taunt: ['The more you buy, the more you save.', 'Accelerated computing!', 'R T X on.', 'Nice jacket, right?'], kill: ['Ray traced.', 'Frame generated.', 'Overclocked.'], power: 'The more you buy, the more you save!' },
   gates: { taunt: ['Have you tried turning it off and on again?', 'Clippy says hi.', 'Control, alt, delete.', 'Your PC needs to restart.'], kill: ['Blue screen.', 'Fatal exception.', 'Update installed.'], power: 'Have you tried turning it off and on again?' },
+  hawking: { taunt: ['Look up at the stars.', 'Time for a quantum leap.', 'The universe has no limits.', 'Keep moving forward.'], kill: ['A singularity.', 'Event horizon crossed.', 'Quantum precision.'], power: 'Quantum dash engaged.' },
   lisa: { taunt: ['Performance per watt!', 'Team red, let us go.', 'More cores!', 'We are just getting started.'], kill: ['Outperformed.', 'Benchmark that.', 'Too many cores.'], power: 'Turbo boost!' },
 };
-const VOICE = { jobs: [0.95, 0.95], zuck: [1.15, 1.12], altman: [1.05, 0.98], musk: [0.88, 0.92], bezos: [0.72, 1.0], jensen: [1.0, 1.1], gates: [1.12, 1.04], lisa: [1.18, 1.02, 'f'] };   // pitch, rate, female
+const VOICE = { hawking: [1.0, 1.15], jobs: [0.95, 0.95], zuck: [1.15, 1.12], altman: [1.05, 0.98], musk: [0.88, 0.92], bezos: [0.72, 1.0], jensen: [1.0, 1.1], gates: [1.12, 1.04], lisa: [1.18, 1.02, 'f'] };   // pitch, rate, female
 const TEAMC = { T: '#ffb35c', CT: '#7fe3ff', Z: '#7dff9a' };
 const esc = (s) => String(s ?? '').replace(/[<>&"'`]/g, '');
 const CSS = `.vb{position:fixed;z-index:42;transform:translate(-50%,-100%);pointer-events:none;max-width:280px;padding:7px 12px;border-radius:14px;background:#fff;color:#1b2033;font:700 14px Fredoka,system-ui,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.35);animation:vbin .2s ease-out;white-space:normal;text-align:center}
@@ -40,6 +41,7 @@ export function createVoices({ game, net, an, THREE }) {
     el.innerHTML = `<small>${esc(lg.name.toUpperCase())}${kind ? ' · ' + kind : ''}</small>${esc(text)}`; document.body.appendChild(el);
     bubbles.push({ el, id, until: performance.now() + 2600 + text.length * 40 }); while (bubbles.length > 4) bubbles.shift().el.remove();
   }
+  net.on('gnade', (m) => { if (m && m.by !== net.id) speak(m.by, 'Fire in the hole!', 2.5, 'GRENADE'); });
   net.on('taunt', (m) => { if (m) speak(m.id, (LINES[chOf(m.id)] || {}).taunt?.[m.i % 4], 1.5); });
   net.on('kill', (m) => {   // the killer's line, heard by the killer and the victim
     if (!m || !m.by || m.by === m.id || (m.by !== net.id && m.id !== net.id)) return; const L = LINES[chOf(m.by)]; if (!L) return;
