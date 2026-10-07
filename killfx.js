@@ -1,3 +1,4 @@
+import { weaponClass } from './player.js';
 // killfx.js - Sniper Chill KILL ANIMATIONS + FEEDBACK (ES module, THREE passed in, no other deps).
 // See KILLFX.md for the full API. Quick start:
 //   import { createKillFX } from './killfx.js';
@@ -318,7 +319,7 @@ export function createKillFX(THREE, opts = {}) {
     const d = info.dir || { x: 0, y: 0, z: -1 }, yaw = bot.group.rotation.y, c = Math.cos(yaw), si = Math.sin(yaw);
     // world dir -> bot local (inverse Y rotation)
     s.lx = d.x * c - d.z * si; s.lz = d.x * si + d.z * c;
-    const w = { pistol: 0.16, machinegun: 0.1, sniper: 0.3 }[info.weapon] || 0.15;
+    const w = { pistol: 0.16, hpistol: 0.24, smg: 0.09, rifle: 0.1, lmg: 0.1, shotgun: 0.28, sniper: 0.3 }[weaponClass(info.weapon)] || 0.15;
     s.amp = w * (info.zone === 'head' ? 2 : 1) * (strong ? 1.4 : 1); s.ft = 0;
     s.pop = 0;
   }
@@ -544,7 +545,7 @@ export function createKillFX(THREE, opts = {}) {
     if (multi >= 3 && rng() < 0.6) return 'confetti';
     if (info.zone === 'head') return rng() < 0.18 ? 'confetti' : 'headpop';
     if (info.weapon === 'sniper') return 'blastback';
-    if (info.weapon === 'machinegun') return rng() < 0.12 ? 'confetti' : 'stagger';
+    if (['rifle', 'smg', 'lmg'].includes(weaponClass(info.weapon))) return rng() < 0.12 ? 'confetti' : 'stagger';
     if (info.weapon === 'pistol') return rng() < 0.15 ? 'confetti' : 'spinfall';
     return pick(STYLES);
   }
@@ -561,7 +562,7 @@ export function createKillFX(THREE, opts = {}) {
     showHitmarker(info.killed ? 'kill' : head ? 'head' : 'hit');
     impactFlash(pos, head ? 0xffc94a : 0xffffff, info.killed ? 1.1 : 0.6);
     burst(pos, info.killed ? 16 : 8, { speed: info.killed ? 5 : 3.5, colors: SPARK[zone] || SPARK.body, size: 0.07, g: 10, life: 0.6, up: 0.4, dir: info.dir, bias: 2 });
-    shake(info.weapon === 'sniper' ? 0.4 : info.weapon === 'machinegun' ? 0.07 : 0.12);
+    shake({ sniper: 0.4, shotgun: 0.3, hpistol: 0.2, rifle: 0.07, smg: 0.06, lmg: 0.08 }[weaponClass(info.weapon)] || 0.12);
     bleedHit(info, pos, !!info.killed);
     if (!info.killed) {
       if (bot) { flinch(bot, info, false); bleedBot(bot); }
