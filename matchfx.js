@@ -5,6 +5,7 @@ import { createKillfeed } from './killfeed.js';
 import { createAnnouncer } from './announcer.js';
 import { createFinalCam } from './finalcam.js';
 import { createSprays } from './spray.js';
+import { createPowers } from './powers.js';
 import { showSummary } from './matchsummary.js';
 import { DM, GUN_ORDER, isFree, legendOf } from './common.js';
 import { legendOutfit } from './characters.js';
@@ -20,6 +21,7 @@ export function createMatchFx({ game, net, THREE, play, banner = () => {} }) {
   const kf = createKillfeed(), an = createAnnouncer({ volume: vol });
   const cam = createFinalCam(THREE, { camera: game.camera, world: game.world, play, onShot: ({ o, e }) => { try { game.anim.onBotShot({ from: new THREE.Vector3(...o), to: new THREE.Vector3(...e), hit: false }); } catch (er) {} } });
   const sprays = createSprays(THREE, { scene: game.scene, world: game.world });
+  const pow = createPowers({ game, net, THREE, an, play, banner });   // superpowers (Q) + taser (X)
   const who = (id) => { if (!id) return null; const r = net.roster.get(id); return { name: (r && r.name) || (id === net.id ? 'You' : 'Player'), team: id === net.id ? net.team : r && r.team, pr: r && r.pr, ch: (r && r.ch) || (id === net.id ? net.ch : '') }; };
   // your Silicon Valley legend: intro card + voice, and first-person sleeves / bare hands / team cuff
   let shownLegend = '', outfitKey = '';
@@ -64,6 +66,8 @@ export function createMatchFx({ game, net, THREE, play, banner = () => {} }) {
   net.on('round_start', (m) => { if (!m) return; kf.clear(); if (cam.active && (m.dm || m.round === 1)) cam.stop(); if (m.dm) { const d = DM[m.dm]; spree = 0; lead = null; warned = {}; lastGl = 0; if (!document.querySelector('.ms')) { summaryShown = false; sum = null; } sprays.clear();
     an.say(d.name, 2); banner(d.name.toUpperCase() + (m.dm === 'tdm' ? ' · first team to ' + m.limit + ' kills' : m.dm === 'ffa' ? ' · first to ' + m.limit + ' kills · everyone is an enemy' : ' · a kill = next gun · knife kill on the last level wins') + (m.dm !== 'gun' ? ' · B = free loadout' : ''), 5); }
     else if (m.round === 1 && !document.querySelector('.ms')) { summaryShown = false; sum = null; } });
+  let tipShown = false;   // once per session: the new keys
+  net.on('go', () => { if (!tipShown) { tipShown = true; setTimeout(() => banner('Q superpower (charges with time and kills) · X taser (shop) · T spray your logo', 6), 1200); } });
   net.on('go', () => { if (DM[net.mode]) { an.medal('GO!', '', '#7dffb0', 1.2); } });
   net.on('round_end', (m) => { if (!m || !m.match) return; const draw = !m.winner && !m.wid, won = m.wid ? m.wid === net.id : m.winner === net.team; an.say(draw ? 'Draw' : won ? 'Victory' : 'Defeat', 4); });
   net.on('summary', (m) => { sum = m; summaryShown = false; setTimeout(() => { if (!cam.active) openSummary(); }, 2800); });   // no killcam clip coming -> straight to the scoreboard
@@ -80,7 +84,7 @@ export function createMatchFx({ game, net, THREE, play, banner = () => {} }) {
     } catch (e) {}
   });
   const api = {
-    cam, sprays, kf, an,
+    cam, sprays, kf, an, pow,
     /** the XP reward card waits for the MVP screen */
     afterSummary(f) { if (sum && !summaryShown) waiting.push(f); else if (document.querySelector('.ms')) waiting.push(f); else f(); },
     /** T: spray your company logo where you look */
@@ -102,7 +106,7 @@ export function createMatchFx({ game, net, THREE, play, banner = () => {} }) {
       let mine = 0, best = 0; for (const [id, v] of net.fs || []) { if (id === net.id) mine = v; else best = Math.max(best, v); }
       return net.mode === 'gun' ? { p: Math.min(mine + 1, GUN_ORDER.length), b: Math.min(best + 1, GUN_ORDER.length), label: 'LVL / ' + GUN_ORDER.length } : { p: mine, b: best, label: 'YOU · TOP / ' + d.limit };
     },
-    dispose() { try { game.vm.setOutfit && game.vm.setOutfit(null); game.kvm && game.kvm.setOutfit && game.kvm.setOutfit(null); } catch (e) {} document.body.classList.remove('sc-dm', 'fc-on'); cam.dispose(); kf.dispose(); an.dispose(); sprays.dispose(); document.querySelector('.ms')?.remove(); flushWaiting(); },
+    dispose() { try { pow.dispose(); } catch (e) {} try { game.vm.setOutfit && game.vm.setOutfit(null); game.kvm && game.kvm.setOutfit && game.kvm.setOutfit(null); } catch (e) {} document.body.classList.remove('sc-dm', 'fc-on'); cam.dispose(); kf.dispose(); an.dispose(); sprays.dispose(); document.querySelector('.ms')?.remove(); flushWaiting(); },
   };
   return api;
 }
