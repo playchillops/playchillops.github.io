@@ -497,10 +497,13 @@ function tickBot(bot, bots, world, dt, now, brain) {
     brain.contact = { x: bot.target.e.x, z: bot.target.e.z, t: now, by: bot.team }; // team callout (only ever a spotted enemy)
     if (bot.planting) bot.planting = 0; if (bot.defusing) bot.defusing = 0;
     const t = bot.target, dist = t.dist;
+    if (bot.knifeOnly) {   // Gun Game knife level: sprint at the target, the room does the stab when in reach
+      goTo(bot, world, t.e.x, t.e.z, dt, 1.15, 0.4); turnTo(bot, yawTo(t.e.x - bot.x, t.e.z - bot.z), d.turn * 1.2, dt); moving = true; bot._moved = true;
+    } else {
     chooseWeapon(bot, dist, now, world);
     const w = WEAPONS[bot.weapon];
     // decide to take cover
-    if (bot.coverCool <= 0 && !bot.cover) {
+    if (bot.coverCool <= 0 && !bot.cover && !world.hunt) {   // deathmatch bots never hide: they trade and respawn
       const hurt = bot.hp < bot.maxHp * 0.55 || bot.reloadT > 0 || bot.engageT > d.patience;
       if (hurt && bot.rng() < d.coverBias) {
         const c = findCover(bot, world, t.e.x, t.e.z);
@@ -528,6 +531,7 @@ function tickBot(bot, bots, world, dt, now, brain) {
       moving = true; bot._moved = true;
     }
     aimAndShoot(bot, bots, world, dt, now, moving);
+    }
   } else if (bot.cover) {
     // ---------------- COVER (run / hide / peek)
     const c = bot.cover; bot.state = 'cover-' + c.phase;
@@ -555,7 +559,7 @@ function tickBot(bot, bots, world, dt, now, brain) {
     bot.engageT = Math.max(0, bot.engageT - dt * 0.5);
     // ---------------- NON-COMBAT
     if (bot.hitReact) { bot.hitReact = false; bot.waitT = 0; bot.path = null; }
-    if (Brain.think(bot, bots, world, dt, now, brain, HELP, attack, bomb, planted)) { moving = bot._moved; } else {
+    if (!world.hunt && Brain.think(bot, bots, world, dt, now, brain, HELP, attack, bomb, planted)) { moving = bot._moved; } else {
     let mem = bot.memory;
     if (mem && mem.src === 'heard' && !attack && !planted && world.sites && world.sites.length) {
       // defenders hold their site: they face a noise but do not chase it far from their post
@@ -610,7 +614,22 @@ function holdPointsFor(bot, world, brain, key, cx, cz, rMin, rMax, needLOS, n = 
   return brain.hold[key];
 }
 
+// deathmatch modes (world.hunt): no bomb, no sites. Head for where the enemies are (like CS deathmatch bots), sometimes roam.
+function hunt(bot, bots, world, dt, now) {
+  bot.state = 'hunt';
+  const h = bot.hunt;
+  if (!h || now > h.until || bot.stuckT > 1) {
+    const es = enemiesOf(bot, bots, world).sort((a, b) => Math.hypot(a.x - bot.x, a.z - bot.z) - Math.hypot(b.x - bot.x, b.z - bot.z));
+    let p = null;
+    if (es.length && bot.rng() < 0.8) { const e = es[Math.floor(bot.rng() * Math.min(2, es.length))]; p = randomFreeCellNear(world.grid, bot.rng, e.x, e.z, 0, 7) || { x: e.x, z: e.z }; }
+    else p = randomFreeCellNear(world.grid, bot.rng, bot.x, bot.z, 8, 28);
+    bot.hunt = p ? { x: p.x, z: p.z, until: now + 3 + bot.rng() * 4 } : { x: bot.x, z: bot.z, until: now + 1 };
+    if (bot.stuckT > 1) bot.path = null;
+  }
+  if (goTo(bot, world, bot.hunt.x, bot.hunt.z, dt, 1.0, 1.0)) bot.hunt.until = 0;
+}
 function objective(bot, bots, world, dt, now, brain, attack, bomb, planted) {
+  if (world.hunt) { hunt(bot, bots, world, dt, now); return; }
   const g = world.grid, sites = world.sites || [];
   const idleSwing = () => { bot.yaw += Math.sin(now * 1.7 + bot.lookPhase) * dt * 1.2; };
   if (attack) {
