@@ -21,7 +21,7 @@ import { createEconomy, WEAPON_STATS } from './economy.js';
 import { createDestruction } from './destruction.js';
 import { createBombBeacon } from './bombbeacon.js';
 import { createKnifeVM } from './knifevm.js';
-import { createGrenades } from './grenades.js';
+import { createGrenades, chargeOf } from './grenades.js';
 import { playIntro } from './intro.js';
 import { loadingStart, loadingStep } from './loading.js';
 import { buildMenu } from './menu.js';
@@ -29,6 +29,7 @@ import { createMultiplayer } from './mp.js';
 import { parkourColliders, parkourMeshes } from './parkour.js';
 import { showTutorial } from './tutorial.js';
 import { createCharacter, ROSTER } from './characters.js';
+import { createPortals } from './portal.js';
 
 const CSS = `
 @font-face{font-family:Fredoka;font-weight:500;src:url('./Fredoka-Medium.ttf') format('truetype');font-display:swap}
@@ -130,12 +131,14 @@ export class Game {
       onKill: ({ bot }) => { this.kills++; this.score += 100; this.kf.textContent = 'Streak kill +100'; this.kfT = 1.5; this.hud.hitMarker(true, false); play('kill'); } });
     this.streaks.on('earned', () => play('streak_earned')); this.streaks.on('called', ({ id }) => play(id === 'nuke' ? 'nuke' : 'streak_call'));
     this.streaks.on('explosion', ({ position, radius, source }) => this.destruction.damage(position, radius, source === 'rc' ? 150 : 200, { source }));
-    this.grenades = createGrenades(THREE, { scene: this.scene, map: m, colliders: this.world,
+    this.grenades = createGrenades(THREE, { scene: this.scene, map: m, colliders: this.world, root: this.root,
       raycast, destruction: this.destruction, getTargets: () => this.bots.list,
       onDamage: (b, amount, meta) => { if (meta && meta.owner && meta.owner !== 'player') return; if (this.mp && this.mp.active) { this.mp.xdmg(b, amount); return; } const alive = b.alive; this.bots.damage(b, Math.max(0, b.health - amount), false);
         if (alive && !b.alive) { this.eco.recordKill({ id: b.id, weapon: 'frag' }); this.streaks.registerKill({ headshot: false }); this.kills++; this.score += 100; } },
       onFlash: (b, seconds) => { b.grenadeFlash = Math.max(b.grenadeFlash || 0, seconds); },
-      onEvent: (e) => { try { if (e && e.type === 'detonate' && e.position) { const p = { x: e.position.x, y: e.position.y, z: e.position.z }; play(e.grenade === 'frag' ? 'bomb_explode' : 'impact', p); } } catch (er) {} }
+      onEvent: (e) => { try { if (e && e.type === 'detonate' && e.position) { const p = { x: e.position.x, y: e.position.y, z: e.position.z };
+        play(e.grenade === 'frag' ? 'grenade_explode' : e.grenade === 'smoke' ? 'smoke_pop' : 'impact', p);
+        if (e.grenade === 'frag') { const c = this.camera.position, d = Math.hypot(c.x - p.x, c.y - p.y, c.z - p.z); if (d < 30) this.shake = Math.max(this.shake || 0, 1.7 * Math.pow(1 - d / 30, 1.4)); } } } catch (er) {} }
     });
     this.bots.smokeLOS = (a, b) => this.grenades.blocksSight(a, b);
     this.bots.refreshNavigation?.();
@@ -202,10 +205,11 @@ export class Game {
       if (e.code === 'Escape') { if (this.setOv.style.display !== 'none') { this.closeSettings(); return; } if (this.mp && this.mp.active) return; this.pause(); return; }
       if (this.eco && this.eco.getState().menuOpen) return;
       if (e.code === 'Digit1') this.pick('primary'); else if (e.code === 'Digit2') this.pick('secondary'); else if (e.code === 'Digit3' && !e.repeat) this.toggleKnife(); else if (e.code === 'KeyF' && !e.repeat) this.inspect();
-      if (!e.repeat && ['KeyV', 'KeyH', 'KeyJ'].includes(e.code)) { this.throwGrenade({ KeyV: 'frag', KeyH: 'smoke', KeyJ: 'flash' }[e.code]); return; }
+      if (['KeyV', 'KeyH', 'KeyJ'].includes(e.code)) { if (!e.repeat) this.chargeGrenade({ KeyV: 'frag', KeyH: 'smoke', KeyJ: 'flash' }[e.code], e.code); return; }   // hold to throw farther, release throws
       else if (e.code === 'KeyR') { if (!this.knifeOn) this.ws.reload(); } else if (e.code === 'KeyE') { this.eDown = true; if (!e.repeat) this.tryPickup(); }
     });
-    d.addEventListener('keyup', (e) => { if (e.code === 'KeyE') this.eDown = false; });
+    d.addEventListener('keyup', (e) => { if (e.code === 'KeyE') this.eDown = false; if (this.gCharge && e.code === this.gCharge.key) this.releaseGrenade(); });
+    window.addEventListener('blur', () => this.cancelGrenade());
   }
   makeKnife() { // first-person knife rig + animations live in knifevm.js
     this.kvm = createKnifeVM(THREE, this.camera); this.knife = this.kvm.root; this.inspectT = -1;
@@ -259,11 +263,32 @@ export class Game {
     if (gl.length) { h += '<div class="sep"></div>'; for (const [k, id, lab] of gl) h += it(k, lab, '×' + gr[id], false, ' gr'); }
     this.invb.innerHTML = h;
   }
-  throwGrenade(type) {
+  canThrow(type) { const s = this.eco.getState(); return this.state === 'play' && s.phase === 'live' && !s.menuOpen && this.player.alive !== false && !this.streaks.controlling && ((s.inventory.grenades || {})[type] || 0) > 0; }
+  /** key down: start charging (dotted arc + meter under the crosshair); a quick tap = short lob, ~1 s = max distance */
+  chargeGrenade(type, key) {
+    if (!this.canThrow(type)) { if (this.state === 'play') play('empty'); return; }
+    this.gCharge = { type, key, t0: performance.now() }; play('ui_click');
+    if (!this.gMeter) { const m = document.createElement('div'); m.className = 'gr-meter'; m.style.cssText = 'position:absolute;left:50%;top:calc(50% + 34px);transform:translateX(-50%);z-index:30;pointer-events:none;text-align:center;font:700 11px Fredoka,system-ui,sans-serif;letter-spacing:.16em;color:#fff;text-shadow:0 1px 3px #000';
+      m.innerHTML = '<div class="gl" style="margin-bottom:4px"></div><div style="width:120px;height:7px;border-radius:5px;background:#0009;border:1px solid #fff6;overflow:hidden"><div class="gf" style="height:100%;width:0;border-radius:5px"></div></div>'; this.root.appendChild(m); this.gMeter = m; }
+    const col = { frag: '#ff9a5c', smoke: '#d5e2df', flash: '#ffe066' }[type]; this.gMeter.querySelector('.gf').style.background = col; this.gMeter.style.display = '';
+  }
+  chargeTick() {
+    const g = this.gCharge; if (!g) return;
+    if (!this.canThrow(g.type)) { this.cancelGrenade(); return; }
+    const c = chargeOf((performance.now() - g.t0) / 1000);
+    this.gMeter.querySelector('.gf').style.width = Math.round(8 + c * 92) + '%';
+    this.gMeter.querySelector('.gl').textContent = ({ frag: 'FRAG', smoke: 'SMOKE', flash: 'FLASH' }[g.type]) + (c >= 1 ? ' · MAX' : ' · HOLD = FARTHER');
+    this.grenades.preview(true, { type: g.type, position: this.ctrl.state.eye, direction: this.ctrl.getDirection(), charge: c });
+  }
+  releaseGrenade() { const g = this.gCharge; if (!g) return; const c = chargeOf((performance.now() - g.t0) / 1000); this.cancelGrenade(); this.throwGrenade(g.type, c); }
+  cancelGrenade() { this.gCharge = null; if (this.gMeter) this.gMeter.style.display = 'none'; this.grenades?.preview(false); }
+  throwGrenade(type, charge = 0.4) {
     const s = this.eco.getState();
     if (this.state !== 'play' || s.phase !== 'live' || s.menuOpen || !this.player.alive || this.streaks.controlling) return;
+    this._gCharge = charge;   // multiplayer relay sends it with the throw so everybody simulates the same arc
     if (!this.eco.consumeGrenade(type)) return;   // fires the 'grenade' event (multiplayer relays it to the server)
-    this.grenades.throwGrenade(type, { position: this.ctrl.state.eye, direction: this.ctrl.getDirection(), owner: 'player', team: s.team, consume: false });
+    this.grenades.throwGrenade(type, { position: this.ctrl.state.eye, direction: this.ctrl.getDirection(), charge, owner: 'player', team: s.team, consume: false });
+    play('grenade_throw');
   }
   endMatchEffects(id) { this.destruction.reset(id); this.grenades.reset(id); }
   onWeaponEvent(n, d) {
@@ -528,6 +553,7 @@ export class Game {
     let hint = '';
     if (this.plantT > 0 && !this._plS) { this._plS = true; play('plant_start'); } else if (this.plantT <= 0) this._plS = false;
     this.plantAnimTick(dt);
+    if (this.player.alive !== false && this.state === 'play') (this._portals ||= createPortals(this)).update(dt, st.position);   // raceday.gg portal on Plaza
     // bots
     const self = this;
     this._sbT = (this._sbT || 0) + dt; if (this._sbT > 0.5) { this._sbT = 0; this.updSBMoney(); }
@@ -551,13 +577,14 @@ export class Game {
     this._real = real;
     this.updateBlast(dt);
     for (let i = this.fx.length - 1; i >= 0; i--) { const f = this.fx[i]; f.t -= dt; f.l.material.opacity = Math.max(0, f.t / f.life); if (f.t <= 0) { this.scene.remove(f.l); f.l.geometry.dispose(); f.l.material.dispose(); this.fx.splice(i, 1); } }
-    if (this.state === 'play') { this.destruction.update(dt); const es = this.eco.getState(); if (es.phase === 'live' && !es.menuOpen) this.grenades.update(dt); this.update(dt); }
+    if (this.state === 'play') { this.destruction.update(dt); this.grenades.update(dt); this.chargeTick(); this.update(dt); }   // smokes keep living while the shop is open
     else if (this.state !== 'pause') { this.bots.update(dt * (this.state === 'over' ? 1 : 0), { playerEye: this.ctrl.state.eye, playerAlive: false, bomb: null }); this.ctrl.applyToCamera(this.camera); this.anim.update(dt, { bots: [] }); }
     this.kc.applyCamera(); this.killfx.applyCamera(this.camera); if (this.deathCam) this.deathCamApply(real);
     if (this.shake > 0.01) { const s = this.shake; this.camera.position.x += (Math.random() - .5) * 0.5 * s; this.camera.position.y += (Math.random() - .5) * 0.5 * s; this.camera.rotation.z += (Math.random() - .5) * 0.05 * s; this.shake *= Math.pow(0.02, dt); }
     if (this.beacon) try { this.beacon.update(this.bomb, this.camera, real); } catch (e) {}
+    try { this.grenades.view(this.camera, this.bots.list); } catch (e) {}   // smoke: fog when inside, players inside / behind it hidden
     if (this.look) this.look.render(this.camera); else this.renderer.render(this.scene, this.camera);
     this.kc.afterRender();
   }
   destroy() { this.running = false; this.ro && this.ro.disconnect(); this.ctrl.dispose(); this.renderer.dispose(); }
-}
+    }
