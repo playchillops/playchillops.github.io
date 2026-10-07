@@ -24,7 +24,7 @@ export function createMatchFx({ game, net, THREE, play, banner = () => {} }) {
   const kf = createKillfeed(), an = createAnnouncer({ volume: vol });
   const cam = createFinalCam(THREE, { camera: game.camera, world: game.world, play, onShot: ({ o, e }) => { try { game.anim.onBotShot({ from: new THREE.Vector3(...o), to: new THREE.Vector3(...e), hit: false }); } catch (er) {} } });
   const sprays = createSprays(THREE, { scene: game.scene, world: game.world });
-  const pow = createPowers({ game, net, THREE, an, play, banner });   // superpowers (Q) + taser (X)
+  const pow = createPowers({ game, net, THREE, an, play, banner });   // superpowers (Y) + taser (X)
   const voices = createVoices({ game, net, an, THREE });               // legend lines: Z taunts, kill lines, power lines
   const cards = createCallingCards({ game, net, an });                 // killer's calling card + nemesis
   const events = createEvents({ game, net, THREE, an, banner, play });  // live map events + care packages
