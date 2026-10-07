@@ -1,4 +1,4 @@
-// powers.js - superpowers + taser on the client (Juan 2026-10-06): HUD meter (Q), your power's screen effect, remote effects
+// powers.js - superpowers + taser on the client (Juan 2026-10-06): HUD meter (Y), your power's screen effect, remote effects
 // (cloaked players fade out, X-ray shows enemies through walls, stunned players spark), taser arcs, Blue Screen and taser stun
 // overlays, and the VFX of every 'power' event (Starship flames, Prime box drop, Blue Screen wave). Server rules: room.js usePower().
 import { POWERS, legendOf, isFree } from './common.js';
@@ -12,7 +12,7 @@ const CSS = `.pw-hud{position:fixed;left:24px;bottom:112px;z-index:24;display:fl
 @keyframes zapfl{0%{opacity:.75;transform:translate(3px,-2px)}100%{opacity:1;transform:translate(-3px,2px)}}
 .pw-stun.b{background:#0a5fd0;opacity:.93;align-items:flex-start;padding-left:12vw}
 .pw-stun.b .face{font-size:min(22vh,180px);line-height:1}.pw-stun.b p{font-size:clamp(16px,2.6vh,26px);max-width:60vw;text-align:left;margin:12px 0}`;
-const RING = (f, c) => { const r = 23, L = 2 * Math.PI * r; return `<svg viewBox="0 0 56 56"><circle cx="28" cy="28" r="${r}" fill="rgba(8,12,26,.72)" stroke="rgba(255,255,255,.18)" stroke-width="5"/><circle cx="28" cy="28" r="${r}" fill="none" stroke="${c}" stroke-width="5" stroke-linecap="round" stroke-dasharray="${(L * f).toFixed(1)} ${L.toFixed(1)}" transform="rotate(-90 28 28)"/><text x="28" y="34" text-anchor="middle" font-family="Fredoka,system-ui,sans-serif" font-weight="800" font-size="17" fill="#fff">Q</text></svg>`; };
+const RING = (f, c) => { const r = 23, L = 2 * Math.PI * r; return `<svg viewBox="0 0 56 56"><circle cx="28" cy="28" r="${r}" fill="rgba(8,12,26,.72)" stroke="rgba(255,255,255,.18)" stroke-width="5"/><circle cx="28" cy="28" r="${r}" fill="none" stroke="${c}" stroke-width="5" stroke-linecap="round" stroke-dasharray="${(L * f).toFixed(1)} ${L.toFixed(1)}" transform="rotate(-90 28 28)"/><text x="28" y="34" text-anchor="middle" font-family="Fredoka,system-ui,sans-serif" font-weight="800" font-size="17" fill="#fff">Y</text></svg>`; };
 const FX = {   // your own active power: a screen tint + a tag under the scoreboard
   xray: ['#ffd166', 'radial-gradient(circle,transparent 55%,rgba(255,209,102,.28) 100%)'], cloak: ['#c9a2ff', 'radial-gradient(circle,transparent 45%,rgba(150,110,255,.38) 100%)'],
   agi: ['#7fe3ff', 'radial-gradient(circle,transparent 60%,rgba(127,227,255,.3) 100%)'], overclock: ['#76ff7a', 'radial-gradient(circle,transparent 55%,rgba(118,255,122,.3) 100%)'],
@@ -68,7 +68,7 @@ export function createPowers({ game, net, THREE, an, play, banner = () => {} }) 
   return {
     /** X: zap the taser (server decides the hit) */
     taser() { const inv = game.eco && game.eco.getState().inventory; if (!net.alive || (net.me.st || 0) > 0) return; if (!inv || !inv.taser) { banner('No taser · buy one in the shop (B, gear)', 1.6); return; } net.sendRaw({ t: 'taser', vt: Math.round(net.renderTick() * 100) / 100 }); try { an.sound('zap'); } catch (e) {} },
-    /** Q: fire your power when it is charged */
+    /** Y: fire your power when it is charged */
     use() { const P = mine(); if (!P || !net.alive) return; if ((net.me.st || 0) > 0) return; if ((net.me.pw || 0) < 100) { banner(P.name + ' charging · ' + (net.me.pw | 0) + '%', 1.2); return; } net.setInput({ pw: true, rk: P.k === 'rocket' }); },
     /** turbo input flag (prediction runs at the same speed as the server) */
     get turbo() { const P = mine(); return !!(P && P.k === 'turbo' && (net.me.pa || 0) > 0); },
@@ -79,7 +79,7 @@ export function createPowers({ game, net, THREE, an, play, banner = () => {} }) 
       if (P && net.alive && game.state === 'play' && !document.body.classList.contains('fc-on')) {
         const pa = net.me.pa || 0, pw = net.me.pw || 0, f = pa > 0 ? pa / Math.max(0.1, P.dur) : pw / 100, col = pa > 0 ? '#7dffb0' : pw >= 100 ? '#ffd166' : '#7fe3ff';
         const key = P.k + '|' + Math.round(f * 40) + '|' + (pw >= 100) + '|' + (pa > 0 ? pa.toFixed(0) : '');
-        if (key !== lastKey) { lastKey = key; hud.innerHTML = RING(Math.min(1, f), col) + `<div><b>${P.name.toUpperCase()}</b><small>${pa > 0 ? 'ACTIVE · ' + pa.toFixed(0) + ' s' : pw >= 100 ? 'READY · PRESS Q' : (pw | 0) + '%  ·  ' + (lg ? lg.name.toUpperCase() : '')}</small></div>`; hud.classList.toggle('ready', pw >= 100 && !(pa > 0)); }
+        if (key !== lastKey) { lastKey = key; hud.innerHTML = RING(Math.min(1, f), col) + `<div><b>${P.name.toUpperCase()}</b><small>${pa > 0 ? 'ACTIVE · ' + pa.toFixed(0) + ' s' : pw >= 100 ? 'READY · PRESS Y' : (pw | 0) + '%  ·  ' + (lg ? lg.name.toUpperCase() : '')}</small></div>`; hud.classList.toggle('ready', pw >= 100 && !(pa > 0)); }
         hud.style.display = '';
         const on = pa > 0 && FX[P.k]; fx.style.display = on ? 'block' : 'none'; if (on) fx.style.background = FX[P.k][1];
         tag.style.display = on ? 'block' : 'none'; if (on) { tag.style.setProperty('--c', FX[P.k][0]); tag.textContent = P.name.toUpperCase() + ' · ' + pa.toFixed(1) + ' s'; }
