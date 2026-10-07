@@ -78,7 +78,7 @@ export class NetClient {
     aimTo(this.ctrl, inp.yaw, inp.pitch);
     const m = this.phase !== 'match_end' && this.alive;
     if (m && inp.rk) this.ctrl.impulse(rocketVel(inp.yaw, inp.pitch));   // Starship: predicted like the server does it
-    this.ctrl.update(DT, m ? { forward: inp.f, right: inp.r, jump: inp.j, crouch: inp.c, sprint: false, knife: !!inp.kn, speedMul: inp.sm ? (this.ch === 'hawking' ? MOBILITY : TURBO) : 1 } : { forward: 0, right: 0, jump: false, crouch: inp.c, sprint: false, knife: !!inp.kn });
+    this.ctrl.update(DT, m ? { forward: inp.f, right: inp.r, jump: inp.j, crouch: inp.c, sprint: false, knife: !!inp.kn, speedMul: (this.me.slow||1) * (inp.sm ? (this.ch === 'hawking' ? MOBILITY : TURBO) : 1) } : { forward: 0, right: 0, jump: false, crouch: inp.c, sprint: false, knife: !!inp.kn });
     if (this.phase === 'freeze' && this.sz) { const ps = this.ctrl.state.position, cx = Math.max(this.sz[0] - 2.5, Math.min(this.sz[0] + 2.5, ps.x)), cz = Math.max(this.sz[1] - 2.5, Math.min(this.sz[1] + 2.5, ps.z)); if (cx !== ps.x || cz !== ps.z) this.ctrl.teleport({ x: cx, y: ps.y, z: cz }, { yaw: this.ctrl.state.yaw, pitch: this.ctrl.state.pitch }); }
   }
   stepTick() {
@@ -152,7 +152,7 @@ export class NetClient {
     this.sd = m.sd || null; this.lobby = !!m.ls; this.phase = m.ph; this.phaseLeft = m.pt; this.score = m.sc; this.round = m.rd; if (m.fs) this.fs = m.fs; this.bomb = m.bomb ? { site: m.bomb[0], x: m.bomb[1], y: m.bomb[2], z: m.bomb[3], t: m.bomb[4] } : null;
     const mine = pl.get(this.id), me = m.me;
     if (mine && me) {
-      this.alive = mine.alive; this.sz = me.sz || null; Object.assign(this.me, { mag: me.mag, res: me.res, rl: me.rl, hp: mine.hp, weapon: mine.weapon, pp: me.pp, dp: me.dp, m: me.m, inv: me.inv, gr: me.gr, ar: me.ar, he: me.he, ks: me.ks, gl: me.gl, pt: me.pt, pw: me.pw || 0, pa: me.pa || 0, st: me.st || 0, sk: me.sk || '', tz: !!me.tz, cp: me.cp || 0 }); if (m.av) this.avg = m.av;
+      this.alive = mine.alive; this.sz = me.sz || null; Object.assign(this.me, { slow: me.slow||1, mag: me.mag, res: me.res, rl: me.rl, hp: mine.hp, weapon: mine.weapon, pp: me.pp, dp: me.dp, m: me.m, inv: me.inv, gr: me.gr, ar: me.ar, he: me.he, ks: me.ks, gl: me.gl, pt: me.pt, pw: me.pw || 0, pa: me.pa || 0, st: me.st || 0, sk: me.sk || '', tz: !!me.tz, cp: me.cp || 0 }); if (m.av) this.avg = m.av;
       this.reconcile(me, mine);
     }
     this.emit('snap', m);
@@ -161,13 +161,14 @@ export class NetClient {
     const s = this.ctrl.state;
     if (me.re !== this.respawns) {            // (re)spawned: hard reset
       this.respawns = me.re; this.pending = []; this.pred.clear();
-      Object.assign(s.position, { x: me.p[0], y: me.p[1], z: me.p[2] }); Object.assign(s.velocity, { x: 0, y: 0, z: 0 });
+      this.ctrl.teleport({ x: me.p[0], y: me.p[1], z: me.p[2] }, { yaw: mine.yaw, pitch: mine.pitch });
+      this.acc = 0; this.pendingFire = false;
       this.yaw = mine.yaw; this.pitch = mine.pitch; this.prev = this.cur = { x: me.p[0], y: me.p[1], z: me.p[2] }; return;
     }
     while (this.pending.length && this.pending[0].seq <= me.ack) this.pending.shift();
     const pr = this.pred.get(me.ack);
     for (const k of this.pred.keys()) if (k < me.ack) this.pred.delete(k);
-    if (!pr) return;
+    if (!pr) { if (Math.hypot(s.position.x-me.p[0],s.position.y-me.p[1],s.position.z-me.p[2]) > 2) { this.ctrl.teleport({x:me.p[0],y:me.p[1],z:me.p[2]}); this.prev=this.cur={x:me.p[0],y:me.p[1],z:me.p[2]}; } return; }
     const err = Math.hypot(pr[0] - me.p[0], pr[1] - me.p[1], pr[2] - me.p[2]);
     this.stats.maxErr = Math.max(this.stats.maxErr, err);
     if (err < 0.01) return;
