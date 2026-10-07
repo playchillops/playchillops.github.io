@@ -16,7 +16,7 @@
 //
 // Do NOT call ctrl.connect(element) in multiplayer: this adapter owns the controller (net.ctrl) and
 // feeds it inputs at the server tick rate, which is what keeps prediction identical to the server.
-import { DT, TICK, aimTo, clamp, lerp, lerpAngle, wrapPi, SENS, rocketVel, TURBO } from './common.js';
+import { DT, TICK, aimTo, clamp, lerp, lerpAngle, wrapPi, SENS, rocketVel, TURBO, MOBILITY } from './common.js';
 
 export class NetClient {
   constructor(o) {
@@ -78,7 +78,7 @@ export class NetClient {
     aimTo(this.ctrl, inp.yaw, inp.pitch);
     const m = this.phase !== 'match_end' && this.alive;
     if (m && inp.rk) this.ctrl.impulse(rocketVel(inp.yaw, inp.pitch));   // Starship: predicted like the server does it
-    this.ctrl.update(DT, m ? { forward: inp.f, right: inp.r, jump: inp.j, crouch: inp.c, sprint: false, knife: !!inp.kn, speedMul: inp.sm ? TURBO : 1 } : { forward: 0, right: 0, jump: false, crouch: inp.c, sprint: false, knife: !!inp.kn });
+    this.ctrl.update(DT, m ? { forward: inp.f, right: inp.r, jump: inp.j, crouch: inp.c, sprint: false, knife: !!inp.kn, speedMul: inp.sm ? (this.ch === 'hawking' ? MOBILITY : TURBO) : 1 } : { forward: 0, right: 0, jump: false, crouch: inp.c, sprint: false, knife: !!inp.kn });
     if (this.phase === 'freeze' && this.sz) { const ps = this.ctrl.state.position, cx = Math.max(this.sz[0] - 2.5, Math.min(this.sz[0] + 2.5, ps.x)), cz = Math.max(this.sz[1] - 2.5, Math.min(this.sz[1] + 2.5, ps.z)); if (cx !== ps.x || cz !== ps.z) this.ctrl.teleport({ x: cx, y: ps.y, z: cz }, { yaw: this.ctrl.state.yaw, pitch: this.ctrl.state.pitch }); }
   }
   stepTick() {
