@@ -59,9 +59,17 @@ export const DIFFICULTY = {
 
 // rate = shots/s, spread = radians cone (half angle), range = effective metres, mag/reload in shots/s.
 export const WEAPONS = {
-  pistol:      { rate: 3.5, spread: 0.014, range: 28, mag: 12, reload: 1.4, auto: false, dmg: 25, noise: 30, scope: 0 },
+  pistol:      { rate: 3.5, spread: 0.014, range: 28, mag: 12, reload: 1.4, auto: false, dmg: 25, noise: 30, scope: 0, sec: true },
   machinegun:  { rate: 9.0, spread: 0.032, range: 34, mag: 30, reload: 2.0, auto: true,  dmg: 17, noise: 40, scope: 0 },
   sniper:      { rate: 0.9, spread: 0.002, range: 90, mag: 5,  reload: 2.4, auto: false, dmg: 100, noise: 60, scope: 0.45 },
+  thunderpop:  { rate: 1.6, spread: 0.020, range: 30, mag: 7,  reload: 2.2, auto: false, dmg: 40, noise: 45, scope: 0, sec: true },
+  fizztwin:    { rate: 4.5, spread: 0.016, range: 25, mag: 18, reload: 1.6, auto: false, dmg: 15, noise: 30, scope: 0, sec: true },
+  buzzbox:     { rate: 12,  spread: 0.036, range: 24, mag: 32, reload: 1.9, auto: true,  dmg: 11, noise: 35, scope: 0 },
+  bigpuff:     { rate: 1.1, spread: 0.050, range: 12, mag: 6,  reload: 2.8, auto: false, dmg: 60, noise: 55, scope: 0 },
+  partypopper: { rate: 10,  spread: 0.040, range: 34, mag: 100, reload: 4.3, auto: true, dmg: 13, noise: 50, scope: 0 },
+  breeze:      { rate: 8.5, spread: 0.026, range: 36, mag: 25, reload: 2.0, auto: true,  dmg: 14, noise: 38, scope: 0 },
+  taptap:      { rate: 6,   spread: 0.024, range: 34, mag: 24, reload: 2.1, auto: true,  dmg: 14, noise: 38, scope: 0 },
+  skyneedle:   { rate: 1.1, spread: 0.004, range: 80, mag: 10, reload: 2.3, auto: false, dmg: 60, noise: 50, scope: 0.35 },
 };
 
 const RADIUS = 0.4;
@@ -209,7 +217,7 @@ export function createBot(o = {}) {
     id, name: o.name || id, team: o.team || 'CT', role: o.role || 'auto', difficulty, d: DIFFICULTY[difficulty], isBot: true,
     x: o.x ?? 0, y: o.y ?? 0, z: o.z ?? 0, yaw: o.yaw ?? 0, pitch: 0, radius: RADIUS,
     hp: 100, maxHp: 100, alive: true,
-    weapons: (o.weapons || ['pistol', 'machinegun', 'sniper']).slice(),
+    weapons: (o.weapons || ['pistol', 'machinegun']).slice(),
     rng: mulberry32(seed),
   };
   Brain.initBot(bot, o.persona || Brain.PERSONA_ORDER[(_persona++) % 4]);
@@ -221,7 +229,7 @@ export function resetBot(bot, sp = {}) {
   if (sp.yaw != null) bot.yaw = sp.yaw;
   bot.hp = bot.maxHp; bot.alive = true; bot.pitch = 0;
   bot.ammo = {}; for (const w of bot.weapons) bot.ammo[w] = WEAPONS[w].mag;
-  bot.weapon = bot.weapons.includes('sniper') ? 'sniper' : bot.weapons.includes('machinegun') ? 'machinegun' : bot.weapons[0];
+  bot.weapon = bot.weapons.find((w) => WEAPONS[w] && !WEAPONS[w].sec) || bot.weapons[0];
   bot.cooldown = 0; bot.reloadT = 0; bot.switchT = 0; bot.lastSwitch = -9; bot.scopeT = 0; bot.scoped = false; bot.reloading = false;
   bot.state = 'idle'; bot.path = null; bot.pi = 0; bot.pathGoal = null; bot.repathT = 0;
   bot.speed = 0; bot.moving = false; bot.vx = 0; bot.vz = 0;
@@ -384,15 +392,12 @@ function perceive(bot, bots, world, now) {
 
 // ------------------------------------------------------------------ weapon logic
 function chooseWeapon(bot, dist, now, world) {
-  const has = (w) => bot.weapons.includes(w);
+  // any arsenal: the primary (non-pistol) unless it is empty, a scoped gun at point blank, or a short-range gun far away
+  const prim = bot.weapons.find((w) => WEAPONS[w] && !WEAPONS[w].sec), sec = bot.weapons.find((w) => WEAPONS[w] && WEAPONS[w].sec);
+  const ok = (w) => w && (bot.ammo[w] > 0 || (bot.reloadT > 0 && bot.weapon === w));
   let want = bot.weapon;
-  const mgOk = has('machinegun') && (bot.ammo.machinegun > 0 || bot.reloadT > 0 && bot.weapon === 'machinegun');
-  if (has('sniper') && dist > 26 && bot.ammo.sniper > 0) want = 'sniper';
-  else if (has('machinegun') && dist <= 26 && bot.ammo.machinegun > 0) want = 'machinegun';
-  else if (has('pistol') && (!mgOk || dist < 3)) want = 'pistol';
-  else if (has('sniper') && !has('machinegun') && dist > 10) want = 'sniper';
-  else if (has('machinegun') && bot.ammo.machinegun > 0) want = 'machinegun';
-  else if (has('pistol')) want = 'pistol';
+  if (ok(prim)) { const P = WEAPONS[prim]; want = sec && ((P.scope && dist < 3) || (P.range < 15 && dist > P.range * 1.8)) ? sec : prim; }
+  else if (sec) want = sec;
   // sniper-only style bots keep the sniper at any range except point blank
   if (want !== bot.weapon && now - bot.lastSwitch > 1.2 && bot.reloadT <= 0 && bot.switchT <= 0) {
     bot.weapon = want; bot.lastSwitch = now; bot.switchT = 0.4; bot.scopeT = 0; bot.scoped = false; emit(world, bot, 'switch', { weapon: want });
