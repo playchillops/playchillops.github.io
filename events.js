@@ -52,17 +52,37 @@ export function createEvents({ game, net, THREE, an, banner = () => {}, play }) 
     else banner(who.toUpperCase() + (m.stolen ? ' STOLE A CARE PACKAGE' : ' OPENED A CARE PACKAGE') + ' · ' + String(what).toUpperCase(), 2.5);
   });
   net.on('crateclear', () => { for (const c of crates.values()) game.scene.remove(c.g); crates.clear(); });
+
+  // ---- Starship exhaust: a burning zone under the rocket (server deals the damage, see room.js eventsTick) ----
+  const burnEl = document.createElement('div'); burnEl.style.cssText = 'position:fixed;inset:0;z-index:23;pointer-events:none;opacity:0;transition:opacity .25s;background:radial-gradient(circle at 50% 50%,rgba(255,120,0,0) 35%,rgba(255,60,0,.65) 100%)'; document.body.appendChild(burnEl);
+  let burnOff = 0, burnBanner = 0;
+  net.on('hit', (m) => { if (!m || !m.burn || m.id !== net.id) return; burnEl.style.opacity = '1'; clearTimeout(burnOff); burnOff = setTimeout(() => { burnEl.style.opacity = '0'; }, 450); const n = performance.now(); if (n - burnBanner > 1500) { burnBanner = n; banner('YOU ARE BURNING · GET OUT OF THE EXHAUST', 1.2); } });
+  function exhaust(x, z) {
+    const disc = new THREE.Mesh(new THREE.CircleGeometry(9, 48), new THREE.MeshBasicMaterial({ color: 0xff6a00, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending })); disc.rotation.x = -Math.PI / 2; disc.position.set(x, 0.4, z); game.scene.add(disc);
+    const core = new THREE.Mesh(new THREE.CircleGeometry(5, 32), new THREE.MeshBasicMaterial({ color: 0xffd23a, transparent: true, opacity: 0.6, depthWrite: false, blending: THREE.AdditiveBlending })); core.rotation.x = -Math.PI / 2; core.position.set(x, 0.42, z); game.scene.add(core);
+    const scorch = new THREE.Mesh(new THREE.CircleGeometry(9.5, 48), new THREE.MeshBasicMaterial({ color: 0x1a1410, transparent: true, opacity: 0.55, depthWrite: false })); scorch.rotation.x = -Math.PI / 2; scorch.position.set(x, 0.33, z); game.scene.add(scorch);
+    fx.push({ obj: scorch, t: 0, life: 40, tick: (v) => { scorch.material.opacity = 0.55 * Math.max(0, 1 - v.t / 40); } });
+    fx.push({ obj: core, t: 0, life: 6, tick: (v) => { core.material.opacity = (0.5 + 0.2 * Math.random()) * (v.t > 5 ? 6 - v.t : 1); } });
+    fx.push({ obj: disc, t: 0, life: 6, tick: (v) => {
+      disc.material.opacity = (0.4 + 0.25 * Math.random()) * (v.t > 5 ? 6 - v.t : 1);
+      for (let i = 0; i < 3 && fx.length < 200; i++) {
+        const a = Math.random() * 6.283, r = Math.sqrt(Math.random()) * 9, hot = Math.random() < 0.5;
+        const f = new THREE.Mesh(new THREE.IcosahedronGeometry(0.5 + Math.random() * 0.5, 0), new THREE.MeshBasicMaterial({ color: hot ? 0xffb02e : 0xff4a12, transparent: true, opacity: 0.9, depthWrite: false })); f.position.set(x + Math.cos(a) * r, 0.6, z + Math.sin(a) * r); game.scene.add(f);
+        const vy = 3 + Math.random() * 4; fx.push({ obj: f, t: 0, life: 0.8, tick: (w, dt) => { f.position.y += vy * dt; f.scale.setScalar(Math.max(0.05, 1 - w.t / 0.8)); f.material.opacity = 0.9 * (1 - w.t / 0.8); } });
+      }
+    } });
+  }
   // ---- map events ----
   net.on('mevent', (m) => {
     if (!m) return;
     if(m.k==='pharaoh'){banner('THE TOMB AWAKENS · SHOOT THE PHARAOHS',4);an.say('The tomb awakens',2);}
     else if (m.k === 'starship') {
-      an.say('Starship launch in ten seconds. Clear the launch pad.', 3); banner('STARSHIP LAUNCH IN 10 · CLEAR THE LAUNCH PAD (B)', 3);
-      const ring = new THREE.Mesh(new THREE.RingGeometry(6.0, 6.5, 48), new THREE.MeshBasicMaterial({ color: 0xff3b3b, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false })); ring.rotation.x = -Math.PI / 2; ring.position.set(m.x, 0.36, m.z); game.scene.add(ring);
+      an.say('Starship launch in ten seconds. Clear the launch pad.', 3); banner('STARSHIP LAUNCH IN 10 · STAY OUT OF THE FLAMES (B)', 3);
+      const ring = new THREE.Mesh(new THREE.RingGeometry(8.5, 9.0, 64), new THREE.MeshBasicMaterial({ color: 0xff3b3b, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false })); ring.rotation.x = -Math.PI / 2; ring.position.set(m.x, 0.36, m.z); game.scene.add(ring);
       fx.push({ obj: ring, t: 0, life: 13, tick: (v) => { ring.material.opacity = 0.45 + 0.4 * Math.abs(Math.sin(v.t * 5)); } });
       for (let i = 9; i >= 1; i--) later(10 - i, () => { banner('STARSHIP LAUNCH IN ' + i, 1.05); try { an.sound('bsod'); } catch (e) {} });
     } else if (m.k === 'liftoff') {
-      an.say('Liftoff!', 3); banner('LIFTOFF!', 2); rocketT = 0; shake = 1;
+      an.say('Liftoff!', 3); banner('LIFTOFF! THE EXHAUST BURNS', 2); rocketT = 0; shake = 1; exhaust(m.x, m.z);
     } else if (m.k === 'blimp') {
       an.say('A funding blimp is dropping a care package.', 2); banner('FUNDING BLIMP · A CARE PACKAGE IS COMING DOWN', 4); blimp(m);
     } else if (m.k === 'sand') {
@@ -133,7 +153,7 @@ export function createEvents({ game, net, THREE, an, banner = () => {}, play }) 
       if (bullUntil && now > bullUntil) { bullUntil = 0; tick.style.display = 'none'; }
       for (let i = fx.length - 1; i >= 0; i--) { const v = fx[i]; v.t += dt; v.tick && v.tick(v, dt); if (v.t >= v.life) { game.scene.remove(v.obj); fx.splice(i, 1); } }
     },
-    dispose() {for(const g of pharaohs.values())disposeMesh(g);pharaohs.clear();for(const b of ribbons)disposeMesh(b.g);ribbons.length=0; for(const f of projectiles.values()){game.scene.remove(f.g);f.g.traverse(o=>{o.geometry?.dispose();o.material?.dispose();});}projectiles.clear(); for (const t of timers) clearTimeout(t); for (const c of crates.values()) game.scene.remove(c.g); crates.clear(); for (const v of fx) game.scene.remove(v.obj); fx.length = 0; const R = rocket(); if (R) { R.group.position.y = 0; R.group.visible = true; } if (fog0 && game.scene.fog) { game.scene.fog.near = fog0.near; game.scene.fog.far = fog0.far; game.scene.fog.color.copy(fog0.color); } game.canvas.style.transform = ''; tick.remove(); sand.remove(); tip.remove(); },
+    dispose() {for(const g of pharaohs.values())disposeMesh(g);pharaohs.clear();for(const b of ribbons)disposeMesh(b.g);ribbons.length=0; for(const f of projectiles.values()){game.scene.remove(f.g);f.g.traverse(o=>{o.geometry?.dispose();o.material?.dispose();});}projectiles.clear(); for (const t of timers) clearTimeout(t); for (const c of crates.values()) game.scene.remove(c.g); crates.clear(); for (const v of fx) game.scene.remove(v.obj); fx.length = 0; const R = rocket(); if (R) { R.group.position.y = 0; R.group.visible = true; } if (fog0 && game.scene.fog) { game.scene.fog.near = fog0.near; game.scene.fog.far = fog0.far; game.scene.fog.color.copy(fog0.color); } game.canvas.style.transform = ''; tick.remove(); sand.remove(); tip.remove(); burnEl.remove(); },
   };
   function puff(x, y, z) {   // rocket smoke
     const m = new THREE.MeshLambertMaterial({ color: 0xf2efe8 }), p = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 1), m); p.position.set(x, y, z); game.scene.add(p);
