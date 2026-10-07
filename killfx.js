@@ -266,7 +266,7 @@ export function createKillFX(THREE, opts = {}) {
   }
   const sprites = [];
   function addSprite(tex, pos, o) {
-    const m = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false, fog: false, color: o.color || 0xffffff, blending: o.additive ? THREE.AdditiveBlending : THREE.NormalBlending });
+    const m = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: true, depthWrite: false, fog: false, color: o.color || 0xffffff, blending: o.additive ? THREE.AdditiveBlending : THREE.NormalBlending });
     const s = new THREE.Sprite(m); s.position.set(pos.x, pos.y, pos.z); s.renderOrder = o.order || 20; scene.add(s);
     const sp = { s, t: 0, life: o.life || 0.3, size: o.size || 1, grow: o.grow || 1, vy: o.vy || 0, atten: o.atten, rot: o.rot || 0, kind: o.kind || 'fade', aspect: o.aspect || 1 };
     sprites.push(sp); return sp;

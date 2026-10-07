@@ -128,7 +128,7 @@ export function createAnimations(THREE, opts = {}) {
   const texts = [], textPool = [];
   fx.text = (p, str, color = '#ffffff', big = false) => {
     let s = textPool.pop();
-    if (!s) { const c = document.createElement('canvas'); c.width = 400; c.height = 96; const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tx, transparent: true, depthTest: false, depthWrite: false })); sp.renderOrder = 20; s = { sp, c, tx }; disposables.push(tx, sp.material); root.add(sp); }
+    if (!s) { const c = document.createElement('canvas'); c.width = 400; c.height = 96; const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tx, transparent: true, depthTest: true, depthWrite: false })); sp.renderOrder = 20; s = { sp, c, tx }; disposables.push(tx, sp.material); root.add(sp); }
     const g = s.c.getContext('2d'); g.clearRect(0, 0, 400, 96); g.font = '900 ' + (big ? 56 : 50) + 'px system-ui,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
     g.lineWidth = 12; g.strokeStyle = 'rgba(30,34,64,.9)'; g.strokeText(str, 200, 50); g.fillStyle = color; g.fillText(str, 200, 50); s.tx.needsUpdate = true;
     s.sp.position.set(p.x, p.y, p.z); s.sp.visible = true; s.t = 0; s.dur = big ? 1.0 : .8; s.big = big; s.vx = rnd(-.3, .3); texts.push(s); if (texts.length > 10) { const o = texts.shift(); o.sp.visible = false; textPool.push(o); }
@@ -142,7 +142,7 @@ export function createAnimations(THREE, opts = {}) {
   const flashes = [], flashPool = [];
   function flashSprite(p, color, scale, dur = .06) {
     let f = flashPool.pop();
-    if (!f) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: starTex, transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending })); s.renderOrder = 8; root.add(s); f = { s }; disposables.push(s.material); }
+    if (!f) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: starTex, transparent: true, depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending })); s.renderOrder = 8; root.add(s); f = { s }; disposables.push(s.material); }
     f.s.material.color.set(color); f.s.material.rotation = Math.random() * 6.28; f.s.position.copy(p); f.t = 0; f.dur = dur; f.scale = scale; f.s.visible = true; flashes.push(f); return f;
   }
   const mLight = new THREE.PointLight(0xffd9a0, 0, 7, 2); root.add(mLight); let mLightT = 0, mLightI = 0;
