@@ -411,6 +411,52 @@ export function buildMap(THREE, layout = scaleLayout(KITE_GARDEN_V4)) {
   for (const o of L.stairs || []) stairs(...o);
   for (const o of L.covers || []) cover(...o);
   for (const o of L.crates || []) crate(...o);
+  // ---------- super trampolines (Juan 2026-10-06: "un súper salto de los extremos al centro de la pirámide, una cama roja") ----------
+  // tramp: [x, z, tx, tz, ty, T]  red trampoline at (x, z) that throws you onto (tx, ty, tz) in T seconds. The launch velocity is solved
+  // here (gravity = movement.js 22); movement.js flies any launch faster than 1.5x walk speed with no air drag (you can still steer a bit).
+  for (const [x, z, tx, tz, ty, T = 2.2] of L.tramps || []) {
+    const R2 = 1.3, top = .3, G = 22, vy = (ty - top + .5 * G * T * T) / T, dx = (tx - x) / T, dz = (tz - z) / T;
+    colliders.push(Object.assign(new THREE.Box3(new THREE.Vector3(x - R2 * .8, 0, z - R2 * .8), new THREE.Vector3(x + R2 * .8, top, z + R2 * .8)), { name: 'trampoline', structural: true, breakable: false, pad: { vy, dx, dz } }));
+    floors.push({ minX: x - R2 * .8, maxX: x + R2 * .8, minZ: z - R2 * .8, maxZ: z + R2 * .8, y: top });
+    const red = material(0xe5332e), dark = material(0x1f2433), gold = material(0xffc83d), white = material(0xfff4e8);
+    mesh(new THREE.TorusGeometry(R2, .09, 8, 32), dark, x, top, z, false, 'trampoline frame').rotation.x = Math.PI / 2;
+    for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; mesh(new THREE.CylinderGeometry(.05, .06, top, 6), dark, x + Math.cos(a) * R2, top / 2, z + Math.sin(a) * R2); }
+    for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2, sp = mesh(new THREE.CylinderGeometry(.025, .025, .22, 5), gold, x + Math.cos(a) * (R2 - .14), top + .005, z + Math.sin(a) * (R2 - .14)); sp.rotation.set(Math.PI / 2, 0, -a); sp.rotation.order = 'YXZ'; sp.rotation.y = -a; }
+    const bed = new THREE.Group(); bed.position.set(x, top, z); group.add(bed);   // the bouncy red bed: rings + a chevron aiming at the pyramid
+    const bm = new THREE.Mesh(new THREE.CylinderGeometry(R2 - .22, R2 - .22, .05, 28), red); bm.userData.keep = true; bed.add(bm);
+    for (const [r0, r1, m] of [[.82, .9, white], [.42, .5, white]]) { const ring = new THREE.Mesh(new THREE.RingGeometry(r0, r1, 28), m); ring.rotation.x = -Math.PI / 2; ring.position.y = .027; bed.add(ring); }
+    const yaw = Math.atan2(tx - x, tz - z), chev = new THREE.Mesh(new THREE.ConeGeometry(.28, .5, 3), gold); chev.rotation.set(Math.PI / 2, 0, 0); const cg = new THREE.Group(); cg.rotation.y = yaw; chev.position.set(0, .04, .35); chev.scale.set(1, 1, .15); cg.add(chev); bed.add(cg);
+    for (const o of [bm, ...bed.children]) geos.add(o.geometry || new THREE.BufferGeometry());
+    const ph = x * .37 + z * .11; bm.onBeforeRender = () => { const t = performance.now() / 1000 + ph, k = Math.max(0, Math.sin(t * 2.4)) ** 8; bed.position.y = top - k * .08; };   // idle "boing"
+    const um = new THREE.MeshBasicMaterial({ color: 0xff5a4a, transparent: true, opacity: .25, depthWrite: false, side: THREE.DoubleSide }); mats.add(um);
+    const up = mesh(new THREE.CylinderGeometry(R2 * .55, R2 * .8, 2.4, 20, 1, true), um, x, top + 1.2, z, false, 'tramp updraft'); up.castShadow = false; up.receiveShadow = false;
+    up.onBeforeRender = () => { const u = ((performance.now() / 1000 + ph) % 1) / 1; up.scale.set(1 - u * .3, .4 + u * 1.6, 1 - u * .3); up.position.y = top + .3 + u * 1.8; um.opacity = .32 * (1 - u); };
+  }
+
+  // ---------- portal (Juan 2026-10-06: "un portal que si lo atraviesas te lleva a raceday.gg"): ring + swirl + sign; game.js / portal.js open the link
+  const portals = [];
+  for (const pt of L.portals || []) {
+    const { x, z, yaw = 0, url, label = '' } = pt, y = getHeight(x, z), R0 = 1.35, pg = new THREE.Group(); pg.position.set(x, y, z); pg.rotation.y = yaw; group.add(pg);
+    const dark = material(0x1f2433), gold = material(0xffc83d);
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(1.7, 1.9, .22, 24), dark); base.position.y = .11; pg.add(base);
+    for (const sx of [-1, 1]) { const leg = new THREE.Mesh(new THREE.BoxGeometry(.32, 1.2, .5), dark); leg.position.set(sx * (R0 + .05), .7, 0); pg.add(leg); }
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(R0, .17, 12, 40), new THREE.MeshLambertMaterial({ color: 0xff3fb4, emissive: 0x7a0f52 })); ring.position.y = R0 + .35; pg.add(ring); mats.add(ring.material);
+    const ring2 = new THREE.Mesh(new THREE.TorusGeometry(R0 + .24, .06, 8, 40), gold); ring2.position.y = R0 + .35; pg.add(ring2);
+    const cv = document.createElement('canvas'); cv.width = cv.height = 256; { const c = cv.getContext('2d'); if (c && c.createRadialGradient) { const g = c.createRadialGradient(128, 128, 8, 128, 128, 128); g.addColorStop(0, '#ffffff'); g.addColorStop(.25, '#7fe3ff'); g.addColorStop(.6, '#7a3cff'); g.addColorStop(1, '#ff3fb4'); c.fillStyle = g; c.fillRect(0, 0, 256, 256);
+      c.strokeStyle = 'rgba(255,255,255,.55)'; c.lineWidth = 7; for (let k = 0; k < 5; k++) { c.beginPath(); for (let a = 0; a < 9; a += .08) { const r = a * 13, px = 128 + Math.cos(a + k * 1.256) * r, py = 128 + Math.sin(a + k * 1.256) * r; a ? c.lineTo(px, py) : c.moveTo(px, py); } c.stroke(); } } }
+    const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; textures.push(tex);
+    const sm = new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: .92, side: THREE.DoubleSide, depthWrite: false }); mats.add(sm);
+    const swirl = new THREE.Mesh(new THREE.CircleGeometry(R0 - .08, 40), sm); swirl.position.y = R0 + .35; pg.add(swirl);
+    swirl.onBeforeRender = () => { const t = performance.now() / 1000; swirl.rotation.z = -t * 1.6; const k = 1 + Math.sin(t * 3) * .03; swirl.scale.set(k, k, 1); };
+    const sc = document.createElement('canvas'); sc.width = 512; sc.height = 128; { const c = sc.getContext('2d'); if (c && c.fillText) { c.fillStyle = '#1f2433'; c.fillRect(0, 0, 512, 128); c.strokeStyle = '#ffc83d'; c.lineWidth = 8; c.strokeRect(6, 6, 500, 116); c.fillStyle = '#ffffff'; c.font = '800 64px Fredoka, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(label, 256, 58); c.font = '600 22px Fredoka, sans-serif'; c.fillStyle = '#ff9fdc'; c.fillText('WALK THROUGH THE PORTAL', 256, 104); } }
+    const st = new THREE.CanvasTexture(sc); st.colorSpace = THREE.SRGBColorSpace; textures.push(st); const signM = new THREE.MeshBasicMaterial({ map: st }); mats.add(signM);
+    for (const sz of [1, -1]) { const sign = new THREE.Mesh(new THREE.PlaneGeometry(2.8, .7), signM); sign.position.set(0, 2 * R0 + .95, sz * .02); if (sz < 0) sign.rotation.y = Math.PI; pg.add(sign); }
+    for (const o of pg.children) { geos.add(o.geometry); o.userData.keep = true; }
+    for (const sx of [-1, 1]) { const lx = sx * (R0 + .05), wx = x + lx * Math.cos(yaw), wz = z - lx * Math.sin(yaw), hw = .3;   // the legs are solid: you go through the ring
+      colliders.push(Object.assign(new THREE.Box3(new THREE.Vector3(wx - hw, y, wz - hw), new THREE.Vector3(wx + hw, y + 2 * R0 + .5, wz + hw)), { name: 'portal leg', structural: true, breakable: false })); }
+    portals.push({ x, y, z, yaw, r: R0, cy: y + R0 + .35, url, label });
+  }
+
   // ---------- movement extras (movement.js): jump pads and ladders ----------
   // pad: [x0, z0, x1, z1, vy, dx, dz, y]  solid 12 cm plate carrying pad={vy,dx,dz}; launch arrows point along (dx, dz)
   for (const [x0, z0, x1, z1, vy, dx = 0, dz = 0, y = 0] of L.pads || []) {
@@ -583,7 +629,7 @@ export function buildMap(THREE, layout = scaleLayout(KITE_GARDEN_V4)) {
       const mm = mesh(mg, b.m, 0, 0, 0, false, 'merged props'); mm.castShadow = b.cast; mm.receiveShadow = b.recv;
       for (const o of b.list) group.remove(o); } }
   const physicsColliders = [...colliders, ...rampColliders];
-  return { layout: L, palmSpots, stairs: stairsList, callouts: L.callouts.map(([name, x, z]) => ({ name, position: V3(x, getHeight(x, z), z) })), group, lights, colliders, physicsColliders, floors, ramps, getHeight,
+  return { layout: L, portals, palmSpots, stairs: stairsList, callouts: L.callouts.map(([name, x, z]) => ({ name, position: V3(x, getHeight(x, z), z) })), group, lights, colliders, physicsColliders, floors, ramps, getHeight,
     stepHeight: STEP, spawnPoints, bombsites, navGrid, bounds: { minX: -H, maxX: H, minZ: -H, maxZ: H }, sky: { background: 0xb4dcf0, fog: { color: 0xb4dcf0, near: 80, far: 200 } },
     dispose() { for (const g of geos) g.dispose(); for (const m of mats) m.dispose(); for (const t of textures) t.dispose(); sun.shadow.map?.dispose(); } };
 }
@@ -943,5 +989,9 @@ export function compactPlaza(L, k = .72, core = [-24, -24, 24, 18]) {
       if (wall === 'W') { const f = fx(x0); return [f, r3(cz - d / 2), r3(f + w), r3(cz + d / 2), y0, y1, wall]; } const f = fx(x1); return [r3(f - w), r3(cz - d / 2), f, r3(cz + d / 2), y0, y1, wall]; }),
   };
 }
-export const LAYOUTS = { a: () => scaleLayout(KITE_GARDEN_V4), b: () => compactPlaza(KITE_PLAZA) };
+// Plaza super trampolines (after compaction: exact spots, found by a clear-flight search): from the edges of the plaza onto the pyramid's
+// upper terrace (5.6 m, open sky; the summit itself is under the shrine roof). [x, z, landX, landZ, landY, flight s]
+const PLAZA_TRAMPS = [[-3.9, 27.7, -1, 5.7, 5.6, 1.7], [30.9, 6.3, 8.1, -1.9, 5.6, 1.7], [-21.8, -4.9, -7.7, -3, 5.6, 1.7], [21.2, -23.2, 4.1, -8.9, 5.6, 1.7], [-21.2, -23.2, -4.1, -8.9, 5.6, 1.7]];
+const PLAZA_PORTALS = [{ x: -42, z: 4, yaw: Math.PI / 2, url: 'https://raceday.gg/', label: 'RACEDAY.GG' }];   // west edge, facing into the plaza, off the main route
+export const LAYOUTS = { a: () => scaleLayout(KITE_GARDEN_V4), b: () => ({ ...compactPlaza(KITE_PLAZA), tramps: PLAZA_TRAMPS, portals: PLAZA_PORTALS }) };
 export default buildMap;
