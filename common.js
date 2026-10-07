@@ -24,6 +24,20 @@ export const DM = {
 export const RESPAWN = 2, DM_FREEZE = 3, DM_PROTECT = 1.5, DM_END = 26;   // match end: final killcam (~9 s) + MVP screen
 // Gun Game ladder: rifles first, pistols last, the knife kill wins. Index = level.
 export const GUN_ORDER = ['machinegun', 'breeze', 'taptap', 'partypopper', 'buzzbox', 'bigpuff', 'skyneedle', 'sniper', 'thunderpop', 'fizztwin', 'pistol', 'knife'];
+// Silicon Valley legends (Juan 2026-10-06): every player gets one at random when they join (server-picked, so everybody
+// sees the same person); bots are named after theirs. Models in characters.js, same toon style as the original cast.
+export const LEGENDS = [
+  { id: 'jobs', name: 'Steve Jobs', co: 'Apple' },
+  { id: 'zuck', name: 'Mark Zuckerberg', co: 'Meta' },
+  { id: 'altman', name: 'Sam Altman', co: 'OpenAI' },
+  { id: 'musk', name: 'Elon Musk', co: 'Tesla · SpaceX' },
+  { id: 'bezos', name: 'Jeff Bezos', co: 'Amazon' },
+  { id: 'jensen', name: 'Jensen Huang', co: 'NVIDIA' },
+  { id: 'gates', name: 'Bill Gates', co: 'Microsoft' },
+  { id: 'lisa', name: 'Lisa Su', co: 'AMD' },
+];
+export const LEGEND_IDS = LEGENDS.map((l) => l.id);
+export const legendOf = (id) => LEGENDS.find((l) => l.id === id) || null;
 export const isDM = (mode) => !!DM[mode];
 export const isFree = (mode) => mode === 'ffa' || mode === 'gun';   // every player is an enemy
 
