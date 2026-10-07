@@ -60,17 +60,20 @@ export function initProgress(net, { me = () => '', defer = (f) => f() } = {}) { 
 }
 
 export function rewardCard(r) {
-  addCss(); document.querySelector('.pr-rw')?.remove();
+  addCss(); { const prev = document.querySelector('.pr-rw'); if (prev) prev._close ? prev._close() : prev.remove(); }
   const w = document.createElement('div'); w.className = 'pr-rw';
   const base = XP_BASE, kx = XP_KILL * Math.max(0, r.kills | 0), wx = r.win ? XP_WIN : 0, a = progress(r.before), b = progress(r.after);
   const up = b.level > a.level;
-  w.innerHTML = `<div class="pr-card"><h2 class="${r.win ? 'pr-win' : 'pr-lose'}">${r.win ? 'VICTORY' : 'MATCH OVER'}</h2><div style="opacity:.7;font-size:13px;margin-bottom:8px">MATCH REWARD</div><div class="pr-row"><span>Played</span><b>+${base} XP</b></div><div class="pr-row"><span>${r.kills | 0} kills</span><b>+${kx} XP</b></div>${r.win ? `<div class="pr-row"><span>Match win</span><b>+${wx} XP</b></div>` : ''}<div class="pr-row" style="border-top:1px solid #fff2;margin-top:6px;padding-top:8px;font-size:19px"><span>Total</span><b>+${r.gain} XP</b></div><div class="pr-bar"><div class="pr-fill"></div></div><div class="pr-lv"><span>Level ${a.level} · ${a.rank}</span><span class="pr-nx">${b.into} / ${b.span} XP</span></div><button class="pr-go">Continue</button></div>`;
+  w.innerHTML = `<div class="pr-card"><h2 class="${r.win ? 'pr-win' : 'pr-lose'}">${r.win ? 'VICTORY' : 'MATCH OVER'}</h2><div style="opacity:.7;font-size:13px;margin-bottom:8px">MATCH REWARD</div><div class="pr-row"><span>Played</span><b>+${base} XP</b></div><div class="pr-row"><span>${r.kills | 0} kills</span><b>+${kx} XP</b></div>${r.win ? `<div class="pr-row"><span>Match win</span><b>+${wx} XP</b></div>` : ''}<div class="pr-row" style="border-top:1px solid #fff2;margin-top:6px;padding-top:8px;font-size:19px"><span>Total</span><b>+${r.gain} XP</b></div><div class="pr-bar"><div class="pr-fill"></div></div><div class="pr-lv"><span>Level ${a.level} · ${a.rank}</span><span class="pr-nx">${b.into} / ${b.span} XP</span></div><button class="pr-go">Continue [Enter]</button></div>`;
   document.body.appendChild(w);
-  const fill = w.querySelector('.pr-fill'), card = w.querySelector('.pr-card'), close = () => w.remove();
+  let closed = false, timer;
+  const key = (e) => { if (!w.isConnected || e.code !== 'Enter') return; e.preventDefault(); e.stopImmediatePropagation(); if (!e.repeat) close(); };
+  const fill = w.querySelector('.pr-fill'), card = w.querySelector('.pr-card'), close = () => { if (closed) return; closed = true; document.removeEventListener('keydown', key, true); clearTimeout(timer); w.remove(); };
+  w._close = close; document.addEventListener('keydown', key, true);
   w.querySelector('.pr-go').onclick = close; w.addEventListener('keydown', (e) => e.stopPropagation());
   const run = (from, to, done) => { fill.style.transition = 'none'; fill.style.width = Math.round(from * 100) + '%'; void fill.offsetWidth; fill.style.transition = ''; fill.style.width = Math.round(to * 100) + '%'; setTimeout(done, 1700); };
   const lv = w.querySelector('.pr-lv span');
-  const finish = () => { if (up) { lv.textContent = `Level ${b.level} · ${b.rank}`; card.insertAdjacentHTML('beforeend', `<div class="pr-up">LEVEL UP! ${b.level} · ${b.rank}${rankOf(b.level) !== rankOf(a.level) ? ' (new rank)' : ''}</div>`); } };
+  const finish = () => { if (closed) return; if (up) { lv.textContent = `Level ${b.level} · ${b.rank}`; card.insertAdjacentHTML('beforeend', `<div class="pr-up">LEVEL UP! ${b.level} · ${b.rank}${rankOf(b.level) !== rankOf(a.level) ? ' (new rank)' : ''}</div>`); } };
   if (up) run(a.pct, 1, () => run(0, b.pct, finish)); else run(a.pct, b.pct, finish);
-  setTimeout(close, 25000);
+  timer = setTimeout(close, 25000);
 }
