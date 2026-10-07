@@ -273,7 +273,7 @@ export class Game {
     if (this.eco) { try { this.eco.dispose(); } catch (e) {} }
     this.owned = new Set(['pistol']);
     this.grenades?.clearRound();
-    this.eco = createEconomy({ container: this.root, team: 'T', freezeTime: 10, autoOpen: false, inZone: () => !!(this.mp && this.mp.net && this.mp.net.lobby) || this.inBuyZone(), onEvent: (n, d) => this.onEco(n, d) });
+    this.eco = createEconomy({ container: this.root, team: 'T', freezeTime: 10, autoOpen: false, inZone: () => !!(this.mp && this.mp.net && (this.mp.net.lobby || this.mp.net.mode === 'tdm' || this.mp.net.mode === 'ffa')) || this.inBuyZone(), /* deathmatch: free loadout from anywhere */ onEvent: (n, d) => this.onEco(n, d) });
     if (this.grenades) this.grenades.setEconomy(this.eco);
   }
   syncAmmoToEco() { if (!this.eco) return; for (const id of WEAPON_ORDER) { const a = this.ws.ammo[id]; if (a && this.eco.getState().inventory.ammo[id]) this.eco.setAmmo(id, { mag: a.mag, reserve: a.reserve }); } }
@@ -295,10 +295,12 @@ export class Game {
   renderSB() {
     const m = this.match, pips = (w, c) => Array.from({ length: 3 }, (_, i) => `<i class="pip${i < w ? ' on' : ''}" style="--c:${c}"></i>`).join('');
     this.sb.style.display = this.state === 'menu' ? 'none' : 'flex';
+    if (m.dm) { this.sb.innerHTML = `<b>${m.p}</b><span class="sep">:</span><b>${m.b}</b><span class="rd">${m.dm}</span>`; if (this.sbm) this.sbm.style.display = 'none'; return; }   // deathmatch modes: kills (or Gun Game levels), no money
     this.sb.innerHTML = `<span class="pips">${pips(m.p, '#7dffb0')}</span><b>${m.p}</b><span class="sep">:</span><b>${m.b}</b><span class="pips">${pips(m.b, '#ffb35c')}</span><span class="rd">R${Math.min(5, m.round)}/5</span>`;
     this.updSBMoney();
   }
   updSBMoney() {
+    if (this.match && this.match.dm) { if (this.sbm) this.sbm.style.display = 'none'; return; }
     if (this.mp && this.mp.active && this.mp.net && this.sbm) { const n = this.mp.net, av = n.avg || [0, 0], f = (v) => '$' + Math.round(v).toLocaleString('en-US'); this.sbm.style.display = 'flex'; this.sbm.innerHTML = `<span style="color:#7dffb0">${f(this.eco.getState().money)}</span><span class="l">AVG $ / PLAYER</span><span style="color:#ffb35c">${f(n.team === 'T' ? av[1] : av[0])}</span>`; return; }
   }
   setMusicMode(m) { this.musicMode = m; try { setMusicMode(m); } catch (e) {} }
@@ -401,7 +403,7 @@ export class Game {
     this.camera.lookAt(pe.x, pe.y - 0.1 * k, pe.z); this.camera.fov = 75 - 20 * k; this.camera.updateProjectionMatrix();
     if (d.t > 2.4) { d.banner.remove(); this.deathCam = null; this.hud.root.style.display = ''; this.camera.fov = 75; this.camera.updateProjectionMatrix(); try { this.vm.group.visible = true; } catch (e) {} }
   }
-  openSolo(map) { let seen = false; try { seen = !!localStorage.getItem('sc_tut'); } catch (e) {} if (!seen) { this.tutorial(() => this.openSolo(map)); return; } if (this.menuStop) { this.menuStop(); this.menuStop = null; } this.ov.style.display = 'none'; play('ui_start'); loadingStart({ map: map || 'a', mode: 'solo' }); loadingStep('WAKING SERVER', 14); this.mp.solo(map); }
+  openSolo(map, gm) { let seen = false; try { seen = !!localStorage.getItem('sc_tut'); } catch (e) {} if (!seen) { this.tutorial(() => this.openSolo(map, gm)); return; } if (this.menuStop) { this.menuStop(); this.menuStop = null; } this.ov.style.display = 'none'; play('ui_start'); loadingStart({ map: map || 'a', mode: 'solo' }); loadingStep('WAKING SERVER', 14); this.mp.solo(map, gm); }
   openMP() { if (this.menuStop) { this.menuStop(); this.menuStop = null; } this.ov.style.display = 'none'; this.mp.open(); }
   renderMP() { if (this.look) this.look.render(this.camera); else this.renderer.render(this.scene, this.camera); }
   showMenu() {
