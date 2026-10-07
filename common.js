@@ -44,7 +44,7 @@ export const POWERS = {
   zuck: { k: 'cloak', name: 'Metaverse', desc: 'Turn almost invisible (shooting flickers you back)', dur: 7 },
   altman: { k: 'agi', name: 'AGI Mode', desc: 'Perfect aim: zero spread', dur: 7 },
   musk: { k: 'rocket', name: 'Starship', desc: 'Rocket jump high and far where you look', dur: 0 },
-  bezos: { k: 'prime', name: 'Prime Delivery', desc: '150 HP, full ammo, shield and a frag, delivered now', dur: 0 },
+  bezos: { k: 'prime', name: 'Prime Delivery', desc: '+20 HP. Nothing else.', dur: 0 },
   jensen: { k: 'overclock', name: 'Overclock', desc: 'Double fire rate and instant reloads', dur: 7 },
   gates: { k: 'bsod', name: 'Blue Screen', desc: 'Enemies within 14 m freeze for 2.5 s', dur: 0 },
   lisa: { k: 'turbo', name: 'Ryzen Turbo', desc: 'Run 60% faster', dur: 7 },
