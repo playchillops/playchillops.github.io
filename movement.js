@@ -126,7 +126,7 @@ export function createController(initialColliders=[], options={}) {
     crouched=wantsCrouch||!clearAt(p.y,opt.height);
     height=crouched?opt.crouchHeight:opt.height;
     const sprint=false; // no sprint: Shift = crouch
-    const speed=(crouched?opt.crouchSpeed:sprint?opt.sprintSpeed:opt.speed)*(i.knife?(opt.knifeSpeedMul||1.22):1);
+    const speed=(crouched?opt.crouchSpeed:sprint?opt.sprintSpeed:opt.speed)*(i.knife?(opt.knifeSpeedMul||1.22):1)*clamp(Number.isFinite(i.speedMul)?i.speedMul:1,.2,1.8);   // speedMul: Ryzen Turbo power
     const len=Math.max(1,Math.hypot(f,r));
     const tx=(-Math.sin(yaw)*f+Math.cos(yaw)*r)/len*speed;
     const tz=(-Math.cos(yaw)*f-Math.sin(yaw)*r)/len*speed;
@@ -150,7 +150,9 @@ export function createController(initialColliders=[], options={}) {
       const wasGrounded=grounded;
       const accel=grounded?(f||r?opt.acceleration:opt.friction):opt.airAcceleration;
       const alpha=1-Math.exp(-accel*h);
-      v.x+=(tx-v.x)*alpha;v.z+=(tz-v.z)*alpha;
+      // flying (super trampoline launch): faster than 1.5x walk speed in the air -> no drag, input only nudges (stateless: same on client and server)
+      if(!grounded&&Math.hypot(v.x,v.z)>opt.speed*1.5){v.x+=tx*.55*h;v.z+=tz*.55*h;}
+      else{v.x+=(tx-v.x)*alpha;v.z+=(tz-v.z)*alpha;}
       moveAxis('x',v.x*h,wasGrounded);moveAxis('z',v.z*h,wasGrounded);
       const oldY=p.y;
       v.y-=opt.gravity*h;
@@ -195,7 +197,8 @@ export function createController(initialColliders=[], options={}) {
     setColliders(next){colliders=next||[];},
     setSensitivity(v){if(Number.isFinite(v)&&v>0)opt.sensitivity=v;},
     setEnabled(value){enabled=!!value;if(!enabled){held.clear();manual={forward:0,right:0,jump:false,sprint:false,crouch:false};}},
-    teleport(position,rotation={}){Object.assign(p,position);v.x=v.y=v.z=0;grounded=false;coyote=jumpBuffer=0;if(rotation.yaw!==undefined)yaw=rotation.yaw;if(rotation.pitch!==undefined)pitch=clamp(rotation.pitch,-1.55,1.55);sync();},
+    impulse(vel){if(!vel)return;v.x=Number.isFinite(vel.x)?vel.x:v.x;v.y=Number.isFinite(vel.y)?vel.y:v.y;v.z=Number.isFinite(vel.z)?vel.z:v.z;grounded=false;coyote=0;jumpBuffer=0;sync();},   // power launches (Starship)
+        teleport(position,rotation={}){Object.assign(p,position);v.x=v.y=v.z=0;grounded=false;coyote=jumpBuffer=0;if(rotation.yaw!==undefined)yaw=rotation.yaw;if(rotation.pitch!==undefined)pitch=clamp(rotation.pitch,-1.55,1.55);sync();},
     getDirection(){const cp=Math.cos(pitch);return{x:-Math.sin(yaw)*cp,y:Math.sin(pitch),z:-Math.cos(yaw)*cp};},
     applyToCamera(camera){camera.position.set(state.eye.x,state.eye.y,state.eye.z);camera.rotation.order='YXZ';camera.rotation.set(pitch,yaw,0,'YXZ');},
     async requestPointerLock(){if(!element?.requestPointerLock)return false;try{await element.requestPointerLock();return element.ownerDocument.pointerLockElement===element;}catch{return false;}},
