@@ -27,14 +27,14 @@ export const GUN_ORDER = ['machinegun', 'breeze', 'taptap', 'partypopper', 'buzz
 // Silicon Valley legends (Juan 2026-10-06): every player gets one at random when they join (server-picked, so everybody
 // sees the same person); bots are named after theirs. Models in characters.js, same toon style as the original cast.
 export const LEGENDS = [
-  { id: 'jobs', name: 'Steve Jobs', co: 'Apple' },
-  { id: 'zuck', name: 'Mark Zuckerberg', co: 'Meta' },
-  { id: 'altman', name: 'Sam Altman', co: 'OpenAI' },
-  { id: 'musk', name: 'Elon Musk', co: 'Tesla · SpaceX' },
-  { id: 'bezos', name: 'Jeff Bezos', co: 'Amazon' },
-  { id: 'jensen', name: 'Jensen Huang', co: 'NVIDIA' },
-  { id: 'gates', name: 'Bill Gates', co: 'Microsoft' },
-  { id: 'lisa', name: 'Lisa Su', co: 'AMD' },
+  { id: 'jobs', name: 'Steve Jobs', co: 'Apple', site: 'apple.com' },   // site: logo for bots (calling card, MVP screen)
+  { id: 'zuck', name: 'Mark Zuckerberg', co: 'Meta', site: 'meta.com' },
+  { id: 'altman', name: 'Sam Altman', co: 'OpenAI', site: 'openai.com' },
+  { id: 'musk', name: 'Elon Musk', co: 'Tesla · SpaceX', site: 'spacex.com' },
+  { id: 'bezos', name: 'Jeff Bezos', co: 'Amazon', site: 'amazon.com' },
+  { id: 'jensen', name: 'Jensen Huang', co: 'NVIDIA', site: 'nvidia.com' },
+  { id: 'gates', name: 'Bill Gates', co: 'Microsoft', site: 'microsoft.com' },
+  { id: 'lisa', name: 'Lisa Su', co: 'AMD', site: 'amd.com' },
 ];
 export const LEGEND_IDS = LEGENDS.map((l) => l.id);
 // Superpowers (Juan 2026-10-06: "cada persona tiene un superpoder que se rellena con el tiempo y cuando matas"): one per legend.
