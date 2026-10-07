@@ -7,6 +7,7 @@ export const DEFAULT_CONFIG = {
   rewards: [
     { id: 'uav', at: 3, key: 'Digit4' },
     { id: 'crate', at: 4, key: 'Digit5' },
+    { id: 'rambo', at: 5, key: 'Digit9' },
     { id: 'missile', at: 6, key: 'Digit6' },
     { id: 'airstrike', at: 8, key: 'Digit7' },
     { id: 'nuke', at: 11, key: 'Digit8' },
@@ -15,7 +16,7 @@ export const DEFAULT_CONFIG = {
   countStreakKills: false,    // do kills made by streaks feed the counter?
   loop: false,                // after the last reward, restart the counter from 0
   selfDamage: false,          // blasts hurt the player (not implemented: reserved)
-  names: { uav: 'Angel Round · radar', crate: 'Series A · care package', missile: 'Series B · guided missile', rc: 'RC bomb car', airstrike: 'Series C · airstrike', nuke: 'IPO · mega-nuke' },
+  names: { rambo: 'Rambo · heavy gun', uav: 'Angel Round · radar', crate: 'Series A · care package', missile: 'Series B · guided missile', rc: 'RC bomb car', airstrike: 'Series C · airstrike', nuke: 'IPO · mega-nuke' },
   nuke: { countdown: 4 },
   uav: { duration: 20, alertBots: true, alertRadius: 30 },
   missile: { speed: 50, boost: 90, lifetime: 20, startHeight: 150, startBack: 10, startPitch: -1.1, blastRadius: 9, maxDamage: 140, minDamage: 40, alertBots: true },
@@ -71,6 +72,7 @@ const CSS = `
 .sk .bar i{display:block;height:100%;background:#ffd166;width:100%}
 `;
 const ICON = {
+  rambo: '<svg viewBox="0 0 40 40" fill="#a9e0c4"><path d="M4 14h30v8H22l-5 12H8l5-12H4zM32 16h7v4h-7zM17 8h8v6h-8z"/></svg>',
   crate: '<svg viewBox="0 0 40 40" stroke="#222" stroke-width="1.3" stroke-linejoin="round"><path d="M6 15a14 9 0 0 1 28 0z" fill="#fff"/><path d="M8 15l8 9M32 15l-8 9M20 15v9" fill="none" stroke="#fff"/><rect x="12" y="23" width="16" height="13" rx="1.5" fill="#c8955a"/><path d="M12 29h16M20 23v13" stroke="#7a5a32"/></svg>',
   uav: '<svg viewBox="0 0 40 40" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="20" cy="22" r="14" stroke-opacity=".45"/><circle cx="20" cy="22" r="8" stroke-opacity=".7"/><path d="M20 22L31 11" stroke="#7dffb0"/><circle cx="20" cy="22" r="2.5" fill="#fff" stroke="none"/><circle cx="12" cy="27" r="2.2" fill="#ff6b6b" stroke="none"/><circle cx="27" cy="29" r="2.2" fill="#ff6b6b" stroke="none"/></svg>',
   missile: '<svg viewBox="0 0 40 40" stroke="#222" stroke-width="1.4" stroke-linejoin="round"><g transform="rotate(40 20 20)"><path d="M20 3c4 4 5 9 5 15v12H15V18c0-6 1-11 5-15z" fill="#fff"/><path d="M20 3c3 3 4.5 7 4.8 11h-9.6c.3-4 1.8-8 4.8-11z" fill="#ff6b6b"/><path d="M15 24l-6 8h6zM25 24l6 8h-6z" fill="#ffd166"/><path d="M17 30h6l-3 7z" fill="#ff9a3c"/></g></svg>',
@@ -531,6 +533,7 @@ export function createStreaks(ctx) {
     if (!(S.inv[id] > 0)) return false;
     S.inv[id]--; look.dx = look.dy = 0;
     if (id === 'uav') { startUav(); emit('called', { id }); showBanner('ANGEL ROUND', `Radar: enemies revealed for ${cfg.uav.duration} s`, 1.8); }
+    else if (id === 'rambo') {emit('called',{id});showBanner('RAMBO','Heavy machine gun · unlimited ammo for 12 s',2.5);}
     else if (id === 'crate') { emit('called', { id }); showBanner('SERIES A', 'Care package incoming · hold E on it', 2); }   // the server drops it (room.js crates)
     else if (id === 'nuke') startNuke();
     else if (id === 'missile' || id === 'airstrike') openTablet(id); else if (id === 'rc') startRc();
@@ -596,4 +599,4 @@ export function createStreaks(ctx) {
     call, cancel, reset, update, registerKill, registerDeath, explode, show: (v) => { dom.style.display = v ? '' : 'none'; },
     dispose() { cancel('dispose'); document.removeEventListener('keydown', onKey, true); document.removeEventListener('keyup', onKey, true); document.removeEventListener('mousemove', onMove); document.removeEventListener('mousedown', onDown, true); document.removeEventListener('mouseup', onUp, true); dom.remove(); },
   });
-                       }
+  }
