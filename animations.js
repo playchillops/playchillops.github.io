@@ -47,6 +47,14 @@ const WEAPON_FEEL = {
   pistol:     { kickZ: 5.5, kickPit: 9,   twist: 2.5, cam: 0.0045, fov: 0.5,  shake: 0.10, flash: 1.0, light: .5, core: 0xffffff, halo: 0xffd27a, len: 3.5, width: 0.009 },
   machinegun: { kickZ: 3.2, kickPit: 4.5, twist: 3.5, cam: 0.0030, fov: 0.35, shake: 0.09, flash: 1.1, light: .6, core: 0xffffff, halo: 0xff9ec2, len: 4.5, width: 0.008 },
   sniper:     { kickZ: 9.0, kickPit: 15,  twist: 5.0, cam: 0.0110, fov: 1.8,  shake: 0.30, flash: 1.6, light: .9, core: 0xffffff, halo: 0x7fffe0, len: 9.0, width: 0.012 },
+  thunderpop: { kickZ: 8.0, kickPit: 14,  twist: 4.0, cam: 0.0090, fov: 1.2,  shake: 0.22, flash: 1.4, light: .8, core: 0xffffff, halo: 0xffe08a, len: 5.0, width: 0.011 },
+  fizztwin:   { kickZ: 4.5, kickPit: 7,   twist: 2.2, cam: 0.0035, fov: 0.4,  shake: 0.08, flash: 0.9, light: .45, core: 0xffffff, halo: 0xffc0d0, len: 3.5, width: 0.008 },
+  buzzbox:    { kickZ: 2.6, kickPit: 3.6, twist: 3.0, cam: 0.0024, fov: 0.3,  shake: 0.07, flash: 0.9, light: .5, core: 0xffffff, halo: 0xd9c4e8, len: 3.8, width: 0.007 },
+  bigpuff:    { kickZ: 10,  kickPit: 18,  twist: 5.0, cam: 0.0120, fov: 2.0,  shake: 0.32, flash: 1.8, light: 1.0, core: 0xffffff, halo: 0xffb38a, len: 2.5, width: 0.010 },
+  partypopper:{ kickZ: 3.4, kickPit: 4.8, twist: 4.0, cam: 0.0032, fov: 0.4,  shake: 0.10, flash: 1.2, light: .65, core: 0xffffff, halo: 0xb6ffd9, len: 4.5, width: 0.009 },
+  breeze:     { kickZ: 2.9, kickPit: 4.0, twist: 2.8, cam: 0.0026, fov: 0.3,  shake: 0.08, flash: 1.0, light: .55, core: 0xffffff, halo: 0x9ff5ff, len: 4.5, width: 0.008 },
+  taptap:     { kickZ: 3.0, kickPit: 4.2, twist: 2.6, cam: 0.0028, fov: 0.32, shake: 0.08, flash: 1.0, light: .55, core: 0xffffff, halo: 0xfff0a0, len: 4.5, width: 0.008 },
+  skyneedle:  { kickZ: 7.0, kickPit: 12,  twist: 4.0, cam: 0.0080, fov: 1.4,  shake: 0.22, flash: 1.3, light: .8, core: 0xffffff, halo: 0x9fe7ff, len: 8.0, width: 0.011 },
 };
 
 export function createAnimations(THREE, opts = {}) {
