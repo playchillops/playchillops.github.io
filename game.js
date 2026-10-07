@@ -148,7 +148,7 @@ export class Game {
     this.hint = document.createElement('div'); this.hint.style.cssText = 'position:absolute;right:200px;bottom:34px;z-index:21;font-weight:800;font-size:18px;text-shadow:0 2px 4px #000;pointer-events:none'; root.appendChild(this.hint);
     this.sb = document.createElement('div'); this.sb.className = 'scb'; this.sb.style.display = 'none'; root.appendChild(this.sb); this.sbm = document.createElement('div'); this.sbm.className = 'sbm'; this.sbm.style.display = 'none'; root.appendChild(this.sbm);
     this.match = { p: 0, b: 0, round: 1, over: false };
-    this.perf = document.createElement('div'); this.perf.style.cssText = 'position:absolute;left:8px;top:8px;z-index:200;font:700 10px/1 ui-monospace,monospace;color:#fff;background:rgba(0,0,0,.45);padding:5px 8px;border-radius:8px;pointer-events:none'; this.perf.style.whiteSpace = 'pre-line'; this.perf.style.lineHeight = '1.5'; this.perf.style.top = '190px'; this.perf.textContent = '-- FPS'; root.appendChild(this.perf); this.pf = { n: 0, t: 0, worst: 0 };
+    this.perf = document.createElement('div'); this.perf.style.cssText = 'position:absolute;left:8px;top:8px;z-index:200;font:700 10px/1 ui-monospace,monospace;color:#fff;background:rgba(0,0,0,.45);padding:5px 8px;border-radius:8px;pointer-events:none'; this.perf.style.whiteSpace = 'pre-line'; this.perf.style.lineHeight = '1.5'; this.perf.style.top = '224px'; this.perf.textContent = '-- FPS'; root.appendChild(this.perf); this.pf = { n: 0, t: 0, worst: 0 };
     this.setOv = document.createElement('div'); this.setOv.className = 'setov'; this.setOv.style.display = 'none'; root.appendChild(this.setOv);
     this.invb = document.createElement('div'); this.invb.className = 'invb'; this.invb.style.display = 'none'; root.appendChild(this.invb); this.invh = document.createElement('div'); this.invh.className = 'invh'; root.appendChild(this.invh); this.invSig = '';
     this.knifeOn = false; this.knifeCd = 0; this.slashT = -1; this.makeKnife();
@@ -587,4 +587,4 @@ export class Game {
     this.kc.afterRender();
   }
   destroy() { this.running = false; this.ro && this.ro.disconnect(); this.ctrl.dispose(); this.renderer.dispose(); }
-  }
+            }
