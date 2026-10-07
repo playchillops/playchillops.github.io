@@ -49,6 +49,7 @@ const ICONS = {
 export const STREAK_INFO = [   // funding rounds
   { id: 'uav', name: 'Angel Round', at: 3, key: '4', desc: 'Radar: every enemy shows on the map for 20 s.' },
   { id: 'crate', name: 'Series A', at: 4, key: '5', desc: 'A care package parachutes down next to you: a big gun, a full superpower, shield + taser or 150 HP. Anyone can steal it (hold E).' },
+  { id: 'rambo', name: 'Rambo', at: 5, key: '9', desc: 'Heavy machine gun with unlimited ammo for 12 s. Keep moving and firing.' },
   { id: 'missile', name: 'Series B', at: 6, key: '6', desc: 'Steer a guided missile down from the sky.' },
   { id: 'airstrike', name: 'Series C', at: 8, key: '7', desc: 'Mark a spot and carpet-bomb it in a line.' },
   { id: 'nuke', name: 'IPO', at: 11, key: '8', desc: 'Ring the bell: everyone else goes boom. You win the round.' },
