@@ -10,7 +10,7 @@ const HEAD = 'font-size:11px;letter-spacing:.2em;color:#ffb35c;margin:0 0 4px';
 const BOX = 'font-family:Fredoka,system-ui,sans-serif;color:#fff;font-size:13px;background:rgba(14,20,36,.62);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:10px 12px;backdrop-filter:blur(4px);width:200px;pointer-events:none';
 /** always-visible Top 3 (menu). Returns the element; caller appends it. */
 export function topBox() {
-  const el = css(document.createElement('div'), BOX + ';font-size:20px;width:min(360px,32vw);box-sizing:border-box;padding:20px 22px;position:absolute;right:clamp(16px,2.5vw,36px);top:clamp(14px,3vh,30px);z-index:4');
+  const el = css(document.createElement('div'), BOX + ';font-size:20px;width:min(360px,32vw);box-sizing:border-box;padding:20px 22px;position:absolute;right:clamp(16px,2.5vw,36px);bottom:130px;z-index:4');
   el.innerHTML = `<div style="${HEAD};font-size:24px;font-weight:700;margin-bottom:12px">TOP PLAYERS</div><div class="b" style="opacity:.6">Loading...</div>`;
   if (off() || innerWidth < 760) { el.style.display = 'none'; return el; }
   ACC.board('all').then((l) => { el.querySelector('.b').innerHTML = l.length ? rows(l, 3, (p) => p.wins + ' W') : '<span style="opacity:.7">No wins yet. Win a multiplayer match to take the first spot.</span>'; for (const row of el.querySelector('.b').children) { row.style.padding = '7px 0'; const medal = row.firstElementChild; if (medal && medal.tagName === 'SPAN') medal.style.cssText += ';width:28px;height:28px;font-size:17px;flex-shrink:0'; } }).catch(() => {});
