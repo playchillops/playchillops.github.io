@@ -60,7 +60,7 @@ export function createMatchFx({ game, net, THREE, play, banner = () => {} }) {
       else if (m.fb) { an.medal('FIRST BLOOD', '+50', '#ff6b6b'); an.say('First blood', 2); }
       else if (m.id === lastKiller) { an.medal('PAYBACK', '+25', '#7fe3ff'); an.say('Payback', 2); lastKiller = 0; }
       else if (w === 'knife') { an.medal('HUMILIATION', '+25', '#c9a2ff'); an.say('Humiliation', 2); }
-      else if (m.hs) { an.medal('HEADSHOT', '+25', '#ffd166'); an.say('Headshot', 1); }
+      else if (m.hs) { an.medal('HEADSHOT', '+25', '#39ff14'); an.say('Headshot', 1); }
       if (spree === 5) { an.medal('KILLING SPREE', '5 IN A ROW', '#ff8f4d', 2.6); an.say('Killing spree', 3); } else if (spree === 10) { an.medal('UNSTOPPABLE', '10 IN A ROW', '#ff4d6d', 2.6); an.say('Unstoppable', 3); }
       if (net.mode === 'gun') gunLevel(m.gl);
     } else if (!me && m.fb && m.by) an.say('First blood', 1);
@@ -73,7 +73,7 @@ export function createMatchFx({ game, net, THREE, play, banner = () => {} }) {
     an.say(d.name, 2); banner(d.name.toUpperCase() + (m.dm === 'tdm' ? ' · first team to ' + m.limit + ' kills' : m.dm === 'ffa' ? ' · first to ' + m.limit + ' kills · everyone is an enemy' : ' · a kill = next gun · knife kill on the last level wins') + (m.dm !== 'gun' ? ' · B = free loadout' : ''), 5); }
     else if (m.round === 1 && !document.querySelector('.ms')) { summaryShown = false; sum = null; } });
   let tipShown = false;   // once per session: the new keys
-  net.on('go', () => { if (!tipShown) { tipShown = true; setTimeout(() => banner('Q superpower · X taser (shop) · T spray your logo · Z taunt', 6), 1200); } });
+  net.on('go', () => { if (!tipShown) { tipShown = true; setTimeout(() => banner('Y superpower · X taser (shop) · T spray your logo · Z taunt', 6), 1200); } });
   net.on('go', () => { if (DM[net.mode]) { an.medal('GO!', '', '#7dffb0', 1.2); } });
   net.on('round_end', (m) => { if (!m || !m.match) return; const draw = !m.winner && !m.wid, won = m.wid ? m.wid === net.id : m.winner === net.team; an.say(draw ? 'Draw' : won ? 'Victory' : 'Defeat', 4); });
   net.on('summary', (m) => { sum = m; summaryShown = false; setTimeout(() => { if (!cam.active) openSummary(); }, 2800); });   // no killcam clip coming -> straight to the scoreboard
