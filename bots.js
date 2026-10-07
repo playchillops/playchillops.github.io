@@ -9,7 +9,7 @@ import { WEAPON_ORDER } from './player.js';
 //   manager.aliveCount()
 import * as AI from './botsai.js';
 import { wallBlocked } from './hitscan.js';
-import { createCharacter, CHARACTER_IDS } from './characters.js';
+import { createCharacter, CHARACTER_IDS, LEGEND_IDS } from './characters.js';
 export function createBots(THREE, scene, map, opts) {
   const { raycast, colliders } = opts;
   let smokeLOS = () => false;
@@ -77,7 +77,7 @@ export function createBots(THREE, scene, map, opts) {
 
   function spawn(pos, o = {}) {
     const col = palette[(nextId - 1) % palette.length];
-    const ch = createCharacter(THREE, { id: CHARACTER_IDS[(nextId - 1) % CHARACTER_IDS.length], team: 'T', weapon: o.weapon || (o.pro && o.difficulty === 'hard' ? 'sniper' : 'machinegun') });
+    const ch = createCharacter(THREE, { id: o.ch && CHARACTER_IDS.includes(o.ch) ? o.ch : LEGEND_IDS[(nextId - 1) % LEGEND_IDS.length], team: 'T', weapon: o.weapon || (o.pro && o.difficulty === 'hard' ? 'sniper' : 'machinegun') });
     const group = ch.group;
     const bodyMat = { emissive: { setHex() {} } };
     const bar = makeBar(); bar.spr.position.y = 2.05; Object.defineProperty(bar.spr, 'visible', { get: () => false, set() {} }); group.add(bar.spr);
@@ -147,7 +147,8 @@ export function createBots(THREE, scene, map, opts) {
     const seen = new Set();
     for (const p of players) {
       seen.add(p.id); let b = rmap.get(p.id);
-      if (!b) { b = spawn({ x: p.x, y: p.y, z: p.z }, { weapon: WN[p.weapon] || 'machinegun' }); b.id = 'net' + p.id; b.netId = p.id; b.alive = !!p.alive; b.health = p.hp; rmap.set(p.id, b); }
+      if (b && p.ch && b.chId !== p.ch) { scene.remove(b.group); const i = list.indexOf(b); if (i >= 0) list.splice(i, 1); rmap.delete(p.id); b = null; }   // legend known now (roster after the first snapshot): rebuild
+      if (!b) { b = spawn({ x: p.x, y: p.y, z: p.z }, { weapon: WN[p.weapon] || 'machinegun', ch: p.ch }); b.id = 'net' + p.id; b.netId = p.id; b.chId = p.ch || ''; b.alive = !!p.alive; b.health = p.hp; rmap.set(p.id, b); }
       b.net = p; b.name = p.name; b.team = p.team; b.position.x = p.x; b.position.y = p.y; b.position.z = p.z;
       if (p.alive && !b.alive && !(b._kt && performance.now() - b._kt < 700)) { b.alive = true; b.health = p.hp; b.deadT = 0; b.group.visible = true; b.ch.setAnim('idle'); }
       else if (!p.alive && b.alive) damage(b, 0, false);
