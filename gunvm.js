@@ -10,6 +10,8 @@ const seg = (t, a, b) => cl((t - a) / (b - a));                // 0..1 over [a,b
 const bump = (t, a, b) => Math.sin(PI * seg(t, a, b));         // 0 ->1 ->0 over [a,b]
 // look of each gun: k = class kit, c = main colour, a = accent, extras per model
 const SPEC = {
+  bazooka: { k: 'launcher', c: 0x9fbf62, a: 0x38412e, len: .75 },
+  grenadelauncher: { k: 'launcher', c: 0xffa76e, a: 0x45414a, len: .42 },
   pistol: { k: 'pistol', c: 0x5ad1ff, a: 0x2b2f3a, len: .24 },
   thunderpop: { k: 'pistol', c: 0xffd166, a: 0x8d6a2b, len: .31, big: 1.25, rib: true, comp: false },
   fizztwin: { k: 'pistol', c: 0xf2a9b8, a: 0x3a2f3f, len: .26, extMag: true, comp: true },
@@ -57,7 +59,19 @@ export function createViewmodels(THREE) {
     const S = SPEC[id] || SPEC.pistol, k = S.k, g = new T.Group(), body = mat(S.c), acc = mat(S.a), P = {};
     const L = S.len, big = S.big || 1;
     P.muzzle = new T.Object3D(); P.eject = new T.Object3D();
-    if (k === 'pistol') {
+    if (k === 'launcher') {
+      C(g,id==='bazooka'?.075:.055,L,body,0,.02,-L/2,16);
+      C(g,id==='bazooka'?.06:.044,.02,dark,0,.02,-L-.01,16);
+      B(g,.06,.16,.08,acc,0,-.12,.01,-.2);
+      B(g,.03,.045,.025,dark,0,.095,-.15);
+      P.mag=G(g,0,-.08,-.14);
+      if(id==='grenadelauncher') C(P.mag,.09,.16,acc,0,0,0,12); else B(P.mag,.04,.12,.04,dark,0,0,0);
+      P.magRest=P.mag.position.clone();
+      P.charge=G(g,.07,.02,-.06);B(P.charge,.03,.02,.03,metal,0,0,0);P.chargeRest=P.charge.position.clone();
+      P.muzzle.position.set(0,.02,-L-.03);P.eject.position.set(.07,.02,-.1);
+      P.rh=hand(g,0,-.12,.03);P.lh=hand(g,0,-.04,-.35);P.lhRest=P.lh.position.clone();
+    } else if (k === 'pistol') {
+
       P.slide = G(g, 0, .022 * big, 0); B(P.slide, .05 * big, .055 * big, L, body, 0, 0, -L / 2 + .07); B(P.slide, .052 * big, .02, .05, acc, 0, .005, .05);
       for (let i = 0; i < 4; i++) B(P.slide, .053 * big, .035, .006, acc, 0, 0, .03 + i * .011);           // rear serrations
       if (S.rib) { B(P.slide, .014, .012, L * .8, acc, 0, .034 * big, -L / 2 + .07); for (let i = 0; i < 5; i++) B(P.slide, .016, .006, .012, mat(0x2b2f3a), 0, .041 * big, -L + .1 + i * L / 6); }
