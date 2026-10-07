@@ -10,7 +10,7 @@ import { profileComplete, requireProfile } from './profilegate.js';
 import { play, setListener, initAudio } from './audio.js';
 import { initProgress } from './progress.js';
 import { createMatchFx } from './matchfx.js';
-import { DM, isFree, GUN_ORDER, legendOf } from './common.js';
+import { DM, isFree, GUN_ORDER, legendOf, R } from './common.js';
 import { emblemSVG } from './emblem.js';
 import { loadingStart, loadingStep, loadingDone } from './loading.js';
 const SHOT = WEAPON_ORDER.map(shotSound);   // remote shots sound like their gun
@@ -147,12 +147,12 @@ export function createMultiplayer(game, THREE) {
     net.on('dropgone', (m) => { try { const g = game, d = (g.drops || []).find((x) => x.drop.dropId === m.id); if (d) { g.scene.remove(d.mesh); g.drops.splice(g.drops.indexOf(d), 1); if (g.ws.ammo) { play('ui_click'); } } } catch (e) {} });
     net.on('dropsclear', () => { try { const g = game; for (const d of g.drops || []) g.scene.remove(d.mesh); g.drops = []; } catch (e) {} });
     net.on('swap', () => banner('Switching sides', 3));
-    net.on('gnade', (m) => { try { if (!m || m.by === net.id || !Array.isArray(m.o) || !Array.isArray(m.d)) return; game.grenades.throwGrenade(m.id === 'frag' || m.id === 'smoke' || m.id === 'flash' ? m.id : 'frag', { position: { x: m.o[0], y: m.o[1], z: m.o[2] }, direction: { x: m.d[0], y: m.d[1], z: m.d[2] }, owner: 'remote:' + m.by, team: m.team, consume: false }); } catch (e) {} });
+    net.on('gnade', (m) => { try { if (!m || m.by === net.id || !Array.isArray(m.o) || !Array.isArray(m.d)) return; game.grenades.throwGrenade(m.id === 'frag' || m.id === 'smoke' || m.id === 'flash' ? m.id : 'frag', { position: { x: m.o[0], y: m.o[1], z: m.o[2] }, direction: { x: m.d[0], y: m.d[1], z: m.d[2] }, charge: Number.isFinite(m.c) ? m.c : undefined, owner: 'remote:' + m.by, team: m.team, consume: false }); } catch (e) {} });
     net.on('round_start', (m) => { bodies.clear(); play('round_start'); { const sd = m && m.sd, idx = { T: 0, CT: 1, Z: 2 }[net.team]; if (sd && idx != null) banner(sd[idx] ? 'ATTACK - plant the bomb at A, B or C (hold E). ' + (sd.reduce((a, b) => a + b, 0) === 2 ? '2 teams attack, 1 defends' : '1 team attacks, 2 defend') : 'DEFEND - stop the bomb at A, B and C. ' + (sd.reduce((a, b) => a + b, 0) === 2 ? 'Allied with 1 team vs 2 attackers' : 'Allied with 1 team vs 1 attacker'), 5.5); else if (!(m && m.dm)) banner('Round start - press B to open the shop', 4.5); } try { matchPoint(m && m.score); } catch (e) {} try { const g = game; if (g.deathCam) { g.deathCam.banner.remove(); g.deathCam = null; g.hud.root.style.display = ''; g.vm.group.visible = true; g.camera.fov = 75; g.camera.updateProjectionMatrix(); } g.killfx.reset(); g.kc.clear(); g.streaks.cancel('round'); g.player.reset(); g.ws.refill(); g.pick('secondary'); g.hud.setHealth(100); } catch (e) {} });
     net.on('round_end', (m) => { if (m && m.dm) { const wn = m.wid ? (net.roster.get(m.wid) || {}).name : m.winner ? { T: 'ORANGE', CT: 'CYAN' }[m.winner] + ' TEAM' : ''; banner(m.wid === net.id ? 'YOU WIN THE MATCH' : wn ? String(wn).toUpperCase() + ' WINS THE MATCH' : 'DRAW', 4); try { play(m.wid ? (m.wid === net.id ? 'round_win' : 'round_lose') : m.winner === net.team ? 'round_win' : 'round_lose'); } catch (e) {} return; }
       banner(net.mode === 'ffa3' && m && m.winner ? ({ T: 'ORANGE', CT: 'CYAN', Z: 'GREEN' }[m.winner] || '') + ' team wins the round' : 'Round over', 2.5); try { play(m && m.winner === net.team ? 'round_win' : 'round_lose'); } catch (e) {} });
-    net.on('planted', (m) => { banner('Bomb planted' + (m && m.site ? ' at ' + m.site : ''), 2); play('bomb_plant'); });
-    net.on('defused', () => { banner('Bomb defused', 2); play('bomb_defuse'); });
+    net.on('planted', (m) => { banner('Bomb planted' + (m && m.site ? ' at ' + m.site : ''), 2); play('bomb_plant'); try { mp.fx && mp.fx.an.say('Bomb has been planted', 3); } catch (e) {} });
+    net.on('defused', () => { banner('Bomb defused', 2.5); play('bomb_defuse'); setTimeout(() => play('bomb_defuse'), 260); try { mp.fx && mp.fx.an.say('Bomb has been defused', 4); } catch (e) {} });
     net.on('explode', () => { banner('Bomb exploded', 2); play('bomb_explode'); });
     net.on('kill', (m) => { if (!m) return;
       if (m.by === net.id && m.id !== net.id) { try { const hs = m.cause === 'headshot'; play('kill'); game.streaks.registerKill({ headshot: hs }); if (!DM[net.mode]) { game.kf.textContent = hs ? 'HEADSHOT +150' : 'Kill +100'; game.kfT = 1.5; } } catch (e) {} }
@@ -190,12 +190,12 @@ export function createMultiplayer(game, THREE) {
     if (game.ov) game.ov.style.display = 'none';
     if (game.menuStop) try { game.menuStop(); } catch (e) {}
     try { game.bots.setRemote(true); game.killfx.reset(); game.kc.clear(); game.streaks.reset(); game.streaks.show(true); game.player.reset(); game.ws.refill(); game.vm.group.visible = true; game.ctrl.setEnabled(true); } catch (e) {}
-    hud = el(`<div class="rc"></div><div class="net"></div><div class="msg"></div>`, 'mp-hud');
+    hud = el(`<div class="rc"></div><div class="net"></div><div class="msg"></div><div class="pb" style="display:none;position:absolute;left:50%;top:58%;transform:translateX(-50%);width:240px;text-align:center"><div style="height:10px;border-radius:6px;background:#0009;border:1px solid #fff5;overflow:hidden"><i style="display:block;height:100%;width:0;transition:width .1s linear"></i></div><span style="display:block;margin-top:5px;font-size:13px;font-weight:700;letter-spacing:.16em"></span></div>`, 'mp-hud');
     root.appendChild(hud); try { game.hud.root.style.display = ''; game.hud.setHealth(100); } catch (e) {}
     try { game.newEconomy(); game.eco.setRemote((id) => mp.net && mp.net.sendRaw({ t: 'buy', id })); } catch (e) {}
     try { if (!game._mpHooks) { game._mpHooks = true;
       game.streaks.on('called', ({ id }) => { if (mp.active && mp.net) mp.net.sendRaw({ t: 'scall', id }); });
-      game.eco.on && 0; } game.eco.on('grenade', ({ id }) => { if (mp.active && mp.net) { const e = game.ctrl.state.eye, d = game.ctrl.getDirection(); mp.net.sendRaw({ t: 'gren', id, o: [e.x, e.y, e.z], d: [d.x, d.y, d.z] }); } }); } catch (e) {}
+      game.eco.on && 0; } game.eco.on('grenade', ({ id }) => { if (mp.active && mp.net) { const e = game.ctrl.state.eye, d = game.ctrl.getDirection(); mp.net.sendRaw({ t: 'gren', id, o: [e.x, e.y, e.z], d: [d.x, d.y, d.z], c: Math.round((game._gCharge ?? 0.4) * 1000) / 1000 }); } }); } catch (e) {}
     mp._sk = null; hud.querySelector('.rc').textContent = 'ROOM ' + w.room + ' - share the link or code. Esc = menu';
     bind(); game.canvas.requestPointerLock && game.canvas.requestPointerLock();
   }
@@ -284,12 +284,21 @@ export function createMultiplayer(game, THREE) {
     on(document, 'keydown', (e) => { if (!mp.active) return; if (e.code === 'Escape') { if (performance.now() - (pm.t || 0) < 150) return; if (game.setOv && game.setOv.style.display !== 'none') return; e.preventDefault(); pm.el ? closePause(true) : openPause(); return; } if (pm.el) return; keys[e.code] = true; if (['Space', 'ArrowUp', 'ArrowDown'].includes(e.code)) e.preventDefault(); });
     on(document, 'keyup', (e) => { keys[e.code] = false; });
     on(document, 'keydown', (e) => { if (e.code !== 'KeyT' || e.repeat || !mp.active || !mp.fx || pm.el || !document.pointerLockElement || (game.eco && game.eco.getState().menuOpen)) return; mp.fx.spray(); });   // T = spray your company logo
+    on(document, 'keydown', (e) => { if ((e.code !== 'KeyQ' && e.code !== 'KeyX') || e.repeat || !mp.active || !mp.fx || pm.el || (game.eco && game.eco.getState().menuOpen)) return; if (e.code === 'KeyQ') mp.fx.pow.use(); else mp.fx.pow.taser(); });   // Q = superpower, X = taser
     on(game.canvas, 'mousedown', (e) => { if (!mp.active || pm.el) return; if (document.pointerLockElement !== game.canvas) { game.canvas.requestPointerLock(); return; } if (game.eco && game.eco.getState().menuOpen) return; if (e.button === 0) { if (!(mp.net.me.pp > 0 || mp.net.me.dp > 0)) { mp.net.setInput({ fire: true }); mp.net.tap(); } } });
     on(document, 'mouseup', (e) => { if (mp.active && e.button === 0) mp.net.setInput({ fire: false }); });
     on(window, 'blur', () => { keys = {}; });
   }
 
   const v3 = new THREE.Vector3();
+  const isAttacker = () => { const net = mp.net; return net.mode === 'ffa3' ? !!(net.sd && net.sd[{ T: 0, CT: 1, Z: 2 }[net.team]]) : net.team === 'T'; };
+  /** 'plant:A' when you can plant here, 'defuse' next to the planted bomb as a defender, else null (client mirror of room.tryPlant / tryDefuse) */
+  function bombAction() {
+    const net = mp.net; if (!net || !net.alive || DM[net.mode] || !net.cur || !game.map) return null; const c = net.cur, atk = isAttacker();
+    if (atk && net.phase === 'live') { const bs = game.map.bombsites || {}; for (const k of Object.keys(bs)) { const s = bs[k]; if (Math.hypot(c.x - s.center.x, c.z - s.center.z) < s.radius && Math.abs(c.y - s.center.y) < 2) return 'plant:' + k; } }
+    if (!atk && net.phase === 'planted' && net.bomb && Math.hypot(c.x - net.bomb.x, c.z - net.bomb.z) < R.DEFUSE_RADIUS && Math.abs(c.y - net.bomb.y) < 2) return 'defuse';
+    return null;
+  }
   // Called by the solo Game.update each frame: feeds local input to the server and mirrors the server state into the SAME solo systems
   // (ctrl pose, player hp, eco, bomb, opponents as bots).
   mp.drive = (dt) => {
@@ -298,13 +307,16 @@ export function createMultiplayer(game, THREE) {
     if (!net.cur) return;
     if (mp._re !== net.respawns) { mp._re = net.respawns; g.ctrl.teleport({ x: net.cur.x, y: net.cur.y, z: net.cur.z }, { yaw: net.yaw, pitch: net.pitch }); } else { net.yaw = st.yaw; net.pitch = st.pitch; }
     const drv = !!(g.streaks && g.streaks.cameraOverride);   // driving the RC car / guiding a missile: the body must stand still, only the car moves
-    net.setInput({ kn: !!g.knifeOn, f: drv ? 0 : (k.KeyW ? 1 : 0) - (k.KeyS ? 1 : 0), r: drv ? 0 : (k.KeyD ? 1 : 0) - (k.KeyA ? 1 : 0), j: !drv && !!k.Space, c: !drv && !!(k.ShiftLeft || k.ShiftRight), rl: !!k.KeyR, use: !!k.KeyE, aim: !!g.ws.aiming, w: Math.max(0, WEAPON_ORDER.indexOf(g.ws.current)) });
-    const busy = (net.me.pp > 0 || net.me.dp > 0) && net.alive; if (busy || !net.alive) net.setInput({ fire: false });
+    const stun = !!(mp.fx && mp.fx.pow.stunned);   // tased / blue-screened: no input at all (the server ignores it too)
+    const hold = drv || stun || (!!k.KeyE && !!bombAction());   // planting / defusing: you stand still (like CS), so the progress never resets by itself
+    net.setInput({ kn: !!g.knifeOn, f: hold ? 0 : (k.KeyW ? 1 : 0) - (k.KeyS ? 1 : 0), r: hold ? 0 : (k.KeyD ? 1 : 0) - (k.KeyA ? 1 : 0), j: !hold && !!k.Space, c: !drv && !!(k.ShiftLeft || k.ShiftRight), rl: !stun && !!k.KeyR, use: !stun && !!k.KeyE, sm: !!(mp.fx && mp.fx.pow.turbo), aim: !!g.ws.aiming, w: Math.max(0, WEAPON_ORDER.indexOf(g.ws.current)) });
+    const busy = ((net.me.pp > 0 || net.me.dp > 0) && net.alive) || stun; if (busy || !net.alive) net.setInput({ fire: false });
     if (!net.alive || busy) g.ws.setTrigger(false);
     net.update(dt);
     try { if (!g.zoneMesh) g.setZone(); if (net.sz && g.zoneMesh) {  g.zoneMesh.position.x = net.sz[0]; g.zoneMesh.position.z = net.sz[1]; if (g.zone) { g.zone.x = net.sz[0]; g.zone.z = net.sz[1]; if (net.sz[2] != null) { g.zone.y = net.sz[2]; g.zoneMesh.position.y = net.sz[2] + 0.05; } } } } catch (er) {}
     const e = net.eye();
     g.ctrl.teleport({ x: e.feet.x, y: e.feet.y, z: e.feet.z }, { yaw: st.yaw, pitch: st.pitch });
+    try { const vy = net.me.v ? net.me.v[1] : 0; if (vy > 13 && (mp._vy || 0) < 6 && mp.fx) mp.fx.an.sound('boing'); mp._vy = vy; } catch (er) {}   // super trampoline / Starship launch
     try { st.velocity.x = net.me.v ? net.me.v[0] : 0; st.velocity.y = net.me.v ? net.me.v[1] : 0; st.velocity.z = net.me.v ? net.me.v[2] : 0; st.grounded = e.grounded !== false; st.crouched = !!e.crouched; st.speed = Math.hypot(st.velocity.x, st.velocity.z); } catch (er) {}
     try { const sw = WEAPON_ORDER[net.me.weapon]; if (sw && (mp._sw !== net.me.weapon || (net.mode === 'gun' && !g.knifeOn && g.ws.current !== sw))) { mp._sw = net.me.weapon;   /* Gun Game: you hold the gun of your level, nothing else */ if (g.ws.current !== sw && !g.knifeOn) { g.owned.add(sw); g.ws.select(sw); } } const ca = g.ws.ammo[g.ws.current]; if (ca && net.me.mag != null && g.ws.current === sw) { ca.mag = net.me.mag; ca.reserve = net.me.res; } } catch (er) {}
     g.player.hp = Math.max(0, net.me.hp || 0); g.player.alive = net.alive;
@@ -313,11 +325,11 @@ export function createMultiplayer(game, THREE) {
     if (net.mode === 'gun' && net.me.gl != null && mp._gl !== net.me.gl) { const was = mp._gl; mp._gl = net.me.gl; const kn = GUN_ORDER[net.me.gl] === 'knife'; try { if (kn && !g.knifeOn) g.toggleKnife(); else if (!kn && g.knifeOn && was != null && GUN_ORDER[was] === 'knife') { g.unKnife(); const sw2 = WEAPON_ORDER[net.me.weapon]; if (sw2) { g.owned.add(sw2); g.ws.select(sw2); } } } catch (er) {} }
     if (net.mode === 'gun' && net.alive && GUN_ORDER[net.me.gl] === 'knife' && !g.knifeOn) try { g.toggleKnife(); } catch (er) {}
     const ph = net.phase === 'freeze' ? 'freeze' : (net.phase === 'live' || net.phase === 'planted' || (net.phase === 'waiting' && net.lobby)) ? 'live' : 'ended', inv = net.me.inv || [];
-    g.eco.remote({ ...(net.me.ks != null ? { knifeskin: !!(net.me.ks & 1), butterfly: !!(net.me.ks & 2) } : {}), grenades: net.me.gr, armor: net.me.ar, helmet: net.me.he, money: net.me.m, primary: inv[0], secondary: inv[1], team: (net.mode === 'ffa3' && net.sd ? (net.sd[{ T: 0, CT: 1, Z: 2 }[net.team]] ? 'T' : 'CT') : net.team), alive: net.alive, phase: ph, freezeRemaining: ph === 'freeze' ? net.phaseLeft : 0 });
+    g.eco.remote({ ...(net.me.ks != null ? { knifeskin: !!(net.me.ks & 1), butterfly: !!(net.me.ks & 2) } : {}), grenades: net.me.gr, armor: net.me.ar, helmet: net.me.he, taser: !!net.me.tz, money: net.me.m, primary: inv[0], secondary: inv[1], team: (net.mode === 'ffa3' && net.sd ? (net.sd[{ T: 0, CT: 1, Z: 2 }[net.team]] ? 'T' : 'CT') : net.team), alive: net.alive, phase: ph, freezeRemaining: ph === 'freeze' ? net.phaseLeft : 0 });
     if (net.bomb && net.bomb.x != null) { g.bomb.planted = net.phase === 'planted';   // beacon only while the fuse runs: after a defuse or a round end the server keeps the bomb record until the next round
       g.bomb.t = net.bomb.t; g.bomb.site = net.bomb.site || ''; g.bomb.pos.set(net.bomb.x, net.bomb.y, net.bomb.z); g.bombMesh.position.set(net.bomb.x, net.bomb.y + 0.13, net.bomb.z); g.bombMesh.visible = true; }
     else { g.bomb.planted = false; g.bombMesh.visible = false; }
-    g.plantT = busy ? 1 : 0;
+    g.plantT = net.alive && net.me.pp > 0 ? 1 : 0;   // bomb in hand only while planting (defusing used to show it too)
   };
   mp.xdmg = (b, amt) => { if (mp.net && b && b.netId != null) mp.net.sendRaw({ t: 'xdmg', id: b.netId, amt: Math.round(amt) }); };
   mp.pickup = (id) => { if (mp.net) mp.net.sendRaw({ t: 'pickup', id }); };
@@ -334,12 +346,26 @@ export function createMultiplayer(game, THREE) {
   mp.hud = (dt, hint) => {
     const net = mp.net; if (!net) return; const g = game;
     const q = (c) => hud.querySelector('.' + c);
+    try { mp.fx && mp.fx.pow.update(dt); } catch (e) {}
     const dsc = mp.fx && mp.fx.score();
     if (dsc) { const key = 'dm' + dsc.p + ':' + dsc.b + ':' + dsc.label; if (mp._sk !== key) { mp._sk = key; g.match = { p: dsc.p, b: dsc.b, round: 0, dm: dsc.label }; g.renderSB(); } }
     else try { const my = { T: 0, CT: 1, Z: 2 }[net.team] ?? 1, oth = net.mode === 'ffa3' ? Math.max(...net.score.filter((_, i) => i !== my).map((v) => v | 0)) : net.score[1 - my], key = net.score[my] + ':' + oth + ':' + net.round;
       if (mp._sk !== key) { mp._sk = key; g.match = { p: net.score[my], b: oth, round: net.round }; g.renderSB(); } } catch (er) {}
     const bt = net.bomb && net.bomb.t != null && net.phase === 'planted' ? 'BOMB ' + Math.ceil(net.bomb.t) + 's' : '';
-    if (net.mode === 'ffa3' && net.sd && !hint) { try { const my = net.sd[{ T: 0, CT: 1, Z: 2 }[net.team]], c = net.cur, bs = g.map.bombsites; if (my && net.phase === 'live') { for (const k of Object.keys(bs)) if (Math.hypot(c.x - bs[k].center.x, c.z - bs[k].center.z) < bs[k].radius) hint = 'Hold E to plant at ' + k; } else if (!my && net.phase === 'planted' && net.bomb && Math.hypot(c.x - net.bomb.x, c.z - net.bomb.z) < 3) hint = 'Hold E to defuse'; else hint = my ? 'ATTACK' : 'DEFEND'; if ((net.me.pp > 0 || net.me.dp > 0)) hint = (net.me.pp > 0 ? 'PLANTING ' + Math.round(net.me.pp * 100) : 'DEFUSING ' + Math.round(net.me.dp * 100)) + '%'; } catch (e) {} }
+    if (!DM[net.mode] && !hint) { try {   // bomb hints for every bomb mode (1v1 / 2v2 had none): where to plant, how to defuse
+      const act = net.alive ? bombAction() : null, kit = !!(g.eco && g.eco.getState().inventory.defusekit), atk = isAttacker();
+      if (act && act.startsWith('plant')) hint = 'Hold E to plant the bomb at ' + act.slice(6);
+      else if (act === 'defuse') hint = 'Hold E to defuse' + (kit ? ' (kit: 2.5 s)' : ' (5 s, a kit halves it)');
+      else if (net.mode === 'ffa3' && net.phase === 'live') hint = atk ? 'ATTACK' : 'DEFEND';
+      else if (net.phase === 'planted') hint = atk ? 'Defend the bomb' : 'Find and defuse the bomb';
+    } catch (e) {} }
+    { // plant / defuse progress bar under the crosshair + sounds
+      const pp = net.alive ? net.me.pp || 0 : 0, dp = net.alive ? net.me.dp || 0 : 0, kit = !!(g.eco && g.eco.getState().inventory.defusekit), pb = q('pb');
+      const st = pp > 0 ? 'plant' : dp > 0 ? 'defuse' : '', f = pp > 0 ? Math.min(1, pp) : Math.min(1, dp / (kit ? 0.5 : 1)), total = pp > 0 ? R.PLANT : R.DEFUSE * (kit ? 0.5 : 1);
+      if (pb) { pb.style.display = st ? '' : 'none'; if (st) { pb.querySelector('i').style.width = Math.round(f * 100) + '%'; pb.querySelector('i').style.background = st === 'plant' ? '#ff9a3c' : '#46d9ff'; pb.querySelector('span').textContent = (st === 'plant' ? 'PLANTING' : 'DEFUSING' + (kit ? ' · KIT' : '')) + ' · ' + Math.max(0, total * (1 - f)).toFixed(1) + ' s'; } }
+      if (st !== mp._bst) { if (st === 'defuse') play('defuse_start'); mp._bst = st; mp._bsT = 0; }
+      if (st) { mp._bsT = (mp._bsT || 0) - dt; if (mp._bsT <= 0) { mp._bsT = st === 'plant' ? 0.4 : 0.7; play(st === 'plant' ? 'bomb_beep' : 'defuse_start'); } }   // keypad beeps / wire clicks
+    }
     if (DM[net.mode]) g.info.textContent = mp.fx ? mp.fx.info() : '';
     else g.info.textContent = net.phase === 'freeze' ? `BUY PHASE · ${Math.ceil(net.phaseLeft)} s · B = shop` : `${bt || hint || ''}${bt ? '' : (hint ? ' · ' : '') + (net.phase || '').toUpperCase() + ' ' + Math.ceil(net.phaseLeft || 0) + 's'}`;
     q('net').textContent = Math.round(net.rttMs) + ' ms';
