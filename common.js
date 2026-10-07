@@ -6,7 +6,7 @@ export const MAX_PLAYERS = 12;
 export const REWIND_TICKS = 10;         // lag compensation window (~333 ms)
 export const HIST_TICKS = 32;
 export const SENS = 0.0022;             // must equal movement.js default sensitivity
-export const WEAPON_IDS = ['pistol', 'machinegun', 'sniper'];
+export const WEAPON_IDS = ['pistol', 'machinegun', 'sniper', 'thunderpop', 'fizztwin', 'buzzbox', 'bigpuff', 'partypopper', 'breeze', 'taptap', 'skyneedle']; // append only (network index)
 export const PROTOCOL = 1;
 
 export const R = { // rules (all server side, tweak freely)
