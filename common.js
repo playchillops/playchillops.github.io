@@ -37,6 +37,22 @@ export const LEGENDS = [
   { id: 'lisa', name: 'Lisa Su', co: 'AMD' },
 ];
 export const LEGEND_IDS = LEGENDS.map((l) => l.id);
+// Superpowers (Juan 2026-10-06: "cada persona tiene un superpoder que se rellena con el tiempo y cuando matas"): one per legend.
+// Charge 0..100: POWER_CHARGE.perSec every second alive in a live round, +perKill per kill, +perDmg per damage point. Q fires it at 100.
+export const POWERS = {
+  jobs: { k: 'xray', name: 'One More Thing', desc: 'See every enemy through walls', dur: 8 },
+  zuck: { k: 'cloak', name: 'Metaverse', desc: 'Turn almost invisible (shooting flickers you back)', dur: 7 },
+  altman: { k: 'agi', name: 'AGI Mode', desc: 'Perfect aim: zero spread', dur: 7 },
+  musk: { k: 'rocket', name: 'Starship', desc: 'Rocket jump high and far where you look', dur: 0 },
+  bezos: { k: 'prime', name: 'Prime Delivery', desc: '150 HP, full ammo, shield and a frag, delivered now', dur: 0 },
+  jensen: { k: 'overclock', name: 'Overclock', desc: 'Double fire rate and instant reloads', dur: 7 },
+  gates: { k: 'bsod', name: 'Blue Screen', desc: 'Enemies within 14 m freeze for 2.5 s', dur: 0 },
+  lisa: { k: 'turbo', name: 'Ryzen Turbo', desc: 'Run 60% faster', dur: 7 },
+};
+export const POWER_CHARGE = { perSec: 1.25, perKill: 25, perDmg: 0.12 };
+export const TURBO = 1.6, STUN_TASER = 5, STUN_BSOD = 2.5, TASER_RANGE = 6.5;
+/** Starship launch: same numbers on the client (prediction) and the server */
+export function rocketVel(yaw, pitch) { const up = Math.max(0, Math.min(.9, pitch)); return { x: -Math.sin(yaw) * (14 - up * 6), y: 14 + up * 6, z: -Math.cos(yaw) * (14 - up * 6) }; }   // flat: ~18 m far, 4.5 m high; looking up: 8.5 m high
 export const legendOf = (id) => LEGENDS.find((l) => l.id === id) || null;
 export const isDM = (mode) => !!DM[mode];
 export const isFree = (mode) => mode === 'ffa' || mode === 'gun';   // every player is an enemy
