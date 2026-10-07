@@ -38,6 +38,7 @@ export function showSummary(m, { myId, myTeam, onClose } = {}) {
   list.sort((a, b) => b.w - a.w || sc(b) - sc(a));
   const sub = dm ? dm.name.toUpperCase() : 'BOMB DEFUSAL';
   const scoreLine = m.mode === 'tdm' ? `<span style="color:${TEAMC.T}">${m.score.T || 0}</span> - <span style="color:${TEAMC.CT}">${m.score.CT || 0}</span>` : !dm ? `${m.score.T || 0} - ${m.score.CT || 0}${m.mode === 'ffa3' ? ' - ' + (m.score.Z || 0) : ''}` : '';
+  for (const r of list) if (r.b && !r.st && legendOf(r.ch)) { r.st = legendOf(r.ch).site; r.co = legendOf(r.ch).co; }   // bots show their legend's company
   const row = (r, i) => `<tr class="${r.id === myId ? 'me' : ''} ${r.w ? 'win' : ''}"><td style="opacity:.6">${i + 1}</td><td><span class="nm">${logo(r.st, r.co, 24)}${emblemSVG(r.pr, 16)}<span style="color:${TEAMC[r.t] || '#fff'}">${esc(r.n)}</span>${!r.b && legendOf(r.ch) ? `<small style="color:#ffd166;opacity:.8">as ${esc(legendOf(r.ch).name)}</small>` : ''}${r.b ? '<small style="opacity:.5">BOT</small>' : r.co ? `<small style="opacity:.55">${esc(r.co)}</small>` : ''}${r.id === m.mvp ? ' <b style="color:#ffd166;font-size:11px;letter-spacing:.14em">MVP</b>' : ''}</span></td>
     ${gun ? `<td>${Math.min(r.gl + 1, GUN_ORDER.length)}/${GUN_ORDER.length}</td>` : ''}<td><b>${r.k}</b></td><td>${r.d}</td><td>${pct(r.hs, r.k)}</td><td>${pct(r.hi, r.sh)}</td><td>${r.dmg}</td><td><span class="wp">${r.top ? wicon(r.top, 26) + esc(wname(r.top)) : '-'}</span></td></tr>`;
   const comp = (m.comp || []).map((id) => list.find((r) => r.id === id)).filter(Boolean);
