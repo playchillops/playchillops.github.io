@@ -16,7 +16,7 @@
 //
 // Do NOT call ctrl.connect(element) in multiplayer: this adapter owns the controller (net.ctrl) and
 // feeds it inputs at the server tick rate, which is what keeps prediction identical to the server.
-import { DT, TICK, aimTo, clamp, lerp, lerpAngle, wrapPi, SENS } from './common.js';
+import { DT, TICK, aimTo, clamp, lerp, lerpAngle, wrapPi, SENS, rocketVel, TURBO } from './common.js';
 
 export class NetClient {
   constructor(o) {
@@ -77,14 +77,15 @@ export class NetClient {
   applyPredicted(inp) {
     aimTo(this.ctrl, inp.yaw, inp.pitch);
     const m = this.phase !== 'match_end' && this.alive;
-    this.ctrl.update(DT, m ? { forward: inp.f, right: inp.r, jump: inp.j, crouch: inp.c, sprint: false, knife: !!inp.kn } : { forward: 0, right: 0, jump: false, crouch: inp.c, sprint: false, knife: !!inp.kn });
+    if (m && inp.rk) this.ctrl.impulse(rocketVel(inp.yaw, inp.pitch));   // Starship: predicted like the server does it
+    this.ctrl.update(DT, m ? { forward: inp.f, right: inp.r, jump: inp.j, crouch: inp.c, sprint: false, knife: !!inp.kn, speedMul: inp.sm ? TURBO : 1 } : { forward: 0, right: 0, jump: false, crouch: inp.c, sprint: false, knife: !!inp.kn });
     if (this.phase === 'freeze' && this.sz) { const ps = this.ctrl.state.position, cx = Math.max(this.sz[0] - 2.5, Math.min(this.sz[0] + 2.5, ps.x)), cz = Math.max(this.sz[1] - 2.5, Math.min(this.sz[1] + 2.5, ps.z)); if (cx !== ps.x || cz !== ps.z) this.ctrl.teleport({ x: cx, y: ps.y, z: cz }, { yaw: this.ctrl.state.yaw, pitch: this.ctrl.state.pitch }); }
   }
   stepTick() {
     const i = this.input;
     const inp = { t: 'in', seq: ++this.seq, f: i.f, r: i.r, j: i.j, c: i.c, kn: i.kn ? 1 : 0, yaw: round(this.yaw, 4), pitch: round(this.pitch, 4),
-      fire: i.fire || this.pendingFire, aim: i.aim, rl: i.rl, use: i.use, w: i.w, vt: round(this.renderTick(), 2) };
-    this.pendingFire = false;
+      fire: i.fire || this.pendingFire, aim: i.aim, rl: i.rl, use: i.use, w: i.w, vt: round(this.renderTick(), 2), pw: i.pw ? 1 : 0, rk: i.rk ? 1 : 0, sm: i.sm ? 1 : 0 };
+    this.pendingFire = false; i.pw = false; i.rk = false;   // the power press is one input frame
     if (inp.w === this.me.weapon) inp.w = -1;
     this.prev = this.cur;
     this.applyPredicted(inp);
@@ -118,7 +119,7 @@ export class NetClient {
       if (id === this.id) continue;
       const ea = a.pl.get(id) || eb, r = this.roster.get(id) || {};
       out.push({ id, name: r.name || '?', team: r.team, ch: r.ch, x: lerp(ea.x, eb.x, f), y: lerp(ea.y, eb.y, f), z: lerp(ea.z, eb.z, f), yaw: lerpAngle(ea.yaw, eb.yaw, f), pitch: lerp(ea.pitch, eb.pitch, f),
-        crouched: eb.crouched, alive: eb.alive, connected: eb.connected, hp: eb.hp, weapon: eb.weapon });
+        crouched: eb.crouched, alive: eb.alive, connected: eb.connected, hp: eb.hp, weapon: eb.weapon, cloak: eb.cloak, stun: eb.stun, pwr: eb.pwr });
     }
     return out;
   }
@@ -143,14 +144,14 @@ export class NetClient {
   }
   onSnapshot(m) {
     const pl = new Map();
-    for (const e of m.pl) pl.set(e[0], { x: e[1], y: e[2], z: e[3], yaw: e[4], pitch: e[5], crouched: !!(e[6] & 1), alive: !!(e[6] & 2), grounded: !!(e[6] & 4), connected: !!(e[6] & 8), hp: e[7], weapon: e[8] });
+    for (const e of m.pl) pl.set(e[0], { x: e[1], y: e[2], z: e[3], yaw: e[4], pitch: e[5], crouched: !!(e[6] & 1), alive: !!(e[6] & 2), grounded: !!(e[6] & 4), connected: !!(e[6] & 8), cloak: !!(e[6] & 16), stun: !!(e[6] & 32), pwr: !!(e[6] & 64), hp: e[7], weapon: e[8] });
     this.snaps.push({ k: m.k, pl }); this.snaps[this.snaps.length - 1].recv = this.o.now();
     if (this.snaps.length > 30) this.snaps.shift();
     this.latestK = m.k; this.latestRecv = this.o.now(); this.stats.snaps++;
     this.sd = m.sd || null; this.lobby = !!m.ls; this.phase = m.ph; this.phaseLeft = m.pt; this.score = m.sc; this.round = m.rd; if (m.fs) this.fs = m.fs; this.bomb = m.bomb ? { site: m.bomb[0], x: m.bomb[1], y: m.bomb[2], z: m.bomb[3], t: m.bomb[4] } : null;
     const mine = pl.get(this.id), me = m.me;
     if (mine && me) {
-      this.alive = mine.alive; this.sz = me.sz || null; Object.assign(this.me, { mag: me.mag, res: me.res, rl: me.rl, hp: mine.hp, weapon: mine.weapon, pp: me.pp, dp: me.dp, m: me.m, inv: me.inv, gr: me.gr, ar: me.ar, he: me.he, ks: me.ks, gl: me.gl, pt: me.pt }); if (m.av) this.avg = m.av;
+      this.alive = mine.alive; this.sz = me.sz || null; Object.assign(this.me, { mag: me.mag, res: me.res, rl: me.rl, hp: mine.hp, weapon: mine.weapon, pp: me.pp, dp: me.dp, m: me.m, inv: me.inv, gr: me.gr, ar: me.ar, he: me.he, ks: me.ks, gl: me.gl, pt: me.pt, pw: me.pw || 0, pa: me.pa || 0, st: me.st || 0, sk: me.sk || '', tz: !!me.tz }); if (m.av) this.avg = m.av;
       this.reconcile(me, mine);
     }
     this.emit('snap', m);
