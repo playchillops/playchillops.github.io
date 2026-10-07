@@ -178,8 +178,25 @@ export function createKillFX(THREE, opts = {}) {
     const el = document.createElement('div'); el.className = 'kfx-fl'; el.textContent = text;
     el.style.fontSize = (o.size || 30) + 'px'; el.style.color = o.color || '#fff'; if (o.italic) el.style.fontStyle = 'italic';
     root.appendChild(el);
-    const f = { el, p: new THREE.Vector3(pos.x, pos.y, pos.z), t: 0, life: o.life || 1.1, dx: o.dx || 0, dy: o.dy || 0, rise: o.rise || 70, size: o.size || 30, pop: o.pop !== false };
+    const f = { el, p: new THREE.Vector3(pos.x, pos.y, pos.z), t: 0, life: o.life || 1.1, dx: o.dx || 0, dy: o.dy || 0, rise: o.rise || 70, size: o.size || 30, pop: o.pop !== false, damage: !!o.damage, key: o.key, amount: o.amount };
     floaters.push(f); return f;
+  }
+
+  // One confirmed damage path for every mode. Pin at receipt, so delayed hits
+  // remain readable after the camera turns. Same-tick pellets share one total.
+  let damageLane = 0;
+  function damageText(pos, amount, o = {}) {
+    if (!Number.isFinite(amount) || amount <= 0) return null;
+    if (o.key != null) {
+      const f = floaters.find(f => f.damage && f.key === o.key && f.t < .12);
+      if (f) { f.amount += amount; f.el.textContent = String(Math.round(f.amount)); if (o.head) f.el.style.color = '#39ff14'; return f; }
+    }
+    const lane = damageLane++ % 5;
+    return floatText(pos || camera?.position || {x:0,y:0,z:0}, String(Math.round(amount)), {
+      size: o.head ? 36 : 28, color: o.head ? '#39ff14' : '#fff',
+      rise: 48, life: 1.25, dx: (lane - 2) * 34, dy: -30 - (lane % 2) * 32,
+      pop: true, damage: true, key: o.key, amount
+    });
   }
 
   // ---------- 3D: particles ----------
@@ -564,10 +581,10 @@ export function createKillFX(THREE, opts = {}) {
     burst(pos, info.killed ? 16 : 8, { speed: info.killed ? 5 : 3.5, colors: SPARK[zone] || SPARK.body, size: 0.07, g: 10, life: 0.6, up: 0.4, dir: info.dir, bias: 2 });
     shake({ sniper: 0.4, shotgun: 0.3, hpistol: 0.2, rifle: 0.07, smg: 0.06, lmg: 0.08 }[weaponClass(info.weapon)] || 0.12);
     bleedHit(info, pos, !!info.killed);
+    damageText(pos, info.damage, { head });
     if (!info.killed) {
       if (bot) { flinch(bot, info, false); bleedBot(bot); }
       sound(head ? 'fx_hit_head' : 'fx_hit_body', pos, { zone });
-      const dmg = info.damage; if (dmg) floatText(pos, String(Math.round(dmg)), { size: head ? 30 : 22, color: head ? '#ffb703' : '#fff', rise: 55, life: 0.8, dx: R(-25, 25) });
       return { killed: false };
     }
     return kill(info, head, pos);
@@ -678,8 +695,15 @@ export function createKillFX(THREE, opts = {}) {
       const W = opts.container.clientWidth || 1, H = opts.container.clientHeight || 1;
       for (const f of floaters) {
         const u = f.t / f.life; _v.copy(f.p).project(cm);
-        if (_v.z > 1 || _v.z < -1) { f.el.style.opacity = '0'; continue; }
-        const x = (_v.x * 0.5 + 0.5) * W + f.dx * easeOut(u), y = (-_v.y * 0.5 + 0.5) * H - f.rise * easeOut(u) + f.dy;
+        if (f.damage && f.px === undefined) {
+          const visible = _v.z >= -1 && _v.z <= 1 && Math.abs(_v.x) < .92 && Math.abs(_v.y) < .85;
+          f.px = visible ? (_v.x * .5 + .5) * W : W * .5;
+          f.py = visible ? (-_v.y * .5 + .5) * H : H * .5;
+        }
+        if (!f.damage && (_v.z > 1 || _v.z < -1)) { f.el.style.opacity = '0'; continue; }
+        const x0 = f.damage ? f.px : (_v.x * .5 + .5) * W, y0 = f.damage ? f.py : (-_v.y * .5 + .5) * H;
+        const x = f.damage ? clamp(x0 + f.dx, 50, W - 50) : x0 + f.dx * easeOut(u);
+        const y = f.damage ? clamp(y0 + f.dy - f.rise * easeOut(u), 60, H - 60) : y0 - f.rise * easeOut(u) + f.dy;
         const k = f.pop ? (u < 0.12 ? backOut(u / 0.12) : 1) : 1;
         f.el.style.opacity = String(u > 0.7 ? 1 - (u - 0.7) / 0.3 : 1);
         f.el.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px) translate(-50%,-50%) scale(${k.toFixed(3)})`;
@@ -699,9 +723,9 @@ export function createKillFX(THREE, opts = {}) {
 
   return {
     config, on, off, hit, update, applyCamera, reset, playerDied, dispose,
-    shake, fovPunch, rollKick, slowmo, setPlayerWound, splat, drop, floatText, burst, showBanner, pushMedal, comicText,
+    shake, fovPunch, rollKick, slowmo, setPlayerWound, splat, drop, floatText, damageText, burst, showBanner, pushMedal, comicText,
     get timeScale() { return slowScale(); },
     get streak() { return streak; }, get multi() { return multi; },
     _debug: { corpses, hm, cam, slow },
   };
-}
+                                                                            }

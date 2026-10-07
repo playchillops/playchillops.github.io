@@ -128,13 +128,13 @@ export class Game {
     this.killfx.config.slowmo = false; // killcam owns time; only last-enemy kills get the cinematic
     this.streaks = createStreaks({ THREE, renderer: this.renderer, scene: this.scene, camera: this.camera, root, ctrl: this.ctrl, bots: this.bots, map: m, world: this.world, raycast, play, vm: this.vm,
       isPlaying: () => this.state === 'play',
-      damageBot: (b, amount, meta) => { if (this.mp && this.mp.active) { this.mp.xdmg(b, amount); return false; } const hp = b.health; this.bots.damage(b, Math.max(0, hp - amount), false); return !b.alive; },
+      damageBot: (b, amount, meta) => { if (this.mp && this.mp.active) { this.mp.xdmg(b, amount); return false; } const hp = b.health; this.bots.damage(b, Math.max(0, hp - amount), false); this.killfx.damageText({x:b.position.x,y:b.position.y+1.2,z:b.position.z}, hp-b.health); return !b.alive; },
       onKill: ({ bot }) => { this.kills++; this.score += 100; this.kf.textContent = 'Streak kill +100'; this.kfT = 1.5; this.hud.hitMarker(true, false); play('kill'); } });
     this.streaks.on('earned', () => play('streak_earned')); this.streaks.on('called', ({ id }) => play(id === 'nuke' ? 'nuke' : 'streak_call'));
     this.streaks.on('explosion', ({ position, radius, source }) => this.destruction.damage(position, radius, source === 'rc' ? 150 : 200, { source }));
     this.grenades = createGrenades(THREE, { scene: this.scene, map: m, colliders: this.world, root: this.root,
       raycast, destruction: this.destruction, getTargets: () => this.bots.list,
-      onDamage: (b, amount, meta) => { if (meta && meta.owner && meta.owner !== 'player') return; if (this.mp && this.mp.active) { this.mp.xdmg(b, amount); return; } const alive = b.alive; this.bots.damage(b, Math.max(0, b.health - amount), false);
+      onDamage: (b, amount, meta) => { if (meta && meta.owner && meta.owner !== 'player') return; if (this.mp && this.mp.active) { this.mp.xdmg(b, amount); return; } const alive = b.alive, hp = b.health; this.bots.damage(b, Math.max(0, b.health - amount), false); this.killfx.damageText({x:b.position.x,y:b.position.y+1.2,z:b.position.z}, hp-b.health);
         if (alive && !b.alive) { this.eco.recordKill({ id: b.id, weapon: 'frag' }); this.streaks.registerKill({ headshot: false }); this.kills++; this.score += 100; } },
       onFlash: (b, seconds) => { b.grenadeFlash = Math.max(b.grenadeFlash || 0, seconds); },
       onEvent: (e) => { try { if (e && e.type === 'detonate' && e.position) { const p = { x: e.position.x, y: e.position.y, z: e.position.z };
@@ -474,8 +474,10 @@ export class Game {
         kh = { kind: 'target', bot: b, zone, headshot: r.headshot, killed: r.killed };
         if (mpOn) b.flash = 0.12; else this.bots.damage(b, r.hp, r.headshot); /* multiplayer: the server decides hits and kills */
         this.cineOK = r.killed && this.bots.aliveCount() <= 1;
-        this.killfx.hit({ bot: b, point: hit.point, zone, weapon: s.weapon, damage: hp0 - r.hp, killed: r.killed, headshot: r.headshot, origin: o, dir, distance: hit.distance, scoped: this.ws.aiming, last: this.cineOK });
-        play(r.killed ? 'kill' : r.headshot ? 'headshot' : 'hit');
+        if (!mpOn) {
+          this.killfx.hit({ bot: b, point: hit.point, zone, weapon: s.weapon, damage: hp0 - r.hp, killed: r.killed, headshot: r.headshot, origin: o, dir, distance: hit.distance, scoped: this.ws.aiming, last: this.cineOK });
+          play(r.killed ? 'kill' : r.headshot ? 'headshot' : 'hit');
+        } // Never promise a hit from a predicted ray: armor, spread and lag are server-owned.
         if (r.killed) {
           this.streaks.registerKill({ headshot: r.headshot }); this.eco.recordKill({ id: b.id, headshot: r.headshot, weapon: s.weapon }); { const bw = (b.ch && b.ch.weapon) || 'machinegun'; this.addDrop({ dropId: 'bot-' + b.id + '-' + Date.now(), weapon: bw === 'pistol' ? 'pistol' : bw, ammo: { mag: 12, reserve: 24 }, position: { x: b.position.x, y: b.position.y, z: b.position.z } }); } this.kf.textContent = ''; this.kills++; this.score += 100 + (r.headshot ? 50 : 0); if (r.headshot) this.heads++;
           this.kf.textContent = r.headshot ? 'HEADSHOT +150' : 'Kill +100'; this.kfT = 1.5;
