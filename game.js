@@ -92,13 +92,13 @@ export class Game {
 .sc-economy .eco-chip strong{font-size:40px!important;font-weight:600;line-height:1}.sc-economy .eco-chip span{display:none}
 .sg .info{text-shadow:0 0 3px #000,0 1px 4px #000}`; document.head.appendChild(s); }
     this.canvas = document.createElement('canvas'); this.canvas.className = 'main'; root.appendChild(this.canvas);
-    this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true });
+    this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: false });
     this.scene = new THREE.Scene();
     this.mapId = /[?&]map=b/.test(location.search) ? 'b' : 'a'; this.map = this.mapId === 'b' ? buildMap(THREE, LAYOUTS.b()) : buildMap(THREE); this.scene.add(this.map.group); try { if (!/[?&]noads/.test(location.search)) addAds(THREE, this.scene, { layout: this.map.layout, ground: (x, z) => { const h = this.map.getHeight ? this.map.getHeight(x, z) : 0; return Number.isFinite(h) ? h : 0; } }); } catch (e) { console.warn('ads failed', e); } try { if (!/[?&]nodecor/.test(location.search)) addDecor(THREE, this.map, this.scene); } catch (e) { console.warn('decor failed', e); }
     this.scene.background = new THREE.Color(this.map.sky.background);
     this.scene.fog = new THREE.Fog(this.map.sky.fog.color, this.map.sky.fog.near, this.map.sky.fog.far);
     this.camera = new THREE.PerspectiveCamera(75, 16 / 9, 0.1, 300); this.scene.add(this.camera);
-    try { this.look = /[?&]look=off/.test(location.search) ? null : applyLook(THREE, this.renderer, this.scene, this.map); } catch (err) { console.error('look', err); this.look = null; }
+    try { this.look = /[?&]look=off/.test(location.search) ? null : applyLook(THREE, this.renderer, this.scene, this.map, { quality: 'medium', msaa: 2 }); } catch (err) { console.error('look', err); this.look = null; }
 
     // physics world: map blocking boxes + roof slabs + ramps (from the map's floor/ramp data)
     const m = this.map; const phys = m.physicsColliders ? [...m.physicsColliders] : [...m.colliders];
@@ -175,7 +175,7 @@ export class Game {
   }
   resize() {
     const w = this.root.clientWidth || 640, h = this.root.clientHeight || 360;
-    this.renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); this.renderer.setSize(w, h, false);
+    this.renderer.setPixelRatio(Math.min(1.25, window.devicePixelRatio || 1)); this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h; this.camera.updateProjectionMatrix();
   }
   bindEvents() {
@@ -517,6 +517,8 @@ export class Game {
     const es = this.eco.getState(); this.eco.update(dt);
     this.updateDrops(dt);
     if (es.menuOpen) {
+      // Keep authoritative simulation and respawn sync alive while the shop owns input.
+      if (this.mp && this.mp.active) { this.mp.drive(this._real || dt); this.mp.fixCam(this.camera); this.mp.hud(dt); }
       this.ws.setTrigger(false); this.eDown = false;
       const k0 = this.ws.consumeLook(); if (k0.pitch || k0.yaw) c.look(-k0.yaw / 0.0022, -k0.pitch / 0.0022);
       c.applyToCamera(this.camera); setListener(st.eye, c.getDirection());
@@ -591,4 +593,4 @@ export class Game {
     this.kc.afterRender();
   }
   destroy() { this.running = false; this.ro && this.ro.disconnect(); this.ctrl.dispose(); this.renderer.dispose(); }
-      }
+}
