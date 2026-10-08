@@ -251,7 +251,7 @@ export function createMultiplayer(game, THREE) {
       document.body.appendChild(tb);
       mp.net.on('teamr', (m) => { if (m && !m.ok) banner(m.reason || 'Cannot switch', 2.5); else if (m && m.team) mp.net.team = m.team; });
       mp.net.on('roster', () => { try { const r = mp.net.roster.get(mp.net.id); if (r && r.team) mp.net.team = r.team; } catch (e) {} });
-      const tt = setInterval(() => { let show = false; try { const n = mp.net; show = !!(mp.active && n && n.connected && game.state !== 'menu' && (n.phase === 'waiting' || n.phase === 'end') && !isFree(n.mode)); if (show) { const ts = n.mode === 'ffa3' ? ['T', 'CT', 'Z'] : ['T', 'CT']; for (const k2 of Object.keys(tbs)) { const [b, nm] = tbs[k2]; b.style.display = ts.includes(k2) ? '' : 'none'; b.textContent = nm; b.style.borderColor = n.team === k2 ? '#fff' : 'transparent'; b.style.opacity = n.team === k2 ? '1' : '.75'; } } } catch (e) {} tb.style.display = show ? 'flex' : 'none'; }, 400);
+      const tt = setInterval(() => { let show = false; try { const n = mp.net; show = !!(mp.active && n && n.connected && game.state !== 'menu' && !window.__pauseOpen && game.setOv.style.display === 'none' && (n.phase === 'waiting' || n.phase === 'end') && !isFree(n.mode)); if (show) { const ts = n.mode === 'ffa3' ? ['T', 'CT', 'Z'] : ['T', 'CT']; for (const k2 of Object.keys(tbs)) { const [b, nm] = tbs[k2]; b.style.display = ts.includes(k2) ? '' : 'none'; b.textContent = nm; b.style.borderColor = n.team === k2 ? '#fff' : 'transparent'; b.style.opacity = n.team === k2 ? '1' : '.75'; } } } catch (e) {} tb.style.display = show ? 'flex' : 'none'; }, 400);
       binds.push([{ removeEventListener() { tb.remove(); clearInterval(tt); } }, 'x', null, null]); }
     { // always-visible minimap (map layout + local player arrow only)
       const cv = document.createElement('canvas'); cv.className = 'mp-mini'; cv.width = 168; cv.height = 168; cv.style.cssText = 'position:fixed;left:12px;top:46px;width:168px;height:168px;z-index:5;display:none;border-radius:12px;border:2px solid rgba(255,255,255,.35);background:rgba(10,24,40,.55);pointer-events:none';
@@ -424,4 +424,4 @@ export function createMultiplayer(game, THREE) {
   mp.solo = (m, gm) => { if (m === 'a' || m === 'b') mapSel = m; let n = 'Player'; try { n = localStorage.getItem('sc_name') || 'Player'; } catch (e) {} connect({ room: 'new', name: n, solo: true, gm: DM[gm] ? gm : 'bomb' }); };
   mp.autoJoin = () => { const m = /[?&]room=([A-Za-z0-9]+)/.exec(location.search); if (m) { lobby(m[1].toUpperCase()); if (/[?&]go=1/.test(location.search)) { let n = 0; const iv = setInterval(() => { const b = document.querySelector('#mpg'); if (b && !mp.net) { clearInterval(iv); b.click(); } else if (++n > 40) clearInterval(iv); }, 400); } return true; } return false; };
   return mp;
-}
+      }
