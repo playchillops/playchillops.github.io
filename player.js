@@ -184,7 +184,7 @@ export function createWeaponSystem(THREE, vm, hud) {
   ws.update = (dt, s = {}) => {
     const w = W(), a = ammo[ws.current], shots = [];
     ws.cooldown = Math.max(0, ws.cooldown - dt);
-    ws.bloom = Math.max(0, ws.bloom - w.spreadRecover * dt * 0.01);
+    ws.bloom *= Math.exp(-w.spreadRecover * dt);   // same recovery curve as the server (room.applyInput), so the crosshair shows the real cone
     if (ws.reloadLeft > 0) {
       ws.reloadLeft -= dt;
       if (ws.reloadLeft <= 0) {

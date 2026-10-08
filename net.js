@@ -69,7 +69,7 @@ export class NetClient {
   tap() { this.pendingFire = true; }
   /** the local weapon system fired a bullet with this spread offset (radians, yaw/pitch): the server reuses the exact
    *  direction and the view tick of THIS moment, so the predicted ray and the authoritative ray are the same ray */
-  shot(dyaw, dpitch) { if (this.shots.length < 12) this.shots.push([round(dyaw || 0, 4), round(dpitch || 0, 4), round(this.renderTick(), 2)]); }
+  shot(dyaw, dpitch, yaw, pitch, eye) { if (this.shots.length < 12) { const e = eye || this.eye(); this.shots.push([round(dyaw || 0, 4), round(dpitch || 0, 4), round(this.renderTick(), 2), round(Number.isFinite(yaw) ? yaw : this.yaw, 4), round(Number.isFinite(pitch) ? pitch : this.pitch, 4), round(e.x, 3), round(e.y, 3), round(e.z, 3)]); } }   // yaw/pitch: the aim at the click, not at the next 30 Hz input (the mouse keeps moving in between)
 
   // ---- fixed-step loop ----
   update(frameDt) {

@@ -2,6 +2,10 @@
 
 Source of truth: this private repo. Live build is the public mirror served by GitHub Pages.
 
+## 2026-10-07 (late night): v1007k - the server fires the bullet you fired
+- Juan still saw a hit flash without a number after v1007g. Remaining gap: the server fired from the aim and eye of the NEXT 30 Hz input (the mouse keeps moving up to 33 ms after the click: 0.07 rad at a normal flick = 1 m at 14 m), and it clamped the client's spread offset to its own cone, whose bloom recovered differently from the client's (client 0.05 rad/s linear, server exponential), so sprays got re-aimed by the server.
+- Now each reported bullet carries offset, aim (yaw/pitch at the click), eye position and view tick; the server uses all of it (aim within 0.6 rad of the input, eye within 0.6 m of its own) and no longer re-rolls or clamps the spread (a bigger offset only hurts the shooter; a zeroed one is aimbot-class and documented as not covered). Client bloom recovery now uses the server's curve so the crosshair shows the real cone.
+
 ## 2026-10-07 (night): hit registration - a predicted hit is a confirmed hit (v1007g)
 - Root cause of "the hit flash plays but no damage number": the shooter's client raycast against each legend's animated model boxes while the server raycast against one generic 1.8 m capsule (and never lowered it when the victim crouched). Measured 6-29% client-hit/server-miss on standing targets (Bezos 29%, Musk 25%), 10-33% crouched. On top, client and server rolled spread independently and the server evaluated the shot at the view tick of the next input, not of the click.
 - Fix: `hitprofiles.js`, one baked hit-box table per legend (standing + crouched, from the models; `test/gen-hitprofiles.mjs`), used by the client for remote players and by the server for the rewound targets (`hitscan.profileZones`, yaw + crouch aware). Each local bullet is reported with its spread offset and view tick (`sh` on the input); the server fires that exact offset if it is inside its own cone (clamped otherwise, bots/old clients still get a server roll) at that exact view tick.
