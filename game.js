@@ -129,7 +129,7 @@ export class Game {
     this.killfx.config.slowmo = false; // killcam owns time; only last-enemy kills get the cinematic
     this.streaks = createStreaks({ THREE, renderer: this.renderer, scene: this.scene, camera: this.camera, root, ctrl: this.ctrl, bots: this.bots, map: m, world: this.world, raycast, play, vm: this.vm,
       isPlaying: () => this.state === 'play',
-      damageBot: (b, amount, meta) => { if (this.mp && this.mp.active) { this.mp.xdmg(b, amount); return false; } const hp = b.health; this.bots.damage(b, Math.max(0, hp - amount), false); this.killfx.damageText({x:b.position.x,y:b.position.y+1.2,z:b.position.z}, hp-b.health); return !b.alive; },
+      damageBot: (b, amount, meta) => { if (this.mp && this.mp.active) { if (meta?.source !== 'missile') this.mp.xdmg(b, amount); return false; } const hp = b.health; this.bots.damage(b, Math.max(0, hp - amount), false); this.killfx.damageText({x:b.position.x,y:b.position.y+1.2,z:b.position.z}, hp-b.health); return !b.alive; },
       onKill: ({ bot }) => { this.kills++; this.score += 100; this.kf.textContent = 'Streak kill +100'; this.kfT = 1.5; this.hud.hitMarker(true, false); play('kill'); } });
     this.streaks.on('earned', () => play('streak_earned')); this.streaks.on('called', ({ id }) => play(id === 'nuke' ? 'nuke' : 'streak_call'));
     this.streaks.on('explosion', ({ position, radius, source }) => this.destruction.damage(position, radius, source === 'rc' ? 150 : 200, { source }));
