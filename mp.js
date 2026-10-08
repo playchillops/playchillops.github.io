@@ -234,7 +234,7 @@ export function createMultiplayer(game, THREE) {
     isHostNow = isHost;
     on(window, 'keydown', (e) => { if (e.code !== 'Enter' || e.repeat || !mp.net || !mp.net.lobby || !isHost()) return; const sh = document.querySelector('.eco-shade'); if (sh && !sh.hidden) return; mp.net.sendRaw({ t: 'start' }); });
     mp.net.on('startr', (m) => { if (m && !m.ok) banner(m.reason || 'Cannot start yet', 3); });
-    { const box = document.createElement('div'); box.style.cssText = 'position:fixed;right:12px;top:116px;max-width:calc(100vw - 482px);flex-wrap:wrap;justify-content:flex-end;z-index:6;display:none;gap:8px;align-items:center;padding:8px 12px;border-radius:14px;background:rgba(10,24,40,.72);color:#fff;font:600 13px Fredoka,system-ui,sans-serif;backdrop-filter:blur(4px)';
+    { const box = document.createElement('div'); box.style.cssText = 'position:fixed;right:92px;top:116px;max-width:calc(100vw - 562px);flex-wrap:wrap;justify-content:flex-end;z-index:6;display:none;gap:8px;align-items:center;padding:8px 12px;border-radius:14px;background:rgba(10,24,40,.72);color:#fff;font:600 13px Fredoka,system-ui,sans-serif;backdrop-filter:blur(4px)';
       const lab = document.createElement('span'); lab.textContent = 'Host bots:'; lab.style.opacity = '.8'; box.appendChild(lab);
       const mk = (txt, key, fn) => { const b = document.createElement('button'); b.textContent = txt + ' (' + key + ')'; b.style.cssText = 'font:inherit;color:#fff;background:rgba(255,255,255,.16);border:0;border-radius:10px;padding:5px 10px;cursor:pointer'; b.onclick = (e) => { e.stopPropagation(); if (mp.net && canBot()) fn(); }; box.appendChild(b); return b; };
       mk('+ Enemy bot', 'K', () => { mp.net.sendRaw({ t: 'addbot', team: (mp.net.mode === 'ffa3' || isFree(mp.net.mode)) ? 'auto' : mp.net.team === 'T' ? 'CT' : 'T' }); banner('Enemy bot added', 1.5); });
@@ -244,7 +244,7 @@ export function createMultiplayer(game, THREE) {
       document.body.appendChild(box); let hinted = false;
       binds.push([{ removeEventListener() { box.remove(); clearInterval(bt); } }, 'x', null, null]);
       const bt = setInterval(() => { let show = false; try { show = !!(mp.active && mp.net && mp.net.connected && canBot() && !window.__pauseOpen && game.setOv.style.display === 'none'); } catch (e) {} box.style.display = show ? 'flex' : 'none'; sbtn.style.display = mp.net && mp.net.lobby ? '' : 'none'; if (show && !hinted) { hinted = true; banner('Host: K enemy bot, L ally bot, U remove bots', 4); } if (!show && mp.net && mp.net.phase === 'live') hinted = true; }, 500); }
-    { const tb = document.createElement('div'); tb.style.cssText = 'position:fixed;right:12px;top:208px;z-index:6;display:none;gap:8px;align-items:center;padding:8px 12px;border-radius:14px;background:rgba(10,24,40,.72);color:#fff;font:600 13px Fredoka,system-ui,sans-serif;backdrop-filter:blur(4px)';
+    { const tb = document.createElement('div'); tb.style.cssText = 'position:fixed;right:92px;top:208px;z-index:6;display:none;gap:8px;align-items:center;padding:8px 12px;border-radius:14px;background:rgba(10,24,40,.72);color:#fff;font:600 13px Fredoka,system-ui,sans-serif;backdrop-filter:blur(4px)';
       const tl = document.createElement('span'); tl.textContent = 'Switch team:'; tl.style.opacity = '.8'; tb.appendChild(tl); const tbs = {};
       const defs = [['T', 'Orange', '#ff9a3c'], ['CT', 'Cyan', '#46d9ff'], ['Z', 'Green', '#6fe07a']];
       for (const [tm, nm, col] of defs) { const b = document.createElement('button'); b.style.cssText = 'font:inherit;color:#10162b;border:2px solid transparent;border-radius:10px;padding:5px 12px;cursor:pointer;background:' + col; b.onclick = (e) => { e.stopPropagation(); if (mp.net && mp.net.team !== tm) mp.net.sendRaw({ t: 'team', team: tm }); }; tbs[tm] = [b, nm]; tb.appendChild(b); }
@@ -424,4 +424,4 @@ export function createMultiplayer(game, THREE) {
   mp.solo = (m, gm) => { if (m === 'a' || m === 'b') mapSel = m; let n = 'Player'; try { n = localStorage.getItem('sc_name') || 'Player'; } catch (e) {} connect({ room: 'new', name: n, solo: true, gm: DM[gm] ? gm : 'bomb' }); };
   mp.autoJoin = () => { const m = /[?&]room=([A-Za-z0-9]+)/.exec(location.search); if (m) { lobby(m[1].toUpperCase()); if (/[?&]go=1/.test(location.search)) { let n = 0; const iv = setInterval(() => { const b = document.querySelector('#mpg'); if (b && !mp.net) { clearInterval(iv); b.click(); } else if (++n > 40) clearInterval(iv); }, 400); } return true; } return false; };
   return mp;
-    }
+      }
