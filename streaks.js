@@ -1,6 +1,9 @@
 // streaks.js - Sniper Chill killstreaks (UAV, remote missile, RC bomb car, airstrike).
 // See STREAKS.md for the integration/event API. Pure ES module, only needs the THREE namespace passed in.
 
+export const MISSILE_BLAST_RADIUS = 9;
+export const missileBlastDamage = (distance, blocked=false) => !blocked && distance <= MISSILE_BLAST_RADIUS ? 9999 : 0;
+
 export const DEFAULT_CONFIG = {
   // Streak counter resets on death / start. Each reward is granted once when the counter hits `at`.
   // "funding rounds" (Juan 2026-10-07): Angel (radar) 3, Series A (care package) 4, Series B (guided missile) 6, Series C (airstrike) 8, IPO (mega-nuke) 11
@@ -19,7 +22,7 @@ export const DEFAULT_CONFIG = {
   names: { rambo: 'Rambo · heavy gun', uav: 'Angel Round · radar', crate: 'Series A · care package', missile: 'Series B · guided missile', rc: 'RC bomb car', airstrike: 'Series C · airstrike', nuke: 'IPO · mega-nuke' },
   nuke: { countdown: 4 },
   uav: { duration: 20, alertBots: true, alertRadius: 30 },
-  missile: { speed: 50, boost: 90, lifetime: 20, startHeight: 150, startBack: 10, startPitch: -1.1, blastRadius: 9, maxDamage: 140, minDamage: 40, alertBots: true },
+  missile: { speed: 50, boost: 90, lifetime: 20, startHeight: 150, startBack: 10, startPitch: -1.1, blastRadius: MISSILE_BLAST_RADIUS, maxDamage: 9999, minDamage: 9999, alertBots: true },
   rc: { speed: 10, boost: 17, turnRate: 2.4, lifetime: 25, blastRadius: 6, maxDamage: 130, minDamage: 40, contactRadius: 1.15, engineNoise: true },
   airstrike: { bombs: 6, spacing: 4.5, interval: 0.28, delay: 1.4, blastRadius: 5, maxDamage: 120, minDamage: 40, range: 45 },
 };
@@ -177,7 +180,10 @@ export function createStreaks(ctx) {
       let amount = maxDamage + (minDamage - maxDamage) * (d / radius);
       const dir = { x: c.x - p.x, y: c.y - p.y, z: c.z - p.z };
       const h = d > 0.6 ? raycast({ x: p.x, y: p.y + 0.4, z: p.z }, dir, { colliders: world, maxDistance: d }) : null;
-      if (h && h.kind === 'world' && h.distance < d - 0.4) amount *= 0.4; // sheltered behind cover
+      const blocked = !!(h && h.kind === 'world' && h.distance < d - 0.4);
+      if (source === 'missile') amount = missileBlastDamage(d, blocked);
+      else if (blocked) amount *= 0.4; // sheltered behind cover
+      if (!amount) continue;
       const killed = damageBot(b, amount, { source, position: p });
       hits.push(b);
       emit('damage', { bot: b, amount, killed, source, position: { ...p } });
@@ -599,4 +605,4 @@ export function createStreaks(ctx) {
     call, cancel, reset, update, registerKill, registerDeath, explode, show: (v) => { dom.style.display = v ? '' : 'none'; },
     dispose() { cancel('dispose'); document.removeEventListener('keydown', onKey, true); document.removeEventListener('keyup', onKey, true); document.removeEventListener('mousemove', onMove); document.removeEventListener('mousedown', onDown, true); document.removeEventListener('mouseup', onUp, true); dom.remove(); },
   });
-      }
+    }
