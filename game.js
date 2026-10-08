@@ -457,11 +457,13 @@ export class Game {
     const st = this.ctrl.state, o = { x: st.eye.x, y: st.eye.y, z: st.eye.z }, muzzle = new THREE.Vector3();
     this.vm.muzzleWorldPosition(muzzle);
     if (shots.length && this.bots.noise) this.bots.noise(o.x, o.z, 34);
+    const mpLive = !!(this.mp && this.mp.active), targets = mpLive ? this.mp.targets() : this.bots.list;   // multiplayer: enemies only, alive, no spawn protection (what the server will accept)
     for (const s of shots) {
       if (WEAPON_STATS[s.weapon]?.projectile) { play('grenade_throw'); continue; } // authoritative projectile event draws flight and explosion
+      if (mpLive) this.mp.shot(s);   // the server fires this exact offset at this exact view tick (see net.shot)
       const yaw = st.yaw + s.dir.x, pit = st.pitch + s.dir.y, cp = Math.cos(pit);
       const dir = { x: -Math.sin(yaw) * cp, y: Math.sin(pit), z: -Math.cos(yaw) * cp };
-      let hit = raycast(o, dir, { colliders: this.world, targets: this.bots.list, maxDistance: s.range });
+      let hit = raycast(o, dir, { colliders: this.world, targets, maxDistance: s.range });
       if (hit && hit.kind === 'target' && wallBlocked(o, dir, hit.distance, this.world, 0.07)) hit = raycast(o, dir, { colliders: this.world, maxDistance: s.range }); // grazing a corner: wall wins
       else if (hit && hit.kind === 'target') { const mz = { x: muzzle.x - o.x, y: muzzle.y - o.y, z: muzzle.z - o.z }, ml = Math.hypot(mz.x, mz.y, mz.z); if (ml > 0.05 && ml < 2 && wallBlocked(o, mz, ml + 0.02, this.world, 0.02)) hit = raycast(o, dir, { colliders: this.world, maxDistance: s.range }); } // gun poking through a wall
       const end = hit ? hit.point : { x: o.x + dir.x * s.range, y: o.y + dir.y * s.range, z: o.z + dir.z * s.range };

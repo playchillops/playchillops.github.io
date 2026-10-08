@@ -8,7 +8,8 @@ import { WEAPON_ORDER } from './player.js';
 //   manager.damage(bot, newHealth, headshot)
 //   manager.aliveCount()
 import * as AI from './botsai.js';
-import { wallBlocked } from './hitscan.js';
+import { wallBlocked, profileZones } from './hitscan.js';
+import { hitProfile } from './hitprofiles.js';
 import { createCharacter, CHARACTER_IDS, LEGEND_IDS } from './characters.js';
 export function createBots(THREE, scene, map, opts) {
   const { raycast, colliders } = opts;
@@ -97,7 +98,9 @@ export function createBots(THREE, scene, map, opts) {
       Object.defineProperty(ai, 'hitZones', { get() { return ch.hitZones(); } });
       aiList.push(ai); list.push(ai); return ai;
     }
-    b.ch = ch; Object.defineProperty(b, 'hitZones', { get() { return ch.hitZones(); } });
+    // hit zones: single player = the animated model; multiplayer (b.net set by syncRemote) = the legend's baked profile at the interpolated
+    // feet/yaw/crouch, identical to what the server rewinds to (hitprofiles.js), so a predicted hit is a confirmed hit
+    b.ch = ch; Object.defineProperty(b, 'hitZones', { get() { const n = b.net; return n ? profileZones(hitProfile(b.chId), b.position, n.yaw || 0, !!n.crouched) : ch.hitZones(); } });
     list.push(b); return b;
   }
   function clear() { for (const b of list) scene.remove(b.group); list.length = 0; aiList.length = 0; AI.newRound(aiWorld); }
@@ -149,7 +152,7 @@ export function createBots(THREE, scene, map, opts) {
       seen.add(p.id); let b = rmap.get(p.id);
       if (b && p.ch && b.chId !== p.ch) { scene.remove(b.group); const i = list.indexOf(b); if (i >= 0) list.splice(i, 1); rmap.delete(p.id); b = null; }   // legend known now (roster after the first snapshot): rebuild
       if (!b) { b = spawn({ x: p.x, y: p.y, z: p.z }, { weapon: WN[p.weapon] || 'machinegun', ch: p.ch }); b.id = 'net' + p.id; b.netId = p.id; b.chId = p.ch || ''; b.alive = !!p.alive; b.health = p.hp; rmap.set(p.id, b); }
-      b.net = p; b.name = p.name; b.team = p.team; b.position.x = p.x; b.position.y = p.y; b.position.z = p.z;
+      b.net = p; b.name = p.name; b.team = p.team; b.position.x = p.x; b.position.y = p.y; b.position.z = p.z; b.crouched = !!p.crouched; b.yaw = p.yaw || 0;
       if (p.alive && !b.alive && !(b._kt && performance.now() - b._kt < 700)) { b.alive = true; b.health = p.hp; b.deadT = 0; b.group.visible = true; b.ch.setAnim('idle'); }
       else if (!p.alive && b.alive) damage(b, 0, false);
       else if (p.alive && !b.alive) { /* kill event already applied, snapshot lags */ }

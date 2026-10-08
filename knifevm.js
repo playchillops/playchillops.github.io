@@ -224,4 +224,4 @@ export function createKnifeVM(THREE, camera) {
   };
   setElbow(); bfly.visible = false; colors('default'); pose(S);
   return api;
-    }
+}

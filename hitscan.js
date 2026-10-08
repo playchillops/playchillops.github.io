@@ -92,6 +92,18 @@ export function getHitZones(target){
     box('legs',0,h*.40,r*.08,r*.8)
   ];
 }
+/** World-space zones from a baked hit profile (hitprofiles.js): feet position, body yaw, crouched flag.
+ * Same code on the client (prediction) and the server (authoritative fire), so both agree on every shot.
+ * Boxes stay axis-aligned: half extents mix with |cos|/|sin| of the yaw like characters.js does. */
+export function profileZones(profile,position,yaw=0,crouched=false){
+  const pr=profile&&(crouched?profile.crouch:profile.stand);const p=position;if(!pr||!valid(p))return [];
+  const c=Math.cos(yaw),s=Math.sin(yaw),ac=Math.abs(c),as=Math.abs(s);
+  const rot=(x,z)=>({x:p.x+x*c+z*s,z:p.z-x*s+z*c});   // local -> world (Three rotation.y convention)
+  const h=rot(0,0),out=[{zone:'head',center:{x:h.x,y:p.y+pr.head.y,z:h.z},radius:pr.head.r}];
+  for(const b of pr.boxes){const w=rot(b.cx,b.cz),ex=b.hx*ac+b.hz*as,ez=b.hx*as+b.hz*ac;
+    out.push({zone:b.zone,min:{x:w.x-ex,y:p.y+b.y0,z:w.z-ez},max:{x:w.x+ex,y:p.y+b.y1,z:w.z+ez}});}
+  return out;
+}
 export function raycast(origin,direction,{colliders=[],targets=[],maxDistance=1000,ignore=[]}={}){
   if(!valid(origin)||!valid(direction)||Number.isNaN(maxDistance)||maxDistance<0)return null;
   const length=Math.hypot(direction.x,direction.y,direction.z);if(length<EPS)return null;

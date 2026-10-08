@@ -26,7 +26,7 @@ export class NetClient {
     this.handlers = {};
     this.url = o.url; this.ws = null; this.token = null; this.id = 0; this.room = null; this.team = null;
     this.yaw = 0; this.pitch = 0; this.input = { f: 0, r: 0, j: false, c: false, fire: false, aim: false, rl: false, use: false, w: -1 };
-    this.pendingFire = false; this.acc = 0; this.seq = 0; this.pending = []; this.pred = new Map();
+    this.pendingFire = false; this.acc = 0; this.seq = 0; this.pending = []; this.pred = new Map(); this.shots = [];
     this.snaps = []; this.roster = new Map(); this.phase = 'waiting'; this.alive = false; this.respawns = -1;
     this.tickRate = TICK; this.snapDiv = 2; this.latestK = 0; this.latestRecv = 0; this.rttMs = 0; this.hasPing = false; this.serverPerf = null;
     this.prev = null; this.cur = null; this.stats = { corrections: 0, maxErr: 0, snaps: 0 };
@@ -67,6 +67,9 @@ export class NetClient {
   }
   setInput(i) { Object.assign(this.input, i); }
   tap() { this.pendingFire = true; }
+  /** the local weapon system fired a bullet with this spread offset (radians, yaw/pitch): the server reuses the exact
+   *  direction and the view tick of THIS moment, so the predicted ray and the authoritative ray are the same ray */
+  shot(dyaw, dpitch) { if (this.shots.length < 12) this.shots.push([round(dyaw || 0, 4), round(dpitch || 0, 4), round(this.renderTick(), 2)]); }
 
   // ---- fixed-step loop ----
   update(frameDt) {
@@ -84,7 +87,7 @@ export class NetClient {
   stepTick() {
     const i = this.input;
     const inp = { t: 'in', seq: ++this.seq, f: i.f, r: i.r, j: i.j, c: i.c, kn: i.kn ? 1 : 0, yaw: round(this.yaw, 4), pitch: round(this.pitch, 4),
-      fire: i.fire || this.pendingFire, aim: i.aim, rl: i.rl, use: i.use, w: i.w, vt: round(this.renderTick(), 2), pw: i.pw ? 1 : 0, rk: i.rk ? 1 : 0, sm: i.sm ? 1 : 0 };
+      fire: i.fire || this.pendingFire, aim: i.aim, rl: i.rl, use: i.use, w: i.w, vt: round(this.renderTick(), 2), pw: i.pw ? 1 : 0, rk: i.rk ? 1 : 0, sm: i.sm ? 1 : 0, sh: this.shots.length ? this.shots.splice(0) : undefined };
     this.pendingFire = false; i.pw = false; i.rk = false;   // the power press is one input frame
     if (inp.w === this.me.weapon) inp.w = -1;
     this.prev = this.cur;
@@ -119,7 +122,7 @@ export class NetClient {
       if (id === this.id) continue;
       const ea = a.pl.get(id) || eb, r = this.roster.get(id) || {};
       out.push({ id, name: r.name || '?', team: r.team, ch: r.ch, x: lerp(ea.x, eb.x, f), y: lerp(ea.y, eb.y, f), z: lerp(ea.z, eb.z, f), yaw: lerpAngle(ea.yaw, eb.yaw, f), pitch: lerp(ea.pitch, eb.pitch, f),
-        crouched: eb.crouched, alive: eb.alive, connected: eb.connected, hp: eb.hp, weapon: eb.weapon, cloak: eb.cloak, stun: eb.stun, pwr: eb.pwr });
+        crouched: eb.crouched, alive: eb.alive, connected: eb.connected, hp: eb.hp, weapon: eb.weapon, cloak: eb.cloak, stun: eb.stun, pwr: eb.pwr, prot: eb.prot });
     }
     return out;
   }
@@ -145,7 +148,7 @@ export class NetClient {
   onSnapshot(m) {
     this.serverPerf = Array.isArray(m.sp) ? m.sp : null;
     const pl = new Map();
-    for (const e of m.pl) pl.set(e[0], { x: e[1], y: e[2], z: e[3], yaw: e[4], pitch: e[5], crouched: !!(e[6] & 1), alive: !!(e[6] & 2), grounded: !!(e[6] & 4), connected: !!(e[6] & 8), cloak: !!(e[6] & 16), stun: !!(e[6] & 32), pwr: !!(e[6] & 64), hp: e[7], weapon: e[8] });
+    for (const e of m.pl) pl.set(e[0], { x: e[1], y: e[2], z: e[3], yaw: e[4], pitch: e[5], crouched: !!(e[6] & 1), alive: !!(e[6] & 2), grounded: !!(e[6] & 4), connected: !!(e[6] & 8), cloak: !!(e[6] & 16), stun: !!(e[6] & 32), pwr: !!(e[6] & 64), prot: !!(e[6] & 128), hp: e[7], weapon: e[8] });
     this.snaps.push({ k: m.k, pl }); this.snaps[this.snaps.length - 1].recv = this.o.now();
     if (this.snaps.length > 30) this.snaps.shift();
     this.latestK = m.k; this.latestRecv = this.o.now(); this.stats.snaps++;

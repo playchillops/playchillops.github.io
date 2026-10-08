@@ -2,6 +2,12 @@
 
 Source of truth: this private repo. Live build is the public mirror served by GitHub Pages.
 
+## 2026-10-07 (night): hit registration - a predicted hit is a confirmed hit (v1007g)
+- Root cause of "the hit flash plays but no damage number": the shooter's client raycast against each legend's animated model boxes while the server raycast against one generic 1.8 m capsule (and never lowered it when the victim crouched). Measured 6-29% client-hit/server-miss on standing targets (Bezos 29%, Musk 25%), 10-33% crouched. On top, client and server rolled spread independently and the server evaluated the shot at the view tick of the next input, not of the click.
+- Fix: `hitprofiles.js`, one baked hit-box table per legend (standing + crouched, from the models; `test/gen-hitprofiles.mjs`), used by the client for remote players and by the server for the rewound targets (`hitscan.profileZones`, yaw + crouch aware). Each local bullet is reported with its spread offset and view tick (`sh` on the input); the server fires that exact offset if it is inside its own cone (clamped otherwise, bots/old clients still get a server roll) at that exact view tick.
+- The client no longer predicts hits on teammates or spawn-protected players (snapshot flag 128); the lag-compensation window grows from 333 ms to 500 ms because the Render free instance stalls its event loop 190-400 ms every 30-60 s (measured in its logs), and `tickprof` now logs how many shots hit the clamp.
+- Tests: hit-box parity for all 9 legends (model vs table vs server, 100% ray agreement) and shot-offset use/clamp/expiry. 31/31 pass.
+
 ## 2026-10-07 (later): legend voices, calling cards, funding-round streaks, live map events
 - Legend voice lines: Z taunts (server picks the line, 4 s cooldown), kill lines (killer and victim hear them) and superpower lines, each legend with its own voice (pitch, rate, system voice) and a speech bubble over the speaker.
 - Calling cards: when you die you see the killer's card (company logo, legend, prestige, gun, distance, HP left, K/D) with NEMESIS / streak / headshot tags. Nemesis is marked on the Tab scoreboard; killing yours gives NEMESIS DOWN. Bots show their legend's company (Apple, Meta, OpenAI...).
@@ -93,3 +99,11 @@ modes.js / ui.js / audio2 integration, multiplayer client wiring (server/ and cl
 
 ## 2026-10-04 6:55 PM
 - TODO.md is the master project memory (BACKLOG.md merged into it).
+
+## 2026-10-07: v1007e
+- Fixed remote pink muzzle flashes and world impact/kill sprites showing through walls by enabling depth testing. Tracers already used depth testing. Shared across modes and opponents.
+- Did not remove legend comments or announcer lines pending clarification. Deliberate UAV/X-ray powers remain unchanged.
+
+## 2026-10-07: v1007f
+- Character speech bubbles no longer reveal a hidden speaker through walls or smoke. Camera-to-chest line of sight checked every frame. Keep voice lines and comments.
+- Confirmed damage numbers are only drawn for the shooter who dealt the hit, not victim/third parties/spectator views of another player.

@@ -599,4 +599,4 @@ export function createStreaks(ctx) {
     call, cancel, reset, update, registerKill, registerDeath, explode, show: (v) => { dom.style.display = v ? '' : 'none'; },
     dispose() { cancel('dispose'); document.removeEventListener('keydown', onKey, true); document.removeEventListener('keyup', onKey, true); document.removeEventListener('mousemove', onMove); document.removeEventListener('mousedown', onDown, true); document.removeEventListener('mouseup', onUp, true); dom.remove(); },
   });
-  }
+      }
