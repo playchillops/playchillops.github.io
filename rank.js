@@ -1,5 +1,5 @@
 // rank.js - XP, level and rank names. Pure functions shared by the server (rewards) and the client (profile, HUD).
-export const XP_BASE = 60, XP_KILL = 25, XP_WIN = 150;
+export const XP_BASE = 75, XP_KILL = 30, XP_WIN = 190;
 export const matchXp = ({ kills = 0, win = false } = {}) => XP_BASE + XP_KILL * Math.max(0, kills | 0) + (win ? XP_WIN : 0);
 const need = (lv) => 35 * (lv - 1) * (lv - 1);                 // total xp needed to reach level lv (lv 1 = 0)
 export const levelOf = (xp) => Math.floor(Math.sqrt(Math.max(0, xp) / 35)) + 1;

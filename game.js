@@ -14,7 +14,7 @@ import { createAnimations } from './animations.js';
 import { createKillFX } from './killfx.js';
 import { getContext } from './audio.js';
 import { DIFFICULTY } from './botsai.js';
-import { createStreaks } from './streaks.js?v=1007i-final';
+import { createStreaks } from './streaks.js?v=1007j-final';
 import { addDecor } from './decor.js';
 import { addAds } from './ads.js';
 import { recordRound } from './stats.js';
@@ -26,12 +26,12 @@ import { createGrenades, chargeOf } from './grenades.js';
 import { playIntro } from './intro.js';
 import { loadingStart, loadingStep } from './loading.js';
 import { buildMenu } from './menu.js';
-import { createMultiplayer } from './mp.js?v=1007i-final';
+import { createMultiplayer } from './mp.js?v=1007j-final';
 import { parkourColliders, parkourMeshes } from './parkour.js';
 import { showTutorial } from './tutorial.js';
 import { createCharacter, ROSTER } from './characters.js';
 import { createPortals } from './portal.js';
-import { createPerformancePanel } from './performance.js?v=1007i-final';
+import { createPerformancePanel } from './performance.js?v=1007j-final';
 import { createAnnouncer } from './announcer.js';
 
 const CSS = `
@@ -601,4 +601,4 @@ export class Game {
     this.kc.afterRender();
   }
   destroy() { this.running = false; this.localAnnouncer?.dispose(); this.ro && this.ro.disconnect(); this.ctrl.dispose(); this.renderer.dispose(); }
-                                                                     }
+                                }
