@@ -1,4 +1,5 @@
 import { WEAPONS } from './player.js';
+import { pharaohZones } from './hitscan.js';
 // events.js - live map events + care packages on the client (Juan 2026-10-07: "que vayan pasando cosas").
 // Server (room.js fireEvent / crates) decides what and where; this file shows it:
 //   starship  10 s countdown, red danger ring on the launch pad, then the real Plaza rocket lifts off (flames, smoke, shake)
@@ -20,7 +21,7 @@ export function createEvents({ game, net, THREE, an, banner = () => {}, play }) 
   const pharaohs=new Map(), ribbons=[];
   const disposeMesh=g=>{game.scene.remove(g);g.traverse(o=>{o.geometry?.dispose();if(Array.isArray(o.material))o.material.forEach(m=>m.dispose());else o.material?.dispose();});};
   function makePharaoh(){const g=new THREE.Group();g.name='Tomb Pharaoh';const box=(w,h,d,x,y,z,c)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshLambertMaterial({color:c}));m.position.set(x,y,z);g.add(m);return m;};box(.65,.9,.4,0,.9,0,0xe9d7ac);box(.42,.42,.42,0,1.6,0,0xb98a51);box(.65,.2,.52,0,1.88,0,0xffce42);for(let s of [-1,1]){box(.18,.58,.5,s*.31,1.63,0,0x288bb1);box(.14,.65,.14,s*.43,.94,-.06,0xe9d7ac);box(.19,.5,.25,s*.18,.26,0,0xe9d7ac);}for(let y=.55;y<1.4;y+=.16)box(.67,.035,.42,0,y,0,0xa68a62);box(.33,.28,.03,0,.8,-.22,0xffce42);for(let x of [-.1,.1])box(.055,.07,.03,x,1.64,-.23,0x141829);return g;}
-  net.on('pharaohs',m=>{const keep=new Set();for(const a of m.list||[]){keep.add(a[0]);let g=pharaohs.get(a[0]);if(!g){g=makePharaoh();pharaohs.set(a[0],g);game.scene.add(g);}g.position.set(a[1],a[2],a[3]);const e=net.eye();g.rotation.y=Math.atan2(g.position.x-e.x,g.position.z-e.z);}for(const [id,g]of pharaohs)if(!keep.has(id)){disposeMesh(g);pharaohs.delete(id);}});
+  net.on('pharaohs',m=>{const keep=new Set();for(const a of m.list||[]){keep.add(a[0]);let g=pharaohs.get(a[0]);if(!g){g=makePharaoh();pharaohs.set(a[0],g);game.scene.add(g);}g.userData.npcId=a[0];g.userData.hp=a[4];g.position.set(a[1],a[2],a[3]);const e=net.eye();g.rotation.y=Math.atan2(g.position.x-e.x,g.position.z-e.z);}for(const [id,g]of pharaohs)if(!keep.has(id)){disposeMesh(g);pharaohs.delete(id);}});
   net.on('bandage',m=>{if(ribbons.length>=24)return;const g=new THREE.Mesh(new THREE.BoxGeometry(.12,.08,.85),new THREE.MeshBasicMaterial({color:0xf7ebc9}));g.position.set(...m.o);const v=new THREE.Vector3(...m.v);g.lookAt(g.position.clone().add(v));game.scene.add(g);ribbons.push({g,v,t:0});});
   net.on('wrapped',m=>banner('FEET WRAPPED · '+m.stacks+'/3 · SLOW FOR 5s',2));
   const projectiles = new Map();
@@ -153,6 +154,7 @@ export function createEvents({ game, net, THREE, an, banner = () => {}, play }) 
       if (bullUntil && now > bullUntil) { bullUntil = 0; tick.style.display = 'none'; }
       for (let i = fx.length - 1; i >= 0; i--) { const v = fx[i]; v.t += dt; v.tick && v.tick(v, dt); if (v.t >= v.life) { game.scene.remove(v.obj); fx.splice(i, 1); } }
     },
+    targets() { return [...pharaohs.values()].map(g=>({id:g.userData.npcId,netId:g.userData.npcId,position:g.position,alive:g.userData.hp>0,hitZones:pharaohZones(g.position,g.rotation.y)})); },
     dispose() {for(const g of pharaohs.values())disposeMesh(g);pharaohs.clear();for(const b of ribbons)disposeMesh(b.g);ribbons.length=0; for(const f of projectiles.values()){game.scene.remove(f.g);f.g.traverse(o=>{o.geometry?.dispose();o.material?.dispose();});}projectiles.clear(); for (const t of timers) clearTimeout(t); for (const c of crates.values()) game.scene.remove(c.g); crates.clear(); for (const v of fx) game.scene.remove(v.obj); fx.length = 0; const R = rocket(); if (R) { R.group.position.y = 0; R.group.visible = true; } if (fog0 && game.scene.fog) { game.scene.fog.near = fog0.near; game.scene.fog.far = fog0.far; game.scene.fog.color.copy(fog0.color); } game.canvas.style.transform = ''; tick.remove(); sand.remove(); tip.remove(); burnEl.remove(); },
   };
   function puff(x, y, z) {   // rocket smoke
