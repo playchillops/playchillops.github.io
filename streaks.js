@@ -534,6 +534,7 @@ export function createStreaks(ctx) {
   }
   // ---------- API ----------
   function call(id) {
+    if (ctx.canCall && !ctx.canCall()) return false;
     if (!S.enabled || (S.active || S.finish || S.tablet) && id !== 'uav') return false;
     if (id === 'uav' && S.uav) return false;
     if (!(S.inv[id] > 0)) return false;
@@ -547,7 +548,7 @@ export function createStreaks(ctx) {
     refreshHud(); return true;
   }
   function cancel(reason = 'cancel') {
-    if (S.tablet) { closeTablet(reason === 'cancel'); }
+    if (S.tablet) { closeTablet(['cancel', 'death', 'round', 'respawn'].includes(reason)); }
     for (const d of S.missiles) scene.remove(d.m); S.missiles.length = 0; if (S.heli) { scene.remove(S.heli.g); S.heli = null; }
     if (S.active) { const k = S.active.id; if (S.active.mesh) scene.remove(S.active.mesh); if (S.active.ring) scene.remove(S.active.ring); endControl(k, reason); }
     if (S.finish) { S.finish = null; S.cam = null; endControl(S.finishKind || 'unknown', reason); }
@@ -556,7 +557,7 @@ export function createStreaks(ctx) {
   }
   function reset(full = true) { cancel('reset'); S.count = 0; if (full) S.inv = {}; for (const f of S.fx) scene.remove(f.obj); S.fx.length = 0; refreshHud(); }
   function registerKill(info = {}) { bump(); emit('playerKill', info); }
-  function registerDeath() { cancel('death'); S.count = 0; S.inv = {}; refreshHud(); emit('reset', { reason: 'death' }); }
+  function registerDeath() { cancel('death'); S.count = 0; refreshHud(); emit('reset', { reason: 'death' }); }
   function update(dt) {
     if (bannerT > 0) { bannerT -= dt; if (bannerT <= 0) banner.classList.remove('on'); }
     for (let i = S.fx.length - 1; i >= 0; i--) { const f = S.fx[i]; f.t += dt; const k = Math.min(1, f.t / f.life); f.fn(k, dt); if (k >= 1) { scene.remove(f.obj); S.fx.splice(i, 1); } }

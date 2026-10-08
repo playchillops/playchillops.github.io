@@ -14,11 +14,11 @@ import { createAnimations } from './animations.js';
 import { createKillFX } from './killfx.js';
 import { getContext } from './audio.js';
 import { DIFFICULTY } from './botsai.js';
-import { createStreaks } from './streaks.js?v=1007l-final';
+import { createStreaks } from './streaks.js?v=1007m-final';
 import { addDecor } from './decor.js';
 import { addAds } from './ads.js';
 import { recordRound } from './stats.js';
-import { createEconomy, WEAPON_STATS } from './economy.js';
+import { createEconomy, WEAPON_STATS } from './economy.js?v=1007m';
 import { createDestruction } from './destruction.js';
 import { createBombBeacon } from './bombbeacon.js';
 import { createKnifeVM } from './knifevm.js';
@@ -26,12 +26,12 @@ import { createGrenades, chargeOf } from './grenades.js';
 import { playIntro } from './intro.js';
 import { loadingStart, loadingStep } from './loading.js';
 import { buildMenu } from './menu.js?v=1007l-menu';
-import { createMultiplayer } from './mp.js?v=1007l-final';
+import { createMultiplayer } from './mp.js?v=1007m-final';
 import { parkourColliders, parkourMeshes } from './parkour.js';
 import { showTutorial } from './tutorial.js';
 import { createCharacter, ROSTER } from './characters.js';
 import { createPortals } from './portal.js';
-import { createPerformancePanel } from './performance.js?v=1007l-final';
+import { createPerformancePanel } from './performance.js?v=1007m-final';
 import { createAnnouncer } from './announcer.js';
 
 const CSS = `
@@ -129,7 +129,7 @@ export class Game {
       raycastWorld: (o, d, max) => { const h = raycast(o, d, { colliders: this.world, maxDistance: max }); return h && h.kind === 'world' ? { point: h.point, normal: h.normal } : null; } });
     this.killfx.config.slowmo = false; // killcam owns time; only last-enemy kills get the cinematic
     this.streaks = createStreaks({ THREE, renderer: this.renderer, scene: this.scene, camera: this.camera, root, ctrl: this.ctrl, bots: this.bots, map: m, world: this.world, raycast, play, vm: this.vm,
-      isPlaying: () => this.state === 'play',
+      isPlaying: () => this.state === 'play', canCall: () => this.state === 'play' && this.player.alive !== false && this.eco && !this.eco.getState().menuOpen && (this.mp && this.mp.net ? this.mp.net.mode !== 'gun' && this.mp.net.alive && ['live', 'planted'].includes(this.mp.net.phase) : this.eco.getState().phase === 'live'),
       damageBot: (b, amount, meta) => { if (this.mp && this.mp.active) { if (meta?.source !== 'missile') this.mp.xdmg(b, amount); return false; } const hp = b.health; this.bots.damage(b, Math.max(0, hp - amount), false); this.killfx.damageText({x:b.position.x,y:b.position.y+1.2,z:b.position.z}, hp-b.health); return !b.alive; },
       onKill: ({ bot }) => { this.kills++; this.score += 100; this.kf.textContent = 'Streak kill +100'; this.kfT = 1.5; this.hud.hitMarker(true, false); play('kill'); } });
     this.streaks.on('earned', () => play('streak_earned')); this.streaks.on('called', ({ id }) => play(id === 'nuke' ? 'nuke' : 'streak_call'));
@@ -304,7 +304,7 @@ export class Game {
     if (this.eco) { try { this.eco.dispose(); } catch (e) {} }
     this.owned = new Set(['pistol']);
     this.grenades?.clearRound();
-    this.eco = createEconomy({ container: this.root, team: 'T', freezeTime: 10, autoOpen: false, inZone: () => !!(this.mp && this.mp.net && (this.mp.net.lobby || this.mp.net.mode === 'tdm' || this.mp.net.mode === 'ffa')) || this.inBuyZone(), /* deathmatch: free loadout from anywhere */ onEvent: (n, d) => this.onEco(n, d) });
+    this.eco = createEconomy({ container: this.root, team: 'T', freezeTime: 10, autoOpen: false, shopEnabled: () => !(this.mp && this.mp.net && this.mp.net.mode === 'gun'), inZone: () => !!(this.mp && this.mp.net && (this.mp.net.lobby || this.mp.net.mode === 'tdm' || this.mp.net.mode === 'ffa')) || this.inBuyZone(), /* deathmatch: free loadout from anywhere */ onEvent: (n, d) => this.onEco(n, d) });
     if (this.grenades) this.grenades.setEconomy(this.eco);
   }
   syncAmmoToEco() { if (!this.eco) return; for (const id of WEAPON_ORDER) { const a = this.ws.ammo[id]; if (a && this.eco.getState().inventory.ammo[id]) this.eco.setAmmo(id, { mag: a.mag, reserve: a.reserve }); } }
