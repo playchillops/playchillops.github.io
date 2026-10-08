@@ -32,6 +32,7 @@ import { showTutorial } from './tutorial.js';
 import { createCharacter, ROSTER } from './characters.js';
 import { createPortals } from './portal.js';
 import { createPerformancePanel } from './performance.js';
+import { createAnnouncer } from './announcer.js';
 
 const CSS = `
 @font-face{font-family:Fredoka;font-weight:500;src:url('./Fredoka-Medium.ttf') format('truetype');font-display:swap}
@@ -150,6 +151,7 @@ export class Game {
     this.hint = document.createElement('div'); this.hint.style.cssText = 'position:absolute;right:200px;bottom:34px;z-index:21;font-weight:800;font-size:18px;text-shadow:0 2px 4px #000;pointer-events:none'; root.appendChild(this.hint);
     this.sb = document.createElement('div'); this.sb.className = 'scb'; this.sb.style.display = 'none'; root.appendChild(this.sb); this.sbm = document.createElement('div'); this.sbm.className = 'sbm'; this.sbm.style.display = 'none'; root.appendChild(this.sbm);
     this.match = { p: 0, b: 0, round: 1, over: false };
+    this.localAnnouncer = createAnnouncer({volume: () => this.set?.sfxOn === false ? 0 : (this.set?.vol ?? 0.7)});
     this.perfPanel = createPerformancePanel(root); this.perf = this.perfPanel.el; this.pf = { n: 0, t: 0, worst: 0 };
     this.setOv = document.createElement('div'); this.setOv.className = 'setov'; this.setOv.style.display = 'none'; root.appendChild(this.setOv);
     this.invb = document.createElement('div'); this.invb.className = 'invb'; this.invb.style.display = 'none'; root.appendChild(this.invb); this.invh = document.createElement('div'); this.invh.className = 'invh'; root.appendChild(this.invh); this.invSig = '';
@@ -292,7 +294,7 @@ export class Game {
     if (!this.eco.consumeGrenade(type)) return;   // fires the 'grenade' event (multiplayer relays it to the server)
     this.grenades.throwGrenade(type, { position: this.ctrl.state.eye, direction: this.ctrl.getDirection(), charge, owner: 'player', team: s.team, consume: false });
     play('grenade_throw');
-    try { this.mp?.fx?.an.say('Fire in the hole!', 2.5); } catch (e) {}
+    try { (this.mp?.active ? this.mp.fx?.an : this.localAnnouncer)?.say('Fire in the hole!', 2.5); } catch (e) {}
   }
   endMatchEffects(id) { this.destruction.reset(id); this.grenades.reset(id); }
   onWeaponEvent(n, d) {
@@ -598,5 +600,5 @@ export class Game {
     if (this.look) this.look.render(this.camera); else this.renderer.render(this.scene, this.camera);
     this.kc.afterRender();
   }
-  destroy() { this.running = false; this.ro && this.ro.disconnect(); this.ctrl.dispose(); this.renderer.dispose(); }
-        }
+  destroy() { this.running = false; this.localAnnouncer?.dispose(); this.ro && this.ro.disconnect(); this.ctrl.dispose(); this.renderer.dispose(); }
+    }
