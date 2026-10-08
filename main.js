@@ -1,4 +1,4 @@
-import { Game } from './game.js?v=1007i';
+import { Game } from './game.js?v=1007i-final';
 import { requireProfile } from './profilegate.js';
 const root = document.getElementById('game');
 const g = new Game(root);
