@@ -1,3 +1,9 @@
+## 2026-10-07: v1007l - bazooka before the Gun Game knife
+
+- Shared ladder adds Kite Bazooka at level 12 of 13, immediately before the knife finisher.
+- Bots can equip the bazooka and launch its existing projectile instead of using hitscan.
+- Preserves v1007k shot fixes, XP and map.
+
 # ChillOps changelog
 
 Source of truth: this private repo. Live build is the public mirror served by GitHub Pages.

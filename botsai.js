@@ -59,6 +59,7 @@ export const DIFFICULTY = {
 
 // rate = shots/s, spread = radians cone (half angle), range = effective metres, mag/reload in shots/s.
 export const WEAPONS = {
+  bazooka:     { rate: 35 / 60, spread: 0.012, range: 45, mag: 1, reload: 2.8, auto: false, dmg: 85, noise: 60, scope: 0 },
   pistol:      { rate: 3.5, spread: 0.014, range: 28, mag: 12, reload: 1.4, auto: false, dmg: 25, noise: 30, scope: 0, sec: true },
   machinegun:  { rate: 9.0, spread: 0.032, range: 34, mag: 30, reload: 2.0, auto: true,  dmg: 17, noise: 40, scope: 0 },
   sniper:      { rate: 0.9, spread: 0.002, range: 90, mag: 5,  reload: 2.4, auto: false, dmg: 100, noise: 60, scope: 0.45 },
