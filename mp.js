@@ -206,6 +206,7 @@ export function createMultiplayer(game, THREE) {
     try { game.newEconomy(); game.eco.setRemote((id) => mp.net && mp.net.sendRaw({ t: 'buy', id })); } catch (e) {}
     try { if (!game._mpHooks) { game._mpHooks = true;
       game.streaks.on('called', ({ id }) => { if (mp.active && mp.net) mp.net.sendRaw({ t: 'scall', id }); });
+      game.streaks.on('explosion', ({position,source}) => { if (mp.active && mp.net && source === 'missile') mp.net.sendRaw({t:'missileBlast',p:[position.x,position.y,position.z]}); });
       game.eco.on && 0; } game.eco.on('grenade', ({ id }) => { if (mp.active && mp.net) { const e = game.ctrl.state.eye, d = game.ctrl.getDirection(); mp.net.sendRaw({ t: 'gren', id, o: [e.x, e.y, e.z], d: [d.x, d.y, d.z], c: Math.round((game._gCharge ?? 0.4) * 1000) / 1000 }); } }); } catch (e) {}
     mp._sk = null; hud.querySelector('.rc').textContent = 'ROOM ' + w.room + ' - share the link or code. Esc = menu';
     bind(); game.canvas.requestPointerLock && game.canvas.requestPointerLock();
@@ -423,4 +424,4 @@ export function createMultiplayer(game, THREE) {
   mp.solo = (m, gm) => { if (m === 'a' || m === 'b') mapSel = m; let n = 'Player'; try { n = localStorage.getItem('sc_name') || 'Player'; } catch (e) {} connect({ room: 'new', name: n, solo: true, gm: DM[gm] ? gm : 'bomb' }); };
   mp.autoJoin = () => { const m = /[?&]room=([A-Za-z0-9]+)/.exec(location.search); if (m) { lobby(m[1].toUpperCase()); if (/[?&]go=1/.test(location.search)) { let n = 0; const iv = setInterval(() => { const b = document.querySelector('#mpg'); if (b && !mp.net) { clearInterval(iv); b.click(); } else if (++n > 40) clearInterval(iv); }, 400); } return true; } return false; };
   return mp;
-}
+      }
