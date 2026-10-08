@@ -5,7 +5,7 @@ import { emblemSVG } from './emblem.js';
 import { progress as xpProgress } from './rank.js';
 import * as ACC from './account.js';
 import { nameError, companyError, siteError } from './profilegate.js';
-import { siteDomain } from './common.js';
+import { siteDomain, GUN_ORDER } from './common.js';
 import { topBox, boardPanel } from './social.js';
 import { logoHTML, startConfetti } from './intro.js';
 const CSS = `
@@ -56,7 +56,7 @@ export const STREAK_INFO = [   // funding rounds
 ];
 // vs-bots game modes (Juan 2026-10-06: "más modo csgo rápido, parecido al black ops 2")
 const GMS = [['bomb', 'Bomb'], ['tdm', 'Team Deathmatch'], ['ffa', 'Free-for-all'], ['gun', 'Gun Game']];
-const GMD = { bomb: 'Plant or defuse. Best of 5, buy your guns every round.', tdm: 'You and a bot ally against the rest. Back in 2 s, free loadout (B), first team to 30 kills.', ffa: 'Everyone for themselves. Back in 2 s, free loadout (B), first to 15 kills.', gun: 'Every kill gives you the next of 11 guns. A knife kill on the last level wins. Getting knifed costs a level.' };
+const GMD = { bomb: 'Plant or defuse. Best of 5, buy your guns every round.', tdm: 'You and a bot ally against the rest. Back in 2 s, free loadout (B), first team to 30 kills.', ffa: 'Everyone for themselves. Back in 2 s, free loadout (B), first to 15 kills.', gun: 'Every kill gives you the next of ' + (GUN_ORDER.length - 1) + ' guns. A knife kill on the last level wins. Getting knifed costs a level.' };
 const gmSel = () => { try { const v = localStorage.getItem('sc_gm'); return GMD[v] ? v : 'bomb'; } catch (e) { return 'bomb'; } };
 export function buildMenu(game, THREE, createCharacter, ROSTER) {
   if (!document.getElementById('mn-css')) { const s = document.createElement('style'); s.id = 'mn-css'; s.textContent = CSS; document.head.appendChild(s); }
