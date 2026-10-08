@@ -138,3 +138,12 @@ export function wallBlocked(origin,direction,dist,colliders,pad=.07){
   }
   return false;
 }
+
+// Pharaoh hitboxes follow the visible bandages, crown, head, arms and legs. Shared by prediction and authority.
+export function pharaohZones(position,yaw=0){
+  const c=Math.abs(Math.cos(yaw)),s=Math.abs(Math.sin(yaw));
+  return [['body',0,.9,0,.335,.45,.21],['head',0,1.6,0,.49,.29,.26],['body',-.43,.94,-.06,.07,.325,.07],['body',.43,.94,-.06,.07,.325,.07],['legs',-.18,.26,0,.095,.25,.125],['legs',.18,.26,0,.095,.25,.125]].map(([zone,x,y,z,hx,hy,hz])=>{
+    const wx=position.x+x*Math.cos(yaw)+z*Math.sin(yaw),wz=position.z-x*Math.sin(yaw)+z*Math.cos(yaw),ex=hx*c+hz*s,ez=hx*s+hz*c;
+    return {zone,min:{x:wx-ex,y:position.y+y-hy,z:wz-ez},max:{x:wx+ex,y:position.y+y+hy,z:wz+ez}};
+  });
+}
