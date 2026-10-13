@@ -1,6 +1,6 @@
 // game.js - Sniper Chill: wires map, movement, hitscan, player/weapons, audio and bots together.
 import * as THREE from './three.module.min.js';
-import { KNIFE_REACH, knifeContact } from './common.js?v=1012b';
+import { KNIFE_REACH, knifeContact, R } from './common.js?v=1012c';
 import { buildMap, LAYOUTS } from './map.js';
 import { createController } from './movement.js';
 import { raycast, wallBlocked } from './hitscan.js';
@@ -25,8 +25,8 @@ import { createKnifeVM } from './knifevm.js';
 import { createGrenades, chargeOf } from './grenades.js';
 import { playIntro } from './intro.js';
 import { loadingStart, loadingStep } from './loading.js';
-import { buildMenu } from './menu.js?v=1007l-menu';
-import { createMultiplayer } from './mp.js?v=1012b';
+import { buildMenu } from './menu.js?v=1012c';
+import { createMultiplayer } from './mp.js?v=1012c';
 import { parkourColliders, parkourMeshes } from './parkour.js';
 import { showTutorial } from './tutorial.js';
 import { createCharacter, ROSTER } from './characters.js';
@@ -327,7 +327,7 @@ export class Game {
     const m = this.match, pips = (w, c) => Array.from({ length: 3 }, (_, i) => `<i class="pip${i < w ? ' on' : ''}" style="--c:${c}"></i>`).join('');
     this.sb.style.display = this.state === 'menu' ? 'none' : 'flex';
     if (m.dm) { this.sb.innerHTML = `<b>${m.p}</b><span class="sep">:</span><b>${m.b}</b><span class="rd">${m.dm}</span>`; if (this.sbm) this.sbm.style.display = 'none'; return; }   // deathmatch modes: kills (or Gun Game levels), no money
-    this.sb.innerHTML = `<span class="pips">${pips(m.p, '#7dffb0')}</span><b>${m.p}</b><span class="sep">:</span><b>${m.b}</b><span class="pips">${pips(m.b, '#ffb35c')}</span><span class="rd">R${Math.min(5, m.round)}/5</span>`;
+    this.sb.innerHTML = `<span class="pips">${pips(m.p, '#7dffb0')}</span><b>${m.p}</b><span class="sep">:</span><b>${m.b}</b><span class="pips">${pips(m.b, '#ffb35c')}</span><span class="rd">R${Math.max(1, m.round)} · ${Math.max(m.p, m.b) >= R.MAX_WIN_ROUNDS - 1 ? 'FIRST TO 5 MAX' : 'WIN BY 2'}</span>`;
     this.updSBMoney();
   }
   updSBMoney() {
@@ -601,4 +601,4 @@ export class Game {
     this.kc.afterRender();
   }
   destroy() { this.running = false; this.localAnnouncer?.dispose(); this.ro && this.ro.disconnect(); this.ctrl.dispose(); this.renderer.dispose(); }
-                                            }
+      }
