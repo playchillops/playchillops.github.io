@@ -11,7 +11,7 @@ export const PROTOCOL = 1;
 
 export const R = { // rules (all server side, tweak freely)
   FREEZE: 4, ROUND: 120, END: 5, PLANT: 3.2, FUSE: 60, DEFUSE: 5, BLAST: 14, DEFUSE_RADIUS: 2.5,
-  WIN_ROUNDS: 3, WIN_BY: 2, SWAP_AFTER: 3, MATCH_END: 24, RECONNECT_GRACE: 30, VOID_Y: -8,
+  WIN_ROUNDS: 3, WIN_BY: 2, MAX_WIN_ROUNDS: 5, SWAP_AFTER: 3, MATCH_END: 24, RECONNECT_GRACE: 30, VOID_Y: -8,
 };
 
 // Continuous modes (Juan 2026-10-06: "más modo csgo rápido, parecido al black ops 2"): respawn after RESPAWN s, no rounds,
