@@ -33,7 +33,7 @@ const CSS = `
 .mp-hud{position:absolute;inset:0;z-index:25;pointer-events:none;font-family:Fredoka,system-ui,sans-serif;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.7)}
 .mp-hud .top{position:absolute;top:14px;left:50%;transform:translateX(-50%);text-align:center}
 .mp-hud .sc{font-size:30px;font-weight:600;letter-spacing:.08em}.mp-hud .sc b:first-child{color:#ffb347}.mp-hud .sc b:last-child{color:#7fe3ff}
-.mp-hud .role{position:absolute;top:112px;left:50%;transform:translateX(-50%);background:#0b1020dc;border:1px solid;border-radius:8px;padding:7px 14px;text-align:center;min-width:260px}.mp-hud .role strong{display:block;font-size:16px;letter-spacing:.07em}.mp-hud .role small{display:block;font-size:11px;margin-top:3px;opacity:.85}
+.mp-hud .role{position:absolute;top:166px;left:50%;transform:translateX(-50%);background:#0b1020dc;border:1px solid;border-radius:8px;padding:7px 14px;text-align:center;min-width:260px}.mp-hud .role strong{display:block;font-size:16px;letter-spacing:.07em}.mp-hud .role small{display:block;font-size:11px;margin-top:3px;opacity:.85}
 .mp-hud .ph{font-size:13px;opacity:.85;letter-spacing:.14em}
 .mp-hud .hp{position:absolute;left:28px;bottom:26px;font-size:34px;font-weight:600}.mp-hud .am{position:absolute;right:28px;bottom:44px;font-size:34px;font-weight:600}.mp-hud .am small{font-size:16px;opacity:.7}
 .mp-hud .cr,.mp-hud .hp,.mp-hud .am,.mp-hud .sc{display:none}
@@ -441,4 +441,4 @@ export function createMultiplayer(game, THREE) {
   mp.solo = (m, gm) => { if (m === 'a' || m === 'b') mapSel = m; let n = 'Player'; try { n = localStorage.getItem('sc_name') || 'Player'; } catch (e) {} connect({ room: 'new', name: n, solo: true, gm: DM[gm] ? gm : 'bomb' }); };
   mp.autoJoin = () => { const m = /[?&]room=([A-Za-z0-9]+)/.exec(location.search); if (m) { lobby(m[1].toUpperCase()); if (/[?&]go=1/.test(location.search)) { let n = 0; const iv = setInterval(() => { const b = document.querySelector('#mpg'); if (b && !mp.net) { clearInterval(iv); b.click(); } else if (++n > 40) clearInterval(iv); }, 400); } return true; } return false; };
   return mp;
-                                                                                                                                                                                                                                    }
+      }
