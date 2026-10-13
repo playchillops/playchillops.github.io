@@ -53,6 +53,13 @@ export const POWERS = {
 };
 export const POWER_CHARGE = { perSec: 1.25, perKill: 25, perDmg: 0.12 };
 export const KNIFE_REACH = 1.5; // metres, shared by client and server
+// Aim at the nearest height on the body, not its waist: close, level swings must connect.
+export function knifeContact(o, d, p, height = 1.8, cone = 0.5) {
+  const point = { x: p.x, y: clamp(o.y, p.y + 0.2, p.y + height - 0.1), z: p.z };
+  const vx = point.x - o.x, vy = point.y - o.y, vz = point.z - o.z, dist = Math.hypot(vx, vy, vz);
+  if (dist < 0.01 || dist > KNIFE_REACH || (vx * d.x + vy * d.y + vz * d.z) / dist < cone) return null;
+  return { point, dist, dir: { x: vx / dist, y: vy / dist, z: vz / dist } };
+}
 export const MOBILITY = 3;
 export const TURBO = 1.6, STUN_TASER = 5, STUN_BSOD = 2.5, TASER_RANGE = 6.5;
 /** Starship launch: same numbers on the client (prediction) and the server */
