@@ -1,6 +1,6 @@
 // game.js - Sniper Chill: wires map, movement, hitscan, player/weapons, audio and bots together.
 import * as THREE from './three.module.min.js';
-import { KNIFE_REACH, knifeContact } from './common.js';
+import { KNIFE_REACH, knifeContact } from './common.js?v=1012b';
 import { buildMap, LAYOUTS } from './map.js';
 import { createController } from './movement.js';
 import { raycast, wallBlocked } from './hitscan.js';
@@ -601,4 +601,4 @@ export class Game {
     this.kc.afterRender();
   }
   destroy() { this.running = false; this.localAnnouncer?.dispose(); this.ro && this.ro.disconnect(); this.ctrl.dispose(); this.renderer.dispose(); }
-  }
+                                            }
