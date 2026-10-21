@@ -26,7 +26,7 @@ import { createGrenades, chargeOf } from './grenades.js';
 import { playIntro } from './intro.js';
 import { loadingStart, loadingStep } from './loading.js';
 import { buildMenu } from './menu.js?v=1012c';
-import { createMultiplayer } from './mp.js?v=1012c';
+import { createMultiplayer } from './mp.js?v=1020a';
 import { parkourColliders, parkourMeshes } from './parkour.js';
 import { showTutorial } from './tutorial.js';
 import { createCharacter, ROSTER } from './characters.js';
@@ -601,4 +601,4 @@ export class Game {
     this.kc.afterRender();
   }
   destroy() { this.running = false; this.localAnnouncer?.dispose(); this.ro && this.ro.disconnect(); this.ctrl.dispose(); this.renderer.dispose(); }
-      }
+    }
